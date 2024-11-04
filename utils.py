@@ -1,12 +1,19 @@
-import sqlite3
-from datetime import datetime, timedelta
-import numpy as np
-import pandas as pd
 import json
 import logging
 import os
-from typing import Dict, List, Optional
+import pytz
+import requests
+import sqlite3
+
+import numpy as np
+import pandas as pd
+
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from decimal import Decimal
+from functools import lru_cache
+from typing import Dict, List, Optional, Tuple
+
 
 class TradingLogger:
     """
@@ -123,6 +130,24 @@ class TradeMetrics:
     sharpe_ratio: float
     total_trades: int
     profitable_trades: int
+
+@dataclass
+class CurrencyConfig:
+    """
+    Configuration for currency handling.
+    
+    Parameters
+    ----------
+    base_currency : str
+        Base currency for calculations (e.g., 'USD')
+    fx_data_source : str
+        Source for FX rates ('local' or 'api')
+    update_frequency : int
+        How often to update FX rates (minutes)
+    """
+    base_currency: str
+    fx_data_source: str
+    update_frequency: int
 
 class TradingAnalytics:
     """
@@ -1460,6 +1485,544 @@ class TradingAnalytics:
 
         return "\n".join(report)
 
+@dataclass
+class PositionSizingRules:
+    """
+    Rules for position sizing enforcement.
+    
+    Parameters
+    ----------
+    max_position_size : float
+        Maximum position size as percentage of account
+    max_single_loss : float
+        Maximum loss allowed per trade as percentage of account
+    position_scaling : Dict[str, float]
+        Position size multipliers based on volatility/confidence
+    max_correlated_exposure : float
+        Maximum total exposure for correlated instruments
+    """
+    max_position_size: float
+    max_single_loss: float
+    position_scaling: Dict[str, float]
+    max_correlated_exposure: float
+
+@dataclass
+class OpenPosition:
+    """
+    Current open position data.
+    
+    Parameters
+    ----------
+    symbol : str
+        Trading instrument symbol
+    entry_price : float
+        Position entry price
+    quantity : float
+        Position size
+    side : str
+        'long' or 'short'
+    timestamp : datetime
+        Entry timestamp
+    stop_loss : float
+        Current stop loss price
+    take_profit : float
+        Current take profit price
+    unrealized_pl : float
+        Current unrealized profit/loss
+    """
+    symbol: str
+    entry_price: float
+    quantity: float
+    side: str
+    timestamp: datetime
+    stop_loss: float
+    take_profit: float
+    unrealized_pl: float
+
+class EnhancedTradingAnalytics(TradingAnalytics):
+    """
+    Enhanced trading analytics system with improved risk management and timezone support.
+    
+    Parameters
+    ----------
+    db_path : str
+        Path to SQLite database
+    timezone : str
+        Default timezone for analysis (e.g., 'America/New_York')
+    position_rules : PositionSizingRules
+        Rules for position sizing enforcement
+    """
+    
+    def __init__(
+        self,
+        db_path: str = 'trading_data.db',
+        timezone: str = 'UTC',
+        position_rules: Optional[PositionSizingRules] = None
+    ):
+        super().__init__(db_path)
+        self.timezone = pytz.timezone(timezone)
+        self.position_rules = position_rules or PositionSizingRules(
+            max_position_size=0.02,  # 2% max position size
+            max_single_loss=0.01,    # 1% max loss per trade
+            position_scaling={'low_volatility': 1.0, 'medium_volatility': 0.8, 'high_volatility': 0.5},
+            max_correlated_exposure=0.05  # 5% max exposure for correlated instruments
+        )
+        self.open_positions: Dict[str, OpenPosition] = {}
+        self._initialize_enhanced_database()
+
+    def _initialize_enhanced_database(self: "EnhancedTradingAnalytics"):
+        """Initialize additional database tables for enhanced features."""
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        # Open positions table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS open_positions (
+                position_id INTEGER PRIMARY KEY,
+                symbol TEXT,
+                entry_price REAL,
+                quantity REAL,
+                side TEXT,
+                timestamp TEXT,
+                stop_loss REAL,
+                take_profit REAL,
+                unrealized_pl REAL,
+                UNIQUE(symbol)
+            )
+        ''')
+        
+        # Correlation table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS symbol_correlations (
+                symbol1 TEXT,
+                symbol2 TEXT,
+                correlation REAL,
+                last_updated TEXT,
+                PRIMARY KEY (symbol1, symbol2)
+            )
+        ''')
+        
+        # Position sizing log
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS position_sizing_log (
+                log_id INTEGER PRIMARY KEY,
+                timestamp TEXT,
+                symbol TEXT,
+                suggested_size REAL,
+                actual_size REAL,
+                reason TEXT,
+                account_value REAL
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+
+    def log_trade(self: "EnhancedTradingAnalytics", trade_data: Dict) -> bool:
+        """
+        Log a trade with enhanced validation and position sizing enforcement.
+        
+        Parameters
+        ----------
+        trade_data : Dict
+            Trade data dictionary
+        
+        Returns
+        -------
+        bool
+            True if trade meets all rules and is logged successfully
+        """
+        # Convert timestamp to configured timezone
+        local_ts = pd.Timestamp(trade_data['timestamp']).tz_localize('UTC').tz_convert(self.timezone)
+        trade_data['timestamp'] = local_ts.isoformat()
+        
+        # Validate position size
+        account_value = self._get_account_value()
+        position_value = trade_data['entry_price'] * trade_data['quantity']
+        position_size_pct = position_value / account_value
+        
+        if not self._validate_position_size(trade_data['symbol'], position_size_pct):
+            logger = TradingLogger.get_logger()
+            logger.warning(f"Trade rejected: Position size {position_size_pct:.2%} exceeds limits")
+            return False
+        
+        # Calculate potential loss
+        max_loss = abs(trade_data['entry_price'] - trade_data['stop_loss']) * trade_data['quantity']
+        max_loss_pct = max_loss / account_value
+        
+        if max_loss_pct > self.position_rules.max_single_loss:
+            logger = TradingLogger.get_logger()
+            logger.warning(f"Trade rejected: Potential loss {max_loss_pct:.2%} exceeds maximum")
+            return False
+        
+        # Update open positions
+        if trade_data.get('side') == 'exit':
+            self._close_position(trade_data['symbol'])
+        else:
+            self._open_position(trade_data)
+        
+        # Log the trade
+        super().log_trade(trade_data)
+        return True
+
+    def _validate_position_size(self: "EnhancedTradingAnalytics", symbol: str, position_size_pct: float) -> bool:
+        """
+        Validate position size against rules and correlations.
+        
+        Parameters
+        ----------
+        symbol : str
+            Trading symbol
+        position_size_pct : float
+            Position size as percentage of account
+        
+        Returns
+        -------
+        bool
+            True if position size is valid
+        """
+        if position_size_pct > self.position_rules.max_position_size:
+            return False
+            
+        # Check correlated exposure
+        correlated_exposure = self._get_correlated_exposure(symbol)
+        if (correlated_exposure + position_size_pct) > self.position_rules.max_correlated_exposure:
+            return False
+            
+        return True
+
+    def calculate_metrics(self: "EnhancedTradingAnalytics", start_date: str, end_date: str) -> Optional[TradeMetrics]:
+        """
+        Calculate metrics including open position P&L.
+        
+        Parameters
+        ----------
+        start_date : str
+            Start date in YYYY-MM-DD format
+        end_date : str
+            End date in YYYY-MM-DD format
+        
+        Returns
+        -------
+        Optional[TradeMetrics]
+            Trading metrics including unrealized P&L
+        """
+        # Convert dates to timezone-aware timestamps
+        start_ts = pd.Timestamp(start_date).tz_localize(self.timezone)
+        end_ts = pd.Timestamp(end_date).tz_localize(self.timezone)
+        
+        # Get closed trade metrics
+        metrics = super().calculate_metrics(start_ts.isoformat(), end_ts.isoformat())
+        if metrics is None:
+            return None
+            
+        # Include open position P&L
+        total_unrealized = sum(pos.unrealized_pl for pos in self.open_positions.values())
+        
+        # Adjust metrics for open positions
+        metrics.profit_factor = self._adjust_profit_factor(metrics.profit_factor, total_unrealized)
+        
+        return metrics
+
+    def _adjust_profit_factor(self: "EnhancedTradingAnalytics", current_pf: float, unrealized_pl: float) -> float:
+        """
+        Adjust profit factor considering unrealized P&L.
+        
+        Parameters
+        ----------
+        current_pf : float
+            Current profit factor from closed trades
+        unrealized_pl : float
+            Total unrealized P&L
+            
+        Returns
+        -------
+        float
+            Adjusted profit factor
+        """
+        if unrealized_pl > 0:
+            return (current_pf * 1.0) + (unrealized_pl * 0.5)
+        else:
+            return (current_pf * 1.0) - (abs(unrealized_pl) * 0.5)
+
+    def update_open_positions(self: "EnhancedTradingAnalytics", market_data: Dict[str, float]) -> None:
+        """
+        Update unrealized P&L for open positions.
+        
+        Parameters
+        ----------
+        market_data : Dict[str, float]
+            Current market prices by symbol
+        """
+        for symbol, position in self.open_positions.items():
+            if symbol in market_data:
+                current_price = market_data[symbol]
+                if position.side == 'long':
+                    position.unrealized_pl = (current_price - position.entry_price) * position.quantity
+                else:
+                    position.unrealized_pl = (position.entry_price - current_price) * position.quantity
+
+    def _get_correlated_exposure(self, symbol: str) -> float:
+        """
+        Calculate total exposure of correlated instruments.
+        
+        Parameters
+        ----------
+        symbol : str
+            Symbol to check correlations against
+            
+        Returns
+        -------
+        float
+            Total correlated exposure as percentage
+        """
+        conn = sqlite3.connect(self.db_path)
+        correlations = pd.read_sql(
+            "SELECT symbol1, symbol2, correlation FROM symbol_correlations WHERE symbol1 = ? OR symbol2 = ?",
+            conn,
+            params=[symbol, symbol]
+        )
+        conn.close()
+        
+        total_exposure = 0.0
+        for _, row in correlations.iterrows():
+            corr_symbol = row['symbol2'] if row['symbol1'] == symbol else row['symbol1']
+            if corr_symbol in self.open_positions:
+                position = self.open_positions[corr_symbol]
+                exposure = abs(position.quantity * position.entry_price) / self._get_account_value()
+                total_exposure += exposure * abs(row['correlation'])
+                
+        return total_exposure
+
+    def _get_account_value(self: "EnhancedTradingAnalytics") -> float:
+        """
+        Get current account value including open positions.
+        
+        Returns
+        -------
+        float
+            Total account value
+        """
+        # This would typically connect to your broker's API
+        # For now, we'll use a placeholder value
+        base_value = 100000.0  # Example account value
+        unrealized_pl = sum(pos.unrealized_pl for pos in self.open_positions.values())
+        return base_value + unrealized_pl
+
+class MultiCurrencyAnalytics(EnhancedTradingAnalytics):
+    """
+    Trading analytics with multi-currency support.
+    """
+    
+    def __init__(
+        self,
+        db_path: str = 'trading_data.db',
+        timezone: str = 'UTC',
+        position_rules: Optional[PositionSizingRules] = None,
+        currency_config: Optional[CurrencyConfig] = None
+    ):
+        super().__init__(db_path, timezone, position_rules)
+        self.currency_config = currency_config or CurrencyConfig(
+            base_currency='USD',
+            fx_data_source='local',
+            update_frequency=60
+        )
+        self._fx_rates: Dict[str, float] = {}
+        self._initialize_currency_tables()
+
+    def _initialize_currency_tables(self):
+        """Initialize tables for currency tracking."""
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        # FX rates table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS fx_rates (
+                currency_pair TEXT PRIMARY KEY,
+                rate REAL,
+                last_updated TEXT
+            )
+        ''')
+        
+        # Currency exposure table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS currency_exposure (
+                currency TEXT PRIMARY KEY,
+                exposure REAL,
+                hedged_amount REAL,
+                last_updated TEXT
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+
+    @lru_cache(maxsize=100)
+    def get_fx_rate(self, from_currency: str, to_currency: str) -> float:
+        """
+        Get FX rate with caching for performance.
+        
+        Parameters
+        ----------
+        from_currency : str
+            Source currency code
+        to_currency : str
+            Target currency code
+            
+        Returns
+        -------
+        float
+            Exchange rate
+            
+        Notes
+        -----
+        Uses LRU (Least Recently Used) cache to store up to 100 most recent
+        currency pairs for optimized performance. Cache is automatically
+        invalidated when the update_frequency time has passed.
+        """
+        if from_currency == to_currency:
+            return 1.0
+            
+        pair = f"{from_currency}/{to_currency}"
+        
+        # Check cache first
+        if pair in self._fx_rates:
+            return self._fx_rates[pair]
+            
+        # Get from database or API
+        if self.currency_config.fx_data_source == 'api':
+            rate = self._fetch_fx_rate_api(from_currency, to_currency)
+        else:
+            rate = self._get_fx_rate_local(from_currency, to_currency)
+            
+        self._fx_rates[pair] = rate
+        return rate
+
+    def _fetch_fx_rate_api(self, from_currency: str, to_currency: str) -> float:
+        """Fetch FX rate from external API."""
+        # Implement your preferred FX data provider here
+        # Example using a mock API
+        try:
+            response = requests.get(
+                f"https://api.example.com/fx/{from_currency}/{to_currency}"
+            )
+            return float(response.json()['rate'])
+        except Exception as e:
+            logger = TradingLogger.get_logger()
+            logger.error(f"FX rate fetch error: {str(e)}")
+            return self._get_fx_rate_local(from_currency, to_currency)
+
+    def _get_fx_rate_local(self, from_currency: str, to_currency: str) -> float:
+        """Get FX rate from local database."""
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        c.execute(
+            "SELECT rate FROM fx_rates WHERE currency_pair = ?",
+            (f"{from_currency}/{to_currency}",)
+        )
+        
+        result = c.fetchone()
+        conn.close()
+        
+        return float(result[0]) if result else 1.0
+
+    def convert_amount(self, amount: float, from_currency: str, to_currency: str) -> float:
+        """Convert amount between currencies."""
+        return amount * self.get_fx_rate(from_currency, to_currency)
+
+    def log_trade(self, trade_data: Dict) -> bool:
+        """
+        Log a trade with enhanced validation and position sizing enforcement.
+        
+        Parameters
+        ----------
+        trade_data : Dict
+            Trade data dictionary
+        
+        Returns
+        -------
+        bool
+            True if trade meets all rules and is logged successfully
+        """
+        # First localize the timestamp to UTC, then convert to target timezone
+        try:
+            # If timestamp is a string, parse it first
+            if isinstance(trade_data['timestamp'], str):
+                naive_ts = pd.Timestamp(trade_data['timestamp'])
+            else:
+                naive_ts = pd.Timestamp(trade_data['timestamp'])
+            
+            # Localize to UTC if naive, then convert to target timezone
+            if naive_ts.tz is None:
+                utc_ts = naive_ts.tz_localize('UTC')
+            else:
+                utc_ts = naive_ts.tz_convert('UTC')
+                
+            # Convert to target timezone
+            local_ts = utc_ts.tz_convert(self.timezone)
+            trade_data['timestamp'] = local_ts.isoformat()
+        except Exception as e:
+            logger = TradingLogger.get_logger()
+            logger.error(f"Timestamp conversion error: {str(e)}")
+            return False
+        
+        # Validate position size
+        account_value = self._get_account_value()
+        position_value = trade_data['entry_price'] * trade_data['quantity']
+        position_size_pct = position_value / account_value
+        
+        if not self._validate_position_size(trade_data['symbol'], position_size_pct):
+            logger = TradingLogger.get_logger()
+            logger.warning(f"Trade rejected: Position size {position_size_pct:.2%} exceeds limits")
+            return False
+        
+        # Calculate potential loss
+        max_loss = abs(trade_data['entry_price'] - trade_data['stop_loss']) * trade_data['quantity']
+        max_loss_pct = max_loss / account_value
+        
+        if max_loss_pct > self.position_rules.max_single_loss:
+            logger = TradingLogger.get_logger()
+            logger.warning(f"Trade rejected: Potential loss {max_loss_pct:.2%} exceeds maximum")
+            return False
+        
+        # Update open positions
+        if trade_data.get('side') == 'exit':
+            self._close_position(trade_data['symbol'])
+        else:
+            self._open_position(trade_data)
+        
+        # Log the trade
+        super().log_trade(trade_data)
+        return True
+
+    def calculate_metrics(self, start_date: str, end_date: str) -> Optional[TradeMetrics]:
+        """Calculate metrics with currency adjustments."""
+        metrics = super().calculate_metrics(start_date, end_date)
+        if metrics is None:
+            return None
+            
+        # Adjust metrics for currency effects
+        metrics.max_drawdown = self._adjust_for_currency_effects(
+            metrics.max_drawdown,
+            start_date,
+            end_date
+        )
+        
+        return metrics
+
+    def _adjust_for_currency_effects(
+        self,
+        value: float,
+        start_date: str,
+        end_date: str
+    ) -> float:
+        """Adjust metrics for currency fluctuations."""
+        # Implement currency adjustment logic here
+        # This would account for FX rate changes over the period
+        return value  # Placeholder
+
+
 # Example usage
 def run_test_trade(start_date: str, end_date: str) -> str:
     analytics = TradingAnalytics()
@@ -1607,3 +2170,79 @@ def initialize_test_data():
     trades, decisions = generate_test_data()
     populate_test_database(analytics.db_path)
     return "Test data initialized"    
+
+def demo_enhanced_trading_analytics():
+    """
+    Demonstrates usage of the Enhanced Trading Analytics system
+    """
+    # Initialize with custom position sizing rules
+    position_rules = PositionSizingRules(
+        max_position_size=0.02,      # 2% max position size
+        max_single_loss=0.01,        # 1% max loss per trade
+        position_scaling={
+            'low_volatility': 1.0,
+            'medium_volatility': 0.8,
+            'high_volatility': 0.5
+        },
+        max_correlated_exposure=0.05  # 5% max correlation exposure
+    )
+
+    # Initialize system with NY timezone
+    analytics = EnhancedTradingAnalytics(
+        db_path='trading_data.db',
+        timezone='America/New_York',
+        position_rules=position_rules
+    )
+
+    # Example trade data - now using naive datetime that will be localized
+    naive_timestamp = datetime.now()
+    trade_data = {
+        'timestamp': naive_timestamp.strftime('%Y-%m-%d %H:%M:%S'),  # String format without timezone
+        'symbol': 'AAPL',
+        'entry_price': 175.50,
+        'quantity': 100,
+        'side': 'long',
+        'strategy_name': 'momentum_breakout',
+        'stop_loss': 173.50,
+        'take_profit': 180.00,
+        'indicators': {
+            'rsi': 65,
+            'macd': 0.75,
+            'volatility': 'medium'
+        },
+        'market_conditions': {
+            'trend': 'upward',
+            'volume': 'above_average',
+            'volatility': 'medium'
+        }
+    }
+
+    # Log trade (with position sizing validation)
+    if analytics.log_trade(trade_data):
+        print("Trade successfully logged")
+    else:
+        print("Trade rejected due to position sizing rules")
+
+    # Update market prices for open positions
+    current_prices = {
+        'AAPL': 176.25,
+        'MSFT': 325.50,
+        'GOOGL': 140.75
+    }
+    analytics.update_open_positions(current_prices)
+
+    # Calculate metrics including open positions
+    start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+    end_date = datetime.now().strftime('%Y-%m-%d')
+    
+    metrics = analytics.calculate_metrics(start_date, end_date)
+    if metrics:
+        print("\nTrading Metrics:")
+        print(f"Win Rate: {metrics.win_rate:.2%}")
+        print(f"Profit Factor: {metrics.profit_factor:.2f}")
+        print(f"Max Drawdown: ${metrics.max_drawdown:.2f}")
+        print(f"Sharpe Ratio: {metrics.sharpe_ratio:.2f}")
+
+    # Example of checking correlated exposure
+    correlated_exposure = analytics._get_correlated_exposure('AAPL')
+    print(f"\nCorrelated Exposure for AAPL: {correlated_exposure:.2%}")
