@@ -5,14 +5,18 @@ import pytz
 import requests
 import sqlite3
 
+import networkx as nx
 import numpy as np
 import pandas as pd
 
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from functools import lru_cache
-from typing import Dict, List, Optional
+from scipy import stats
+from typing import Dict, List, Optional, Set, Tuple
+
 
 
 class TradingLogger:
@@ -198,6 +202,48 @@ class TransactionCosts:
     def total_cost_bps(self) -> float:
         """Calculate total cost in basis points."""
         return self.total_cost * 10000  # Convert to basis points
+
+@dataclass
+class CorrelationConfig:
+    """
+    Configuration for correlation analysis.
+    
+    Parameters
+    ----------
+    lookback_days : int
+        Days of historical data to use
+    min_periods : int
+        Minimum periods required for correlation
+    correlation_threshold : float
+        Minimum correlation to consider significant
+    max_cluster_exposure : float
+        Maximum exposure for correlated asset clusters
+    sector_limits : Dict[str, float]
+        Maximum exposure per sector
+    """
+    lookback_days: int = 252  # One trading year
+    min_periods: int = 63     # ~3 months
+    correlation_threshold: float = 0.6
+    max_cluster_exposure: float = 0.15  # 15% max for correlated assets
+    sector_limits: Dict[str, float] = None
+    
+    def __post_init__(self):
+        if self.sector_limits is None:
+            self.sector_limits = {
+                'Technology': 0.30,
+                'Financial': 0.25,
+                'Healthcare': 0.25,
+                'Consumer': 0.25,
+                'Industrial': 0.25,
+                'Energy': 0.20,
+                'Materials': 0.20,
+                'Utilities': 0.15,
+                'Real Estate': 0.15,
+                'Other': 0.15  # Default for any uncategorized sectors
+            }
+        else:
+            # Ensure 'Other' is always present in sector limits
+            self.sector_limits['Other'] = self.sector_limits.get('Other', 0.15)
 
 class TradingAnalytics:
     """
@@ -2522,6 +2568,476 @@ class TransactionCostAnalyzer:
         conn.commit()
         conn.close()
 
+class PositionCorrelationAnalyzer:
+    """
+    Analyzer for position correlations and risk clustering.
+    """
+    
+    def __init__(
+        self,
+        db_path: str,
+        config: Optional[CorrelationConfig] = None
+    ):
+        """Initialize correlation analyzer."""
+        self.db_path = db_path
+        self.config = config or CorrelationConfig()
+        self._initialize_correlation_tables()
+        
+    def _initialize_correlation_tables(self):
+        """Initialize tables for correlation analysis."""
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        # Asset correlation table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS asset_correlations (
+                symbol1 TEXT,
+                symbol2 TEXT,
+                correlation REAL,
+                beta REAL,
+                common_factor_exposure REAL,
+                last_updated TEXT,
+                lookback_days INTEGER,
+                data_points INTEGER,
+                PRIMARY KEY (symbol1, symbol2)
+            )
+        ''')
+        
+        # Risk cluster table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS risk_clusters (
+                cluster_id INTEGER PRIMARY KEY,
+                symbols TEXT,  -- JSON array of symbols
+                avg_correlation REAL,
+                total_exposure REAL,
+                risk_factors TEXT,  -- JSON object of factor exposures
+                last_updated TEXT
+            )
+        ''')
+        
+        # Sector exposure table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS sector_exposure (
+                sector TEXT PRIMARY KEY,
+                exposure REAL,
+                limit_exposure REAL,
+                symbols TEXT,  -- JSON array of symbols
+                last_updated TEXT
+            )
+        ''')
+        
+        # Factor exposure table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS factor_exposure (
+                symbol TEXT,
+                factor TEXT,
+                exposure REAL,
+                last_updated TEXT,
+                PRIMARY KEY (symbol, factor)
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+
+    def _populate_test_data(self):
+        """Populate test data for correlation analysis."""
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        # Add test market data
+        symbols = ['AAPL', 'MSFT', 'GOOGL', 'META']
+        base_prices = {
+            'AAPL': 175.50,
+            'MSFT': 325.75,
+            'GOOGL': 140.25,
+            'META': 290.50
+        }
+        
+        # Generate correlated price movements
+        dates = [
+            (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
+            for i in range(252)  # One year of data
+        ]
+        
+        # Create correlated returns
+        rng = np.random.default_rng(42)  # For reproducibility
+        market_return = rng.normal(0.0005, 0.01, len(dates))  # Market factor
+        
+        # Symbol-specific parameters (beta, correlation to market)
+        symbol_params = {
+            'AAPL': {'beta': 1.2, 'vol': 0.015},
+            'MSFT': {'beta': 1.1, 'vol': 0.014},
+            'GOOGL': {'beta': 1.3, 'vol': 0.016},
+            'META': {'beta': 1.4, 'vol': 0.018}
+        }
+        
+        # Generate prices for each symbol
+        for symbol in symbols:
+            params = symbol_params[symbol]
+            base_price = base_prices[symbol]
+            
+            # Generate correlated returns
+            specific_return = rng.normal(0, params['vol'], len(dates))
+            total_return = (params['beta'] * market_return + specific_return)
+            
+            # Calculate prices
+            prices = base_price * np.exp(np.cumsum(total_return))
+            
+            # Insert market data
+            for date, price in zip(dates, prices):
+                c.execute('''
+                    INSERT OR REPLACE INTO market_data (
+                        timestamp, symbol, open, high, low, close, volume, indicators
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    date,
+                    symbol,
+                    price,
+                    price * (1 + rng.normal(0, 0.001)),  # Small random variation
+                    price * (1 - rng.normal(0, 0.001)),
+                    price,
+                    int(rng.normal(1000000, 200000)),  # Random volume
+                    '{}'
+                ))
+        
+        # Add test positions
+        positions = [
+            ('AAPL', 100, base_prices['AAPL'], 'Technology'),
+            ('MSFT', 50, base_prices['MSFT'], 'Technology'),
+            ('GOOGL', 75, base_prices['GOOGL'], 'Technology'),
+            ('META', 60, base_prices['META'], 'Technology')
+        ]
+        
+        # Create asset_metadata table if it doesn't exist
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS asset_metadata (
+                symbol TEXT PRIMARY KEY,
+                sector TEXT,
+                industry TEXT,
+                market_cap REAL
+            )
+        ''')
+        
+        # Add metadata
+        for symbol, _, _, sector in positions:
+            c.execute('''
+                INSERT OR REPLACE INTO asset_metadata (symbol, sector)
+                VALUES (?, ?)
+            ''', (symbol, sector))
+        
+        # Add positions
+        for symbol, quantity, price, _ in positions:
+            c.execute('''
+                INSERT OR REPLACE INTO open_positions (
+                    symbol, quantity, entry_price, side, timestamp
+                ) VALUES (?, ?, ?, ?, ?)
+            ''', (
+                symbol,
+                quantity,
+                price,
+                'long',
+                datetime.now().isoformat()
+            ))
+        
+        # Add some initial factor exposures
+        factors = ['Momentum', 'Value', 'Quality', 'Size']
+        for symbol in symbols:
+            for factor in factors:
+                c.execute('''
+                    INSERT OR REPLACE INTO factor_exposure (
+                        symbol, factor, exposure, last_updated
+                    ) VALUES (?, ?, ?, datetime('now'))
+                ''', (
+                    symbol,
+                    factor,
+                    rng.normal(0.2, 0.1)  # Random factor exposure
+                ))
+        
+        conn.commit()
+        conn.close()
+
+    def update_correlations(self, symbols: Optional[List[str]] = None):
+        """
+        Update correlation matrix for given symbols.
+        
+        Parameters
+        ----------
+        symbols : Optional[List[str]]
+            Symbols to update. If None, updates all active positions.
+        """
+        conn = sqlite3.connect(self.db_path)
+        
+        if symbols is None:
+            # Get all symbols from open positions
+            symbols = pd.read_sql(
+                "SELECT DISTINCT symbol FROM open_positions",
+                conn
+            )['symbol'].tolist()
+        
+        # Get price data
+        prices_df = pd.read_sql(f"""
+            SELECT timestamp, symbol, close
+            FROM market_data
+            WHERE symbol IN ({','.join(['?']*len(symbols))})
+            AND timestamp >= date('now', ?)
+            ORDER BY timestamp
+        """, conn, params=[*symbols, f'-{self.config.lookback_days} days'])
+        
+        # Pivot to get price matrix
+        price_matrix = prices_df.pivot(
+            index='timestamp',
+            columns='symbol',
+            values='close'
+        )
+        
+        # Calculate returns with explicit fill_method=None
+        returns = price_matrix.pct_change(fill_method=None)
+        
+        # Calculate correlations and betas
+        correlations = returns.corr(min_periods=self.config.min_periods)
+        market_returns = returns.mean(axis=1)  # Simple market proxy
+        betas = returns.apply(lambda x: stats.linregress(market_returns, x)[0])
+        
+        # Store correlations and betas
+        for symbol1 in symbols:
+            for symbol2 in symbols:
+                if symbol1 < symbol2:  # Store each pair only once
+                    corr = correlations.loc[symbol1, symbol2]
+                    beta1 = betas[symbol1]
+                    beta2 = betas[symbol2]
+                    common_factor = beta1 * beta2  # Common factor exposure
+                    
+                    c = conn.cursor()
+                    c.execute('''
+                        INSERT OR REPLACE INTO asset_correlations (
+                            symbol1, symbol2, correlation, beta,
+                            common_factor_exposure, last_updated,
+                            lookback_days, data_points
+                        ) VALUES (?, ?, ?, ?, ?, datetime('now'), ?, ?)
+                    ''', (
+                        symbol1, symbol2, corr, (beta1 + beta2)/2,
+                        common_factor, self.config.lookback_days,
+                        len(returns)
+                    ))
+        
+        conn.commit()
+        conn.close()
+
+    def identify_risk_clusters(self) -> List[Dict]:
+        """
+        Identify clusters of highly correlated positions.
+        
+        Returns
+        -------
+        List[Dict]
+            List of cluster information including symbols and metrics
+        """
+        conn = sqlite3.connect(self.db_path)
+        
+        # Get correlation matrix
+        correlations = pd.read_sql("""
+            SELECT symbol1, symbol2, correlation
+            FROM asset_correlations
+            WHERE correlation >= ?
+        """, conn, params=[self.config.correlation_threshold])
+        
+        # Create correlation network
+        G = nx.Graph()
+        for _, row in correlations.iterrows():
+            G.add_edge(row['symbol1'], row['symbol2'], weight=row['correlation'])
+        
+        # Find clusters using community detection
+        clusters = list(nx.community.greedy_modularity_communities(G))
+        
+        # Analyze each cluster
+        cluster_info = []
+        for i, cluster in enumerate(clusters):
+            symbols = list(cluster)
+            
+            # Calculate cluster metrics
+            cluster_correlations = correlations[
+                correlations['symbol1'].isin(symbols) &
+                correlations['symbol2'].isin(symbols)
+            ]
+            avg_correlation = cluster_correlations['correlation'].mean()
+            
+            # Get exposure
+            exposures = pd.read_sql("""
+                SELECT symbol, quantity * entry_price as exposure
+                FROM open_positions
+                WHERE symbol IN ({})
+            """.format(','.join(['?']*len(symbols))), 
+            conn, params=symbols)
+            
+            total_exposure = exposures['exposure'].sum()
+            
+            # Store cluster information
+            cluster_data = {
+                'cluster_id': i,
+                'symbols': symbols,
+                'avg_correlation': avg_correlation,
+                'total_exposure': total_exposure,
+                'risk_factors': self._get_cluster_risk_factors(symbols)
+            }
+            cluster_info.append(cluster_data)
+            
+            # Store in database
+            c = conn.cursor()
+            c.execute('''
+                INSERT OR REPLACE INTO risk_clusters (
+                    cluster_id, symbols, avg_correlation,
+                    total_exposure, risk_factors, last_updated
+                ) VALUES (?, ?, ?, ?, ?, datetime('now'))
+            ''', (
+                i,
+                json.dumps(symbols),
+                avg_correlation,
+                total_exposure,
+                json.dumps(cluster_data['risk_factors'])
+            ))
+        
+        conn.commit()
+        conn.close()
+        
+        return cluster_info
+
+    def _get_cluster_risk_factors(self, symbols: List[str]) -> Dict[str, float]:
+        """Get aggregate risk factor exposures for a cluster."""
+        conn = sqlite3.connect(self.db_path)
+        
+        exposures = pd.read_sql(f"""
+            SELECT factor, AVG(exposure) as avg_exposure
+            FROM factor_exposure
+            WHERE symbol IN ({','.join(['?']*len(symbols))})
+            GROUP BY factor
+        """, conn, params=symbols)
+        
+        conn.close()
+        
+        return dict(zip(exposures['factor'], exposures['avg_exposure']))
+
+    def analyze_portfolio_risk(self) -> Dict:
+        """
+        Perform comprehensive portfolio risk analysis.
+        
+        Returns
+        -------
+        Dict
+            Dictionary containing risk metrics including:
+            - Cluster exposures
+            - Sector concentrations
+            - Factor exposures
+            - Correlation warnings
+            - Exposure recommendations
+        """
+        # Update correlations first
+        self.update_correlations()
+        
+        # Identify risk clusters
+        clusters = self.identify_risk_clusters()
+        
+        # Analyze sector exposures
+        sector_exposures = self._analyze_sector_exposures()
+        
+        # Generate risk report
+        risk_report = {
+            'clusters': clusters,
+            'sector_exposures': sector_exposures,
+            'warnings': self._generate_risk_warnings(clusters, sector_exposures),
+            'recommendations': self._generate_recommendations(
+                clusters,
+                sector_exposures
+            )
+        }
+        
+        return risk_report
+
+    def _analyze_sector_exposures(self) -> Dict[str, float]:
+        """Calculate current sector exposures."""
+        conn = sqlite3.connect(self.db_path)
+        
+        sector_exposures = pd.read_sql("""
+            SELECT 
+                sector,
+                SUM(quantity * entry_price) as exposure
+            FROM open_positions op
+            JOIN asset_metadata am ON op.symbol = am.symbol
+            GROUP BY sector
+        """, conn)
+        
+        conn.close()
+        
+        return dict(zip(sector_exposures['sector'], 
+                       sector_exposures['exposure']))
+
+    def _generate_risk_warnings(
+        self,
+        clusters: List[Dict],
+        sector_exposures: Dict[str, float]
+    ) -> List[str]:
+        """Generate warnings for risk concentrations."""
+        warnings = []
+        
+        # Check cluster concentrations
+        for cluster in clusters:
+            if cluster['total_exposure'] > self.config.max_cluster_exposure:
+                warnings.append(
+                    f"Cluster exposure {cluster['total_exposure']:.1%} exceeds "
+                    f"limit of {self.config.max_cluster_exposure:.1%} for symbols: "
+                    f"{', '.join(cluster['symbols'])}"
+                )
+        
+        # Check sector concentrations
+        for sector, exposure in sector_exposures.items():
+            # Get sector limit with fallback to 'Other'
+            limit = self.config.sector_limits.get(
+                sector,
+                self.config.sector_limits['Other']
+            )
+            if exposure > limit:
+                warnings.append(
+                    f"Sector exposure {exposure:.1%} exceeds limit of {limit:.1%} "
+                    f"for {sector}"
+                )
+        
+        return warnings
+
+    def _generate_recommendations(
+        self,
+        clusters: List[Dict],
+        sector_exposures: Dict[str, float]
+    ) -> List[str]:
+        """Generate position adjustment recommendations."""
+        recommendations = []
+        
+        # Cluster reduction recommendations
+        for cluster in clusters:
+            if cluster['total_exposure'] > self.config.max_cluster_exposure:
+                excess = cluster['total_exposure'] - self.config.max_cluster_exposure
+                recommendations.append(
+                    f"Reduce cluster exposure by {excess:.1%} for symbols: "
+                    f"{', '.join(cluster['symbols'])}"
+                )
+        
+        # Sector rebalancing recommendations
+        for sector, exposure in sector_exposures.items():
+            limit = self.config.sector_limits.get(sector, 
+                                                self.config.sector_limits['Other'])
+            if exposure > limit:
+                excess = exposure - limit
+                recommendations.append(
+                    f"Reduce {sector} exposure by {excess:.1%}"
+                )
+            elif exposure < limit * 0.5:  # Using 50% of limit as lower threshold
+                opportunity = limit - exposure
+                recommendations.append(
+                    f"Opportunity to increase {sector} exposure by up to "
+                    f"{opportunity:.1%}"
+                )
+        
+        return recommendations
+
 # Example usage
 def run_test_trade(start_date: str, end_date: str) -> str:
     analytics = TradingAnalytics()
@@ -2565,6 +3081,60 @@ def run_test_trade(start_date: str, end_date: str) -> str:
     # Generate report
     #report = analytics.generate_report(analysis)
     #return report
+
+def demo_correlation_analysis():
+    """
+    Demonstrate the position correlation analysis functionality.
+    """
+    # Initialize analyzer with custom config
+    config = CorrelationConfig(
+        lookback_days=252,
+        min_periods=63,
+        correlation_threshold=0.6,
+        max_cluster_exposure=0.15,
+        sector_limits={
+            'Technology': 0.30,
+            'Financial': 0.25,
+            'Healthcare': 0.25,
+            'Consumer': 0.25
+        }
+    )
+    
+    analyzer = PositionCorrelationAnalyzer('trading_data.db', config)
+    
+    # Add some test data
+    analyzer._populate_test_data()
+    
+    # Update correlations
+    print("\nUpdating correlations...")
+    analyzer.update_correlations(['AAPL', 'MSFT', 'GOOGL', 'META'])
+    
+    # Identify risk clusters
+    print("\nIdentifying risk clusters...")
+    clusters = analyzer.identify_risk_clusters()
+    
+    print("\nRisk Clusters:")
+    for cluster in clusters:
+        print(f"\nCluster {cluster['cluster_id']}:")
+        print(f"Symbols: {', '.join(cluster['symbols'])}")
+        print(f"Average Correlation: {cluster['avg_correlation']:.2f}")
+        print(f"Total Exposure: {cluster['total_exposure']:.1%}")
+    
+    # Full portfolio risk analysis
+    print("\nPerforming portfolio risk analysis...")
+    risk_report = analyzer.analyze_portfolio_risk()
+    
+    print("\nRisk Warnings:")
+    for warning in risk_report['warnings']:
+        print(f"- {warning}")
+    
+    print("\nRecommendations:")
+    for recommendation in risk_report['recommendations']:
+        print(f"- {recommendation}")
+    
+    print("\nSector Exposures:")
+    for sector, exposure in risk_report['sector_exposures'].items():
+        print(f"{sector}: {exposure:.1%}")
 
 def generate_test_data():
     # Set random seed for reproducibility
