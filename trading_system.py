@@ -9,14 +9,12 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from functools import lru_cache
 from scipy import stats
-from typing import Dict, List, Optional, Set, Tuple
-
+from typing import Dict, List, Optional
 
 
 class TradingLogger:
