@@ -10,9 +10,9 @@ import pandas as pd
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from decimal import Decimal
+from enum import Enum
 from functools import lru_cache
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 
 class TradingLogger:
@@ -148,6 +148,56 @@ class CurrencyConfig:
     base_currency: str
     fx_data_source: str
     update_frequency: int
+
+class VenueType(Enum):
+    """Trading venue types for cost analysis."""
+    EXCHANGE = "exchange"
+    DARK_POOL = "dark_pool"
+    ECN = "ecn"
+    MARKET_MAKER = "market_maker"
+    OTC = "otc"
+
+@dataclass
+class TransactionCosts:
+    """
+    Detailed breakdown of transaction costs.
+    
+    Parameters
+    ----------
+    commission : float
+        Direct commission costs
+    slippage : float
+        Implementation shortfall (difference from expected price)
+    spread_cost : float
+        Cost due to bid-ask spread
+    market_impact : float
+        Estimated price impact of the trade
+    delay_cost : float
+        Cost due to execution delay
+    venue_fees : float
+        Specific venue or exchange fees
+    clearing_fees : float
+        Clearing and settlement fees
+    """
+    commission: float
+    slippage: float
+    spread_cost: float
+    market_impact: float
+    delay_cost: float
+    venue_fees: float
+    clearing_fees: float
+    
+    @property
+    def total_cost(self) -> float:
+        """Calculate total transaction cost."""
+        return (self.commission + self.slippage + self.spread_cost +
+                self.market_impact + self.delay_cost + self.venue_fees +
+                self.clearing_fees)
+    
+    @property
+    def total_cost_bps(self) -> float:
+        """Calculate total cost in basis points."""
+        return self.total_cost * 10000  # Convert to basis points
 
 class TradingAnalytics:
     """
@@ -2022,6 +2072,455 @@ class MultiCurrencyAnalytics(EnhancedTradingAnalytics):
         # This would account for FX rate changes over the period
         return value  # Placeholder
 
+class TransactionCostAnalyzer:
+    """
+    Analyzer for trading costs and market impact.
+    """
+    
+    def __init__(self, db_path: str):
+        """Initialize with database connection."""
+        self.db_path = db_path
+        self._initialize_tca_tables()
+        
+    def _initialize_tca_tables(self):
+        """Create necessary tables for transaction cost analysis."""
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        # Transaction costs table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS transaction_costs (
+                trade_id INTEGER PRIMARY KEY,
+                timestamp TEXT,
+                symbol TEXT,
+                venue TEXT,
+                commission REAL,
+                slippage REAL,
+                spread_cost REAL,
+                market_impact REAL,
+                delay_cost REAL,
+                venue_fees REAL,
+                clearing_fees REAL,
+                expected_price REAL,
+                arrival_price REAL,
+                execution_price REAL,
+                volume_participation REAL,
+                FOREIGN KEY (trade_id) REFERENCES trades(trade_id)
+            )
+        ''')
+        
+        # Modify market_data table to include bid-ask data
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS market_data_new (
+                timestamp TEXT,
+                symbol TEXT,
+                open REAL,
+                high REAL,
+                low REAL,
+                close REAL,
+                bid REAL,
+                ask REAL,
+                volume REAL,
+                indicators JSON,
+                PRIMARY KEY (timestamp, symbol)
+            )
+        ''')
+        
+        # Check if we need to migrate existing data
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='market_data'")
+        if c.fetchone():
+            c.execute('''
+                INSERT OR IGNORE INTO market_data_new (
+                    timestamp, symbol, open, high, low, close, volume, indicators
+                )
+                SELECT timestamp, symbol, open, high, low, close, volume, indicators
+                FROM market_data
+            ''')
+            c.execute("DROP TABLE market_data")
+            c.execute("ALTER TABLE market_data_new RENAME TO market_data")
+        
+        # Venue analysis table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS venue_analysis (
+                venue TEXT,
+                symbol TEXT,
+                avg_cost_bps REAL,
+                avg_market_impact REAL,
+                fill_rate REAL,
+                avg_spread REAL,
+                last_updated TEXT,
+                PRIMARY KEY (venue, symbol)
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+
+    def _calculate_spread_cost(self, trade_data: Dict) -> float:
+        """
+        Calculate cost due to bid-ask spread.
+        
+        If bid-ask data is not available, estimates spread as 0.1% of price.
+        """
+        # Fetch bid-ask data from market data
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        c.execute('''
+            SELECT bid, ask FROM market_data 
+            WHERE symbol = ? AND timestamp <= ?
+            ORDER BY timestamp DESC LIMIT 1
+        ''', (trade_data['symbol'], trade_data['timestamp']))
+        
+        result = c.fetchone()
+        conn.close()
+        
+        if result and result[0] is not None and result[1] is not None:
+            bid, ask = result
+            spread = ask - bid
+        else:
+            # Estimate spread as 0.1% of price if no bid-ask data available
+            price = trade_data['execution_price']
+            spread = price * 0.001
+            
+        return (spread / 2) * trade_data['quantity']  # Assume crossing half spread
+
+    def analyze_trade_costs(self, trade_data: Dict) -> TransactionCosts:
+        """
+        Analyze costs for a single trade.
+        
+        Parameters
+        ----------
+        trade_data : Dict
+            Complete trade information including:
+            - symbol : str
+            - quantity : float
+            - entry_price : float
+            - execution_price : float
+            - venue : str
+            - timestamp : str
+            
+        Returns
+        -------
+        TransactionCosts
+            Detailed breakdown of transaction costs
+        """
+        # Calculate individual cost components
+        commission = self._calculate_commission(trade_data)
+        slippage = self._calculate_slippage(trade_data)
+        spread_cost = self._calculate_spread_cost(trade_data)
+        market_impact = self._calculate_market_impact(trade_data)
+        delay_cost = self._calculate_delay_cost(trade_data)
+        venue_fees = self._calculate_venue_fees(trade_data)
+        clearing_fees = self._calculate_clearing_fees(trade_data)
+        
+        costs = TransactionCosts(
+            commission=commission,
+            slippage=slippage,
+            spread_cost=spread_cost,
+            market_impact=market_impact,
+            delay_cost=delay_cost,
+            venue_fees=venue_fees,
+            clearing_fees=clearing_fees
+        )
+        
+        # Store the analysis
+        self._store_cost_analysis(trade_data['trade_id'], costs, trade_data)
+        
+        return costs
+
+    def _calculate_commission(self, trade_data: Dict) -> float:
+        """Calculate commission based on venue and size."""
+        venue_type = VenueType(trade_data.get('venue', 'exchange'))
+        trade_value = trade_data['quantity'] * trade_data['execution_price']
+        
+        # Example commission structure
+        commission_rates = {
+            VenueType.EXCHANGE: 0.0020,  # 20 bps
+            VenueType.DARK_POOL: 0.0015, # 15 bps
+            VenueType.ECN: 0.0017,       # 17 bps
+            VenueType.MARKET_MAKER: 0.0018, # 18 bps
+            VenueType.OTC: 0.0025        # 25 bps
+        }
+        
+        return trade_value * commission_rates[venue_type]
+
+    def _calculate_slippage(self, trade_data: Dict) -> float:
+        """Calculate implementation shortfall."""
+        expected_price = trade_data.get('expected_price', trade_data['entry_price'])
+        execution_price = trade_data['execution_price']
+        quantity = trade_data['quantity']
+        
+        return abs(execution_price - expected_price) * quantity
+
+    def _calculate_spread_cost(self, trade_data: Dict) -> float:
+        """Calculate cost due to bid-ask spread."""
+        # Fetch bid-ask data from market data
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        c.execute('''
+            SELECT bid, ask FROM market_data 
+            WHERE symbol = ? AND timestamp <= ?
+            ORDER BY timestamp DESC LIMIT 1
+        ''', (trade_data['symbol'], trade_data['timestamp']))
+        
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            bid, ask = result
+            spread = ask - bid
+            return (spread / 2) * trade_data['quantity']  # Assume crossing half spread
+        
+        return 0.0
+
+    def _calculate_market_impact(self, trade_data: Dict) -> float:
+        """
+        Calculate price impact of trade.
+        
+        Uses square root model: impact = σ * sqrt(Q/ADV) * direction
+        where σ is volatility, Q is trade size, ADV is average daily volume
+        
+        Parameters
+        ----------
+        trade_data : Dict
+            Trade information including quantity and price
+        
+        Returns
+        -------
+        float
+            Estimated market impact cost
+        """
+        conn = sqlite3.connect(self.db_path)
+        
+        # Get average daily volume and calculate volatility manually
+        c = conn.cursor()
+        c.execute('''
+            WITH price_changes AS (
+                SELECT 
+                    timestamp,
+                    close,
+                    (close / LAG(close) OVER (ORDER BY timestamp) - 1) as daily_return
+                FROM market_data 
+                WHERE symbol = ?
+                AND timestamp >= DATE(?, '-30 days')
+                AND timestamp <= ?
+            )
+            SELECT 
+                AVG(volume) as adv,
+                AVG(daily_return * daily_return) as variance
+            FROM market_data 
+            LEFT JOIN price_changes USING (timestamp)
+            WHERE symbol = ?
+            AND timestamp >= DATE(?, '-30 days')
+            AND timestamp <= ?
+        ''', (
+            trade_data['symbol'], 
+            trade_data['timestamp'], 
+            trade_data['timestamp'],
+            trade_data['symbol'],
+            trade_data['timestamp'],
+            trade_data['timestamp']
+        ))
+        
+        result = c.fetchone()
+        conn.close()
+        
+        if result and result[0]:
+            adv, variance = result
+            volatility = np.sqrt(variance) if variance is not None else 0.01  # Default to 1% if not enough data
+            trade_size = trade_data['quantity']
+            direction = 1 if trade_data.get('side') == 'buy' else -1
+            
+            # Square root impact model
+            impact = volatility * np.sqrt(trade_size / max(adv, 1)) * direction
+            return impact * trade_data['execution_price'] * trade_size
+        
+        return 0.0
+    
+    def _calculate_delay_cost(self, trade_data: Dict) -> float:
+        """Calculate cost due to execution delay."""
+        if 'order_time' in trade_data and 'execution_time' in trade_data:
+            delay = (pd.Timestamp(trade_data['execution_time']) - 
+                    pd.Timestamp(trade_data['order_time'])).total_seconds()
+            
+            # Simple linear model for delay cost
+            delay_impact = 0.0001 * (delay / 60)  # 1 bp per minute
+            return delay_impact * trade_data['execution_price'] * trade_data['quantity']
+        
+        return 0.0
+
+    def _calculate_venue_fees(self, trade_data: Dict) -> float:
+        """Calculate specific venue fees."""
+        venue_type = VenueType(trade_data.get('venue', 'exchange'))
+        trade_value = trade_data['quantity'] * trade_data['execution_price']
+        
+        # Example venue fee structure
+        venue_fee_rates = {
+            VenueType.EXCHANGE: 0.0003,  # 3 bps
+            VenueType.DARK_POOL: 0.0002, # 2 bps
+            VenueType.ECN: 0.0004,       # 4 bps
+            VenueType.MARKET_MAKER: 0.0002, # 2 bps
+            VenueType.OTC: 0.0001        # 1 bp
+        }
+        
+        return trade_value * venue_fee_rates[venue_type]
+
+    def _calculate_clearing_fees(self, trade_data: Dict) -> float:
+        """Calculate clearing and settlement fees."""
+        trade_value = trade_data['quantity'] * trade_data['execution_price']
+        return trade_value * 0.0001  # 1 bp flat clearing fee
+
+    def _store_cost_analysis(self, trade_id: int, costs: TransactionCosts, trade_data: Dict):
+        """Store cost analysis results."""
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        c.execute('''
+            INSERT INTO transaction_costs (
+                trade_id, timestamp, symbol, venue, commission, slippage,
+                spread_cost, market_impact, delay_cost, venue_fees,
+                clearing_fees, expected_price, arrival_price, execution_price,
+                volume_participation
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            trade_id,
+            trade_data['timestamp'],
+            trade_data['symbol'],
+            trade_data.get('venue', 'exchange'),
+            costs.commission,
+            costs.slippage,
+            costs.spread_cost,
+            costs.market_impact,
+            costs.delay_cost,
+            costs.venue_fees,
+            costs.clearing_fees,
+            trade_data.get('expected_price', trade_data['entry_price']),
+            trade_data.get('arrival_price', trade_data['entry_price']),
+            trade_data['execution_price'],
+            trade_data.get('volume_participation', 0.0)
+        ))
+        
+        conn.commit()
+        conn.close()
+
+    def analyze_venue_performance(self, start_date: str, end_date: str) -> Dict[str, Dict]:
+        """
+        Analyze venue performance statistics.
+        
+        Parameters
+        ----------
+        start_date : str
+            Analysis start date
+        end_date : str
+            Analysis end date
+            
+        Returns
+        -------
+        Dict[str, Dict]
+            Performance metrics by venue
+        """
+        conn = sqlite3.connect(self.db_path)
+        
+        query = '''
+            SELECT 
+                venue,
+                AVG(commission + slippage + spread_cost + market_impact + 
+                    delay_cost + venue_fees + clearing_fees) * 10000 as avg_cost_bps,
+                AVG(market_impact) as avg_impact,
+                COUNT(*) as total_trades,
+                AVG(spread_cost) as avg_spread
+            FROM transaction_costs
+            WHERE timestamp BETWEEN ? AND ?
+            GROUP BY venue
+        '''
+        
+        df = pd.read_sql_query(query, conn, params=[start_date, end_date])
+        conn.close()
+        
+        return df.set_index('venue').to_dict('index')
+
+    def get_cost_summary(self, start_date: str, end_date: str) -> pd.DataFrame:
+        """
+        Get summary of transaction costs.
+        
+        Parameters
+        ----------
+        start_date : str
+            Analysis start date
+        end_date : str
+            Analysis end date
+            
+        Returns
+        -------
+        pd.DataFrame
+            Summary of costs by component
+        """
+        conn = sqlite3.connect(self.db_path)
+        
+        query = '''
+            SELECT 
+                strftime('%Y-%m', timestamp) as month,
+                SUM(commission) as total_commission,
+                SUM(slippage) as total_slippage,
+                SUM(spread_cost) as total_spread_cost,
+                SUM(market_impact) as total_market_impact,
+                SUM(delay_cost) as total_delay_cost,
+                SUM(venue_fees) as total_venue_fees,
+                SUM(clearing_fees) as total_clearing_fees
+            FROM transaction_costs
+            WHERE timestamp BETWEEN ? AND ?
+            GROUP BY strftime('%Y-%m', timestamp)
+            ORDER BY month
+        '''
+        
+        df = pd.read_sql_query(query, conn, params=[start_date, end_date])
+        conn.close()
+        
+        return df
+    
+    def _populate_test_market_data(self):
+        """Populate test market data with bid-ask spreads."""
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        # Generate some test data for AAPL
+        base_price = 175.50
+        timestamps = [
+            (datetime.now() - timedelta(minutes=i)).isoformat()
+            for i in range(10)
+        ]
+        
+        for ts in timestamps:
+            # Simulate some price variation
+            price_offset = np.random.normal(0, 0.1)
+            mid_price = base_price + price_offset
+            
+            # Create bid-ask spread (typically 0.01-0.05% for liquid stocks)
+            spread = mid_price * 0.0003  # 0.03% spread
+            bid = mid_price - spread/2
+            ask = mid_price + spread/2
+            
+            c.execute('''
+                INSERT OR REPLACE INTO market_data (
+                    timestamp, symbol, open, high, low, close, bid, ask, volume, indicators
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                ts,
+                'AAPL',
+                mid_price,
+                mid_price + 0.1,
+                mid_price - 0.1,
+                mid_price,
+                bid,
+                ask,
+                10000,
+                '{}'
+            ))
+        
+        conn.commit()
+        conn.close()
 
 # Example usage
 def run_test_trade(start_date: str, end_date: str) -> str:
@@ -2246,3 +2745,64 @@ def demo_enhanced_trading_analytics():
     # Example of checking correlated exposure
     correlated_exposure = analytics._get_correlated_exposure('AAPL')
     print(f"\nCorrelated Exposure for AAPL: {correlated_exposure:.2%}")
+
+# Update the demo function to include test data generation
+def demo_transaction_cost_analysis():
+    """
+    Demonstrate usage of the Transaction Cost Analysis system.
+    """
+    # Initialize the analyzer
+    tca = TransactionCostAnalyzer('trading_data.db')
+    
+    # Populate test market data
+    tca._populate_test_market_data()
+    
+    # Example trade data
+    trade_data = {
+        'trade_id': 1,
+        'timestamp': datetime.now().isoformat(),
+        'symbol': 'AAPL',
+        'quantity': 1000,
+        'entry_price': 175.50,
+        'execution_price': 175.65,
+        'expected_price': 175.55,
+        'venue': 'exchange',
+        'side': 'buy',
+        'order_time': (datetime.now() - timedelta(minutes=2)).isoformat(),
+        'execution_time': datetime.now().isoformat(),
+        'volume_participation': 0.05
+    }
+    
+    # Rest of the demo function remains the same...
+    costs = tca.analyze_trade_costs(trade_data)
+    
+    print("\nTransaction Cost Analysis:")
+    print(f"Commission: ${costs.commission:.2f}")
+    print(f"Slippage: ${costs.slippage:.2f}")
+    print(f"Spread Cost: ${costs.spread_cost:.2f}")
+    print(f"Market Impact: ${costs.market_impact:.2f}")
+    print(f"Delay Cost: ${costs.delay_cost:.2f}")
+    print(f"Venue Fees: ${costs.venue_fees:.2f}")
+    print(f"Clearing Fees: ${costs.clearing_fees:.2f}")
+    print(f"Total Cost: ${costs.total_cost:.2f}")
+    print(f"Total Cost (bps): {costs.total_cost_bps:.1f}")
+    
+    # Analyze venue performance
+    start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+    end_date = datetime.now().strftime('%Y-%m-%d')
+    
+    venue_stats = tca.analyze_venue_performance(start_date, end_date)
+    
+    print("\nVenue Performance Analysis:")
+    for venue, stats in venue_stats.items():
+        print(f"\nVenue: {venue}")
+        print(f"Average Cost (bps): {stats['avg_cost_bps']:.1f}")
+        print(f"Average Market Impact: ${stats['avg_impact']:.2f}")
+        print(f"Average Spread: ${stats['avg_spread']:.2f}")
+        print(f"Total Trades: {stats['total_trades']}")
+    
+    # Get monthly cost summary
+    cost_summary = tca.get_cost_summary(start_date, end_date)
+    
+    print("\nMonthly Cost Summary:")
+    print(cost_summary)
