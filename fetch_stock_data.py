@@ -61,7 +61,7 @@ def fetch_all_historical_data(batch_size=10, sleep_time=30):
         
         # Fetch data for batch
         try:
-            fetcher.fetch_data(batch)
+            fetcher.fetch_data(batch, period="max", replace=True)
         except Exception as e:
             logging.error(f"Error processing batch: {e}")
         
