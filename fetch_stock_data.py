@@ -68,10 +68,10 @@ def fetch_all_historical_data(batch_size=50, sleep_time=5):
 
     # Update all symbols
     fetcher.update_symbols(all_symbols, batch_size=batch_size)
-    #fetcher.update_symbols(["ATMVR"])
+    #fetcher.update_symbols(["EDBLW"])
     
     # Check database status
-    check_database_status(fetcher)
+    #check_database_status(fetcher)
 
 def check_database_status(fetcher):
     """Print summary statistics about the database"""

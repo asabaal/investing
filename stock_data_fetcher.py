@@ -4,46 +4,65 @@ import sqlite3
 from datetime import datetime, timedelta
 import time
 import logging
+from contextlib import contextmanager
 
 class StockDataFetcher:
     def __init__(self, db_path='stock_data.db'):
         """Initialize with path to SQLite database"""
         self.db_path = db_path
+        self.timeout = 30.0  # 30 seconds timeout        
         self.setup_database()
 
+    @contextmanager
+    def get_db_connection(self):
+        conn = sqlite3.connect(self.db_path, timeout=self.timeout)
+        try:
+            yield conn
+        finally:
+            conn.close()
+
     def setup_database(self):
-        """Create database tables if they don't exist"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        
-        # Create tables with improved schema
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS daily_prices (
-                date DATE,
-                symbol TEXT,
-                open REAL,
-                high REAL,
-                low REAL,
-                close REAL,
-                volume INTEGER,
-                dividends REAL,
-                stock_splits REAL,
-                last_updated TIMESTAMP,
-                PRIMARY KEY (date, symbol)
-            )
-        ''')
-        
-        # Create index for faster queries
-        c.execute('CREATE INDEX IF NOT EXISTS idx_symbol_date ON daily_prices(symbol, date)')
-        
-        conn.commit()
-        conn.close()
+        """Create database tables if they don't exist with improved error handling"""
+        try:
+            with self.get_db_connection() as conn:
+                c = conn.cursor()
+                
+                # Create tables with improved schema
+                c.execute('''
+                    CREATE TABLE IF NOT EXISTS daily_prices (
+                        date DATE,
+                        symbol TEXT,
+                        open REAL,
+                        high REAL,
+                        low REAL,
+                        close REAL,
+                        volume INTEGER,
+                        dividends REAL,
+                        stock_splits REAL,
+                        last_updated TIMESTAMP,
+                        PRIMARY KEY (date, symbol)
+                    )
+                ''')
+                
+                # Create index for faster queries
+                c.execute('CREATE INDEX IF NOT EXISTS idx_symbol_date ON daily_prices(symbol, date)')
+                
+                conn.commit()
+
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e):
+                print(f"Database is locked. Waiting up to {self.timeout} seconds for access...")
+            raise
+        except Exception as e:
+            print(f"Error setting up database: {str(e)}")
+            raise
 
     def get_history_with_fallback(self, ticker, period='max', start=None, end=None):
         """
         Attempt to get history with fallback periods if max doesn't work.
         Returns DataFrame and the period that worked.
         """
+        #breakpoint()
         # First try the requested period/dates
         if period:
             data = ticker.history(period=period)
@@ -87,7 +106,7 @@ class StockDataFetcher:
         """
         if isinstance(symbols, str):
             symbols = [symbols]
-
+        #breakpoint()
         conn = sqlite3.connect(self.db_path)
 
         for symbol in symbols:
@@ -163,11 +182,11 @@ class StockDataFetcher:
 
     def save_to_db(self, symbol, data):
         """Save data for a symbol to the database without duplicating or removing existing records"""
+        #breakpoint()
         if data.empty:
             return
             
         conn = sqlite3.connect(self.db_path)
-        
         try:
             # Prepare the new data
             df = data.reset_index()
@@ -180,6 +199,10 @@ class StockDataFetcher:
                 df['Dividends'] = 0
             if 'Stock Splits' not in df.columns:
                 df['Stock_Splits'] = 0
+            else:
+                df = df.rename(columns = {"Stock Splits": "Stock_Splits"})
+            
+            df.columns = [col.lower() for col in df.columns]
             
             # Get existing dates for this symbol
             existing_dates = pd.read_sql_query(
@@ -191,7 +214,7 @@ class StockDataFetcher:
             if not existing_dates.empty:
                 existing_dates['date'] = pd.to_datetime(existing_dates['date']).dt.date
                 # Filter out dates we already have
-                df = df[~df['Date'].isin(existing_dates['date'])]
+                df = df[~df['date'].isin(existing_dates['date'])]
             
             if not df.empty:
                 # Save only the new dates to database
@@ -209,6 +232,7 @@ class StockDataFetcher:
 
     def update_symbols(self, symbols, batch_size=50):
         """Update data for given symbols with latest prices"""
+        #breakpoint()
         if isinstance(symbols, str):
             symbols = [symbols]
 
