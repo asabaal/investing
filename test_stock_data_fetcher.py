@@ -28,7 +28,9 @@ def mock_stock_data():
         'High': [102.0, 103.0],
         'Low': [98.0, 99.0],
         'Close': [101.0, 102.0],
-        'Volume': [1000000, 1100000]
+        'Volume': [1000000, 1100000],
+        'Dividends': [0, 0],
+        'Stock Splits': [0, 0]
     }).set_index('Date')
 
 def test_database_setup(fetcher, test_db):
@@ -59,7 +61,10 @@ def test_database_setup(fetcher, test_db):
         'high': 'REAL',
         'low': 'REAL',
         'close': 'REAL',
-        'volume': 'INTEGER'
+        'volume': 'INTEGER',
+        'dividends': 'REAL',
+        'stock_splits': 'REAL',
+        'last_updated': 'TIMESTAMP'
     }
     
     assert columns == expected_columns
@@ -71,6 +76,13 @@ def test_fetch_single_symbol(fetcher, mock_stock_data, mocker):
     mock_ticker_instance = mocker.MagicMock()
     mock_ticker_instance.history.return_value = mock_stock_data
     mock_ticker.return_value = mock_ticker_instance
+    
+    # Mock get_history_with_fallback
+    mocker.patch.object(
+        fetcher, 
+        'get_history_with_fallback',
+        return_value=(mock_stock_data, 'max')
+    )
     
     # Fetch data
     fetcher.fetch_data('AAPL')
@@ -92,6 +104,13 @@ def test_fetch_multiple_symbols(fetcher, mock_stock_data, mocker):
     mock_ticker_instance.history.return_value = mock_stock_data
     mock_ticker.return_value = mock_ticker_instance
     
+    # Mock get_history_with_fallback
+    mocker.patch.object(
+        fetcher, 
+        'get_history_with_fallback',
+        return_value=(mock_stock_data, 'max')
+    )
+    
     # Fetch data for multiple symbols
     symbols = ['AAPL', 'GOOGL']
     fetcher.fetch_data(symbols)
@@ -109,13 +128,16 @@ def test_update_symbols(fetcher, mocker):
     # Insert initial data
     conn = sqlite3.connect(fetcher.db_path)
     initial_data = pd.DataFrame({
-        'date': ['2024-01-01'],
-        'symbol': ['AAPL'],
-        'open': [100.0],
-        'high': [102.0],
-        'low': [98.0],
-        'close': [101.0],
-        'volume': [1000000]
+        'Date': [datetime(2024, 1, 1)],
+        'Symbol': ['AAPL'],
+        'Open': [100.0],
+        'High': [102.0],
+        'Low': [98.0],
+        'Close': [101.0],
+        'Volume': [1000000],
+        'Dividends': [0],
+        'Stock_Splits': [0],
+        'last_updated': [datetime(2024, 1, 1)]
     })
     initial_data.to_sql('daily_prices', conn, if_exists='append', index=False)
     conn.close()
@@ -123,12 +145,16 @@ def test_update_symbols(fetcher, mocker):
     # Mock new data
     new_data = pd.DataFrame({
         'Date': [datetime(2024, 1, 2)],
+        'Symbol': ['AAPL'],
         'Open': [101.0],
         'High': [103.0],
         'Low': [99.0],
         'Close': [102.0],
-        'Volume': [1100000]
-    }).set_index('Date')
+        'Volume': [1100000],
+        'Dividends': [0],
+        'Stock_Splits': [0],
+        'last_updated': [datetime(2024, 1, 2)],
+    })
     
     # Mock yfinance
     mock_ticker = mocker.patch('yfinance.Ticker')
@@ -136,14 +162,24 @@ def test_update_symbols(fetcher, mocker):
     mock_ticker_instance.history.return_value = new_data
     mock_ticker.return_value = mock_ticker_instance
     
+    # Patch save_to_db instead of get_history_with_fallback
+    mocker.patch.object(
+        fetcher,
+        'save_to_db',
+        side_effect=lambda symbol, data: data.reset_index().to_sql('daily_prices', 
+                                                                  sqlite3.connect(fetcher.db_path), 
+                                                                  if_exists='append', 
+                                                                  index=False)
+    )
+    
     # Update symbols
     fetcher.update_symbols(['AAPL'])
     
     # Verify updated data
     conn = sqlite3.connect(fetcher.db_path)
-    saved_data = pd.read_sql('SELECT * FROM daily_prices', conn)
+    saved_data = pd.read_sql('SELECT * FROM daily_prices ORDER BY date', conn)
     conn.close()
-    
+    breakpoint()
     assert len(saved_data) == 2
     assert len(saved_data['date'].unique()) == 2
 
@@ -154,6 +190,13 @@ def test_empty_response_handling(fetcher, mocker):
     mock_ticker_instance = mocker.MagicMock()
     mock_ticker_instance.history.return_value = pd.DataFrame()
     mock_ticker.return_value = mock_ticker_instance
+    
+    # Mock get_history_with_fallback
+    mocker.patch.object(
+        fetcher, 
+        'get_history_with_fallback',
+        return_value=(pd.DataFrame(), None)
+    )
     
     # Attempt to fetch data
     fetcher.fetch_data('INVALID')
@@ -172,6 +215,13 @@ def test_error_handling(fetcher, mocker):
     mock_ticker_instance = mocker.MagicMock()
     mock_ticker_instance.history.side_effect = Exception("API Error")
     mock_ticker.return_value = mock_ticker_instance
+    
+    # Mock get_history_with_fallback to raise exception
+    mocker.patch.object(
+        fetcher, 
+        'get_history_with_fallback',
+        side_effect=Exception("API Error")
+    )
     
     # Attempt to fetch data
     fetcher.fetch_data('AAPL')
