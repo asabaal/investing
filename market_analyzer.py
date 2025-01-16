@@ -1,9 +1,335 @@
+"""
+Claude chat:
+https://claude.ai/chat/e57d8498-85ed-478a-9aa4-a5dcba070116
+"""
+
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from arch import arch_model
 import warnings
+from scipy.signal import argrelextrema
+from typing import Tuple, List, Dict, Optional
+from dataclasses import dataclass
 warnings.filterwarnings('ignore')
+
+@dataclass
+class TechnicalPattern:
+    """
+    Data class to store information about detected technical patterns in price data.
+    
+    Technical patterns are specific price formations that traders use to identify
+    potential future price movements. Each pattern has characteristics like its
+    type, location in the data, and confidence level.
+
+    Attributes:
+    -----------
+    pattern_type : str
+        The type of pattern detected (e.g., "HEAD_AND_SHOULDERS", "DOUBLE_BOTTOM")
+    start_idx : int
+        Index in the price series where the pattern begins
+    end_idx : int
+        Index in the price series where the pattern ends
+    confidence : float
+        A measure between 0 and 1 indicating how well the pattern matches ideal criteria
+        Example: 0.8 means the pattern is a strong match, 0.3 suggests a weak match
+    price_range : Tuple[float, float]
+        The price range covered by the pattern (min_price, max_price)
+        Example: If a stock forms a double bottom at $100 and peaks at $110,
+                price_range would be (100.0, 110.0)
+
+    Example:
+    --------
+    >>> pattern = TechnicalPattern(
+    ...     pattern_type="DOUBLE_BOTTOM",
+    ...     start_idx=100,
+    ...     end_idx=150,
+    ...     confidence=0.85,
+    ...     price_range=(100.0, 110.0)
+    ... )
+    >>> print(f"Found {pattern.pattern_type} with {pattern.confidence:.1%} confidence")
+    "Found DOUBLE_BOTTOM with 85.0% confidence"
+    """
+    pattern_type: str
+    start_idx: int
+    end_idx: int
+    confidence: float
+    price_range: Tuple[float, float]
+    
+class PatternRecognition:
+    """
+    A comprehensive framework for detecting and analyzing technical patterns in financial price data.
+    
+    This class implements various pattern detection algorithms to identify common technical
+    trading patterns like head and shoulders, double bottoms, and volume-price divergences.
+    These patterns are used by traders to make predictions about future price movements.
+
+    Key Concepts:
+    -------------
+    1. Swing Points:
+       - Local maxima (peaks) and minima (troughs) in price data
+       - Form the building blocks of many technical patterns
+       Example: In a double bottom pattern, we look for two similar price troughs
+
+    2. Pattern Formation:
+       - Specific arrangements of swing points that form recognizable patterns
+       - Each pattern has criteria for price levels, timing, and symmetry
+       Example: Head & shoulders pattern needs three peaks with the middle one highest
+
+    3. Volume Confirmation:
+       - Trading volume often helps confirm pattern validity
+       - Volume patterns can diverge from price, signaling potential reversals
+       Example: Decreasing volume during price rises might signal weakness
+
+    Parameters:
+    -----------
+    prices : pd.Series
+        Time series of price data (typically closing prices)
+    volumes : pd.Series
+        Time series of trading volume data, indexed same as prices
+
+    Example:
+    --------
+    >>> # Initialize with price and volume data
+    >>> pattern_finder = PatternRecognition(
+    ...     prices=df['close'],
+    ...     volumes=df['volume']
+    ... )
+    >>> 
+    >>> # Find head and shoulders patterns
+    >>> patterns = pattern_finder.detect_head_and_shoulders()
+    >>> 
+    >>> # Analyze the patterns
+    >>> for pattern in patterns:
+    ...     print(f"Found pattern between index {pattern.start_idx} and {pattern.end_idx}")
+    ...     print(f"Price range: ${pattern.price_range[0]:.2f} to ${pattern.price_range[1]:.2f}")
+    """
+    def __init__(self, prices: pd.Series, volumes: pd.Series):
+        self.prices = prices
+        self.volumes = volumes
+        self.patterns = []
+    
+    def find_swing_points(self, window: int = 20) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Identify swing high and low points in the price series using local extrema detection.
+        
+        What are Swing Points?
+        - Swing Highs: Local price peaks (price higher than surrounding prices)
+        - Swing Lows: Local price troughs (price lower than surrounding prices)
+        - Used as building blocks to identify larger technical patterns
+        
+        Parameters:
+        -----------
+        window : int, default=20
+            Number of days to use for identifying local extrema
+            Larger values find major swings, smaller values find minor ones
+            Example: window=5 finds short-term swings, window=20 finds major swings
+
+        Returns:
+        --------
+        Tuple[np.ndarray, np.ndarray]
+            Two arrays containing indices of swing highs and swing lows
+            First array: Indices of swing highs
+            Second array: Indices of swing lows
+
+        Example:
+        --------
+        >>> highs, lows = pattern_finder.find_swing_points(window=10)
+        >>> print(f"Found {len(highs)} swing highs and {len(lows)} swing lows")
+        >>> 
+        >>> # Get the prices at swing points
+        >>> swing_high_prices = prices.iloc[highs]
+        >>> swing_low_prices = prices.iloc[lows]
+        """
+        highs = argrelextrema(self.prices.values, np.greater, order=window)[0]
+        lows = argrelextrema(self.prices.values, np.less, order=window)[0]
+        return highs, lows
+    
+    def detect_head_and_shoulders(self, window: int = 20) -> List[TechnicalPattern]:
+        """
+        Detect head and shoulders patterns in the price data.
+        
+        What is a Head and Shoulders Pattern?
+        - A reversal pattern suggesting a trend change from up to down
+        - Consists of:
+          * Left Shoulder: First peak
+          * Head: Higher middle peak
+          * Right Shoulder: Third peak at similar height to left shoulder
+          * Neckline: Support line connecting the troughs between peaks
+        
+        Pattern Criteria:
+        1. Head must be higher than both shoulders
+        2. Shoulders should be at similar price levels (within 2%)
+        3. Neckline should be roughly horizontal (within 2% slope)
+        
+        Parameters:
+        -----------
+        window : int, default=20
+            Window size for finding swing points
+            Larger values find larger patterns
+            Example: window=20 finds patterns lasting about a month
+
+        Returns:
+        --------
+        List[TechnicalPattern]
+            List of detected head and shoulders patterns
+            Each pattern includes start/end points, confidence level, and price range
+
+        Example:
+        --------
+        >>> patterns = pattern_finder.detect_head_and_shoulders()
+        >>> for pattern in patterns:
+        ...     print(f"Pattern found between days {pattern.start_idx} and {pattern.end_idx}")
+        ...     print(f"Price range: ${pattern.price_range[0]:.2f} to ${pattern.price_range[1]:.2f}")
+        ...     print(f"Confidence: {pattern.confidence:.1%}")
+        """
+        patterns = []
+        highs, lows = self.find_swing_points(window)
+        
+        for i in range(len(highs) - 4):
+            left_shoulder = self.prices.iloc[highs[i]]
+            head = self.prices.iloc[highs[i + 2]]
+            right_shoulder = self.prices.iloc[highs[i + 4]]
+            
+            neckline_left = self.prices.iloc[lows[i + 1]]
+            neckline_right = self.prices.iloc[lows[i + 3]]
+            
+            if (abs(left_shoulder - right_shoulder) / left_shoulder < 0.02 and
+                head > left_shoulder * 1.02 and
+                abs(neckline_left - neckline_right) / neckline_left < 0.02):
+                
+                pattern = TechnicalPattern(
+                    pattern_type="HEAD_AND_SHOULDERS",
+                    start_idx=highs[i],
+                    end_idx=highs[i + 4],
+                    confidence=0.8,
+                    price_range=(min(neckline_left, neckline_right), head)
+                )
+                patterns.append(pattern)
+        
+        return patterns
+    
+    def detect_double_bottom(self, window: int = 20, tolerance: float = 0.02) -> List[TechnicalPattern]:
+        """
+        Detect double bottom patterns in the price data.
+        
+        What is a Double Bottom Pattern?
+        - A reversal pattern suggesting a trend change from down to up
+        - Consists of:
+          * First Bottom: Initial price trough
+          * Second Bottom: Similar price trough
+          * Peak: Higher price point between bottoms
+        
+        Pattern Criteria:
+        1. Two price troughs at similar levels (within tolerance)
+        2. A noticeable peak between the troughs
+        3. Second bottom should confirm support level
+        
+        Parameters:
+        -----------
+        window : int, default=20
+            Window size for finding swing points
+            Larger values find larger patterns
+            Example: window=20 finds patterns lasting about a month
+        tolerance : float, default=0.02
+            Maximum allowed difference between bottom prices (as percentage)
+            Example: 0.02 means bottoms must be within 2% of each other
+
+        Returns:
+        --------
+        List[TechnicalPattern]
+            List of detected double bottom patterns
+            Each pattern includes start/end points, confidence level, and price range
+
+        Example:
+        --------
+        >>> patterns = pattern_finder.detect_double_bottom(tolerance=0.03)
+        >>> if patterns:
+        ...     pattern = patterns[0]
+        ...     print(f"Double bottom found with bottoms at ${pattern.price_range[0]:.2f}")
+        ...     print(f"Pattern confidence: {pattern.confidence:.1%}")
+        """
+        patterns = []
+        _, lows = self.find_swing_points(window)
+        
+        for i in range(len(lows) - 1):
+            bottom1 = self.prices.iloc[lows[i]]
+            bottom2 = self.prices.iloc[lows[i + 1]]
+            
+            if abs(bottom1 - bottom2) / bottom1 < tolerance:
+                middle_idx = slice(lows[i], lows[i + 1])
+                middle_high = self.prices.iloc[middle_idx].max()
+                
+                pattern = TechnicalPattern(
+                    pattern_type="DOUBLE_BOTTOM",
+                    start_idx=lows[i],
+                    end_idx=lows[i + 1],
+                    confidence=0.7,
+                    price_range=(min(bottom1, bottom2), middle_high)
+                )
+                patterns.append(pattern)
+        
+        return patterns
+    
+    def detect_volume_price_divergence(self, window: int = 20) -> List[TechnicalPattern]:
+        """
+        Detect divergences between price and volume trends.
+        
+        What is Volume-Price Divergence?
+        - Occurs when price and volume trends move in opposite directions
+        - Often signals potential trend reversals
+        - Examples:
+          * Prices rising but volume declining (weak uptrend)
+          * Prices falling but volume declining (weak downtrend)
+        
+        Why Important?
+        - Volume often confirms price movements
+        - Divergences suggest current trend might be weakening
+        - Used to identify potential trend reversals
+        
+        Parameters:
+        -----------
+        window : int, default=20
+            Window size for calculating trends
+            Larger windows smooth out noise but lag more
+            Example: window=20 looks at monthly trends
+
+        Returns:
+        --------
+        List[TechnicalPattern]
+            List of detected divergence patterns
+            Each pattern includes:
+            - Start/end points of divergence
+            - Confidence (based on degree of divergence)
+            - Price range during divergence
+
+        Example:
+        --------
+        >>> patterns = pattern_finder.detect_volume_price_divergence()
+        >>> for pattern in patterns:
+        ...     print(f"Divergence found from index {pattern.start_idx} to {pattern.end_idx}")
+        ...     print(f"Confidence in signal: {pattern.confidence:.1%}")
+        """
+        patterns = []
+        
+        price_trend = self.prices.rolling(window).mean().pct_change()
+        volume_trend = self.volumes.rolling(window).mean().pct_change()
+        
+        for i in range(window, len(self.prices) - window):
+            price_direction = np.sign(price_trend.iloc[i])
+            volume_direction = np.sign(volume_trend.iloc[i])
+            
+            if price_direction != volume_direction:
+                pattern = TechnicalPattern(
+                    pattern_type="VOLUME_PRICE_DIVERGENCE",
+                    start_idx=i - window,
+                    end_idx=i,
+                    confidence=abs(price_trend.iloc[i] - volume_trend.iloc[i]),
+                    price_range=(self.prices.iloc[i-window], self.prices.iloc[i])
+                )
+                patterns.append(pattern)
+        
+        return patterns
 
 class MarketAnalyzer:
     """
@@ -250,6 +576,116 @@ class MarketAnalyzer:
         
         rs = gain / loss
         return 100 - (100 / (1 + rs))
+
+    def analyze_patterns(self,
+                     symbol: str,
+                     start_date: Optional[str] = None,
+                     end_date: Optional[str] = None) -> Dict[str, List[TechnicalPattern]]:
+        """
+        Analyze price data to detect technical trading patterns over a specified time period.
+        This comprehensive analysis looks for multiple pattern types that traders use to
+        make predictions about future price movements.
+
+        What are Technical Patterns?
+        --------------------------
+        Technical patterns are specific price formations that traders believe can indicate
+        future market movements. This method detects three key pattern types:
+
+        1. Head and Shoulders
+        - Represents potential trend reversal from up to down
+        - Three peaks with middle peak (head) highest
+        Example: Stock rises to $50 (left shoulder), $55 (head), then $50 (right shoulder)
+
+        2. Double Bottom
+        - Represents potential trend reversal from down to up
+        - Two similar price lows with higher price between
+        Example: Stock drops to $40 twice with rise to $45 between drops
+
+        3. Volume-Price Divergence
+        - When price and volume trends differ
+        - May signal trend weakness
+        Example: Price rising but volume declining suggests weak buying interest
+
+        Parameters:
+        -----------
+        symbol : str
+            The stock symbol to analyze
+            Example: 'AAPL' for Apple Inc.
+
+        start_date : str, optional
+            Start date for analysis in 'YYYY-MM-DD' format
+            Example: '2023-01-01' for January 1st, 2023
+            If None, starts from earliest available date
+
+        end_date : str, optional
+            End date for analysis in 'YYYY-MM-DD' format
+            Example: '2023-12-31' for December 31st, 2023
+            If None, continues to latest available date
+
+        Returns:
+        --------
+        Dict[str, List[TechnicalPattern]]
+            Dictionary where:
+            - Keys: Pattern types ('head_and_shoulders', 'double_bottom', 'volume_price_divergence')
+            - Values: Lists of TechnicalPattern objects for each type found
+
+        Example Usage:
+        -------------
+        >>> # Analyze patterns for Apple stock in 2023
+        >>> patterns = analyzer.analyze_patterns(
+        ...     symbol='AAPL',
+        ...     start_date='2023-01-01',
+        ...     end_date='2023-12-31'
+        ... )
+        >>> 
+        >>> # Check for head and shoulders patterns
+        >>> hs_patterns = patterns['head_and_shoulders']
+        >>> if hs_patterns:
+        ...     pattern = hs_patterns[0]
+        ...     print(f"Found H&S pattern with {pattern.confidence:.1%} confidence")
+        ...     print(f"Price range: ${pattern.price_range[0]:.2f} to ${pattern.price_range[1]:.2f}")
+        >>> 
+        >>> # Look for recent double bottoms
+        >>> db_patterns = patterns['double_bottom']
+        >>> recent_patterns = [p for p in db_patterns if p.end_idx > len(prices) - 20]
+        >>> if recent_patterns:
+        ...     print("Found recent double bottom - potential upward reversal")
+
+        Tips for Pattern Analysis:
+        ------------------------
+        1. Pattern Reliability
+        - Higher confidence patterns (>0.8) are more reliable
+        - Look for patterns with clear price levels
+        - Volume confirmation strengthens pattern signals
+
+        2. Time Horizons
+        - Longer patterns (more days between start_idx and end_idx) often more significant
+        - Recent patterns more relevant for current trading decisions
+        - Compare patterns across different time windows
+
+        3. Pattern Combinations
+        - Multiple pattern types confirming same direction = stronger signal
+        - Example: Double bottom + positive volume divergence suggests stronger upward move
+        - Check for conflicting patterns before making decisions
+        """
+        # Get symbol data
+        df = self.data[symbol]
+        if start_date:
+            df = df[df.index >= start_date]
+        if end_date:
+            df = df[df.index <= end_date]
+            
+        # Initialize pattern recognition
+        pattern_finder = PatternRecognition(df['close'], df['volume'])
+        
+        # Detect patterns
+        patterns = {
+            'head_and_shoulders': pattern_finder.detect_head_and_shoulders(),
+            'double_bottom': pattern_finder.detect_double_bottom(),
+            'volume_price_divergence': pattern_finder.detect_volume_price_divergence()
+        }
+        
+        return patterns
 
     def analyze_market_state(self, 
                             start_date: Optional[str] = None,
