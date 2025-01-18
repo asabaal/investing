@@ -35,8 +35,12 @@ class TechnicalPattern:
         Example: 0.8 means the pattern is a strong match, 0.3 suggests a weak match
     price_range : Tuple[float, float]
         The price range covered by the pattern (min_price, max_price)
-        Example: If a stock forms a double bottom at $100 and peaks at $110,
-                price_range would be (100.0, 110.0)
+    failure_reasons : Optional[Dict[str, str]]
+        If confidence < 1.0, explains why the pattern isn't perfect
+        Keys are check names, values are descriptions of what isn't ideal
+    specific_points : Optional[dict]
+        Dictionary containing pattern-specific point indices and values
+        For example, for head and shoulders, includes shoulder and head points
 
     Example:
     --------
@@ -48,14 +52,101 @@ class TechnicalPattern:
     ...     price_range=(100.0, 110.0)
     ... )
     >>> print(f"Found {pattern.pattern_type} with {pattern.confidence:.1%} confidence")
-    "Found DOUBLE_BOTTOM with 85.0% confidence"
+    "Found DOUBLE_BOTTOM with 85.0% confidence"        
     """
     pattern_type: str
     start_idx: int
     end_idx: int
     confidence: float
     price_range: Tuple[float, float]
+    failure_reasons: Optional[Dict[str, str]] = None
+    specific_points: Optional[dict] = None
+
+@dataclass
+class HeadAndShouldersPoints:
+    left_shoulder_idx: int
+    head_idx: int
+    right_shoulder_idx: int
+    left_trough_idx: int
+    right_trough_idx: int
     
+@dataclass
+class PatternValidation:
+    is_valid: bool
+    confidence: float
+    failure_reasons: Dict[str, str]  # Key is check name, value is failure description
+    price_range: Optional[Tuple[float, float]] = None
+
+def validate_head_and_shoulders(
+    prices: np.ndarray,
+    points: HeadAndShouldersPoints,
+    shoulder_height_tolerance: float = 0.02,
+    neckline_slope_tolerance: float = 0.02
+) -> PatternValidation:
+    """
+    Validate whether given points form a head and shoulders pattern.
+    
+    Args:
+        prices: Array of price values
+        points: HeadAndShouldersPoints containing indices of potential pattern points
+        shoulder_height_tolerance: Maximum allowed difference between shoulder heights as percentage
+        neckline_slope_tolerance: Maximum allowed neckline slope as percentage
+    
+    Returns:
+        PatternValidation object containing validation results and details
+    """
+    # Extract prices at pattern points
+    left_shoulder = prices[points.left_shoulder_idx]
+    head = prices[points.head_idx]
+    right_shoulder = prices[points.right_shoulder_idx]
+    left_trough = prices[points.left_trough_idx]
+    right_trough = prices[points.right_trough_idx]
+    
+    failure_reasons = {}
+    
+    # Check 1: Head must be higher than both shoulders
+    head_height_valid = head > left_shoulder and head > right_shoulder
+    if not head_height_valid:
+        failure_reasons['head_height'] = 'Head is not higher than both shoulders'
+    
+    # Check 2: Shoulders should be at similar heights
+    shoulder_diff = abs(left_shoulder - right_shoulder) / left_shoulder
+    shoulders_valid = shoulder_diff <= shoulder_height_tolerance
+    if not shoulders_valid:
+        failure_reasons['shoulder_heights'] = f'Shoulder height difference ({shoulder_diff:.1%}) exceeds tolerance ({shoulder_height_tolerance:.1%})'
+    
+    # Check 3: Neckline should be roughly horizontal
+    neckline_slope = abs(right_trough - left_trough) / left_trough
+    neckline_valid = neckline_slope <= neckline_slope_tolerance
+    if not neckline_valid:
+        failure_reasons['neckline_slope'] = f'Neckline slope ({neckline_slope:.1%}) exceeds tolerance ({neckline_slope_tolerance:.1%})'
+    
+    # Check 4: Pattern sequence should be valid
+    sequence_valid = (points.left_shoulder_idx < points.left_trough_idx < 
+                     points.head_idx < points.right_trough_idx < 
+                     points.right_shoulder_idx)
+    if not sequence_valid:
+        failure_reasons['sequence'] = 'Points are not in correct chronological order'
+    
+    # Calculate confidence based on how well the pattern matches ideal conditions
+    confidence_factors = {
+        'head_height': 1.0 if head_height_valid else 0.0,
+        'shoulder_symmetry': 1.0 - (shoulder_diff / shoulder_height_tolerance) if shoulders_valid else 0.0,
+        'neckline': 1.0 - (neckline_slope / neckline_slope_tolerance) if neckline_valid else 0.0,
+        'sequence': 1.0 if sequence_valid else 0.0
+    }
+    confidence = np.mean(list(confidence_factors.values()))
+    
+    is_valid = len(failure_reasons) == 0
+    price_range = (min(left_trough, right_trough), head) if is_valid else None
+    
+    return PatternValidation(
+        is_valid=is_valid,
+        confidence=confidence,
+        failure_reasons=failure_reasons,
+        price_range=price_range
+    )
+
 class PatternRecognition:
     """
     A comprehensive framework for detecting and analyzing technical patterns in financial price data.
@@ -171,7 +262,7 @@ class PatternRecognition:
         
         return np.array(maxima), np.array(minima)
     
-    def detect_head_and_shoulders(self, window: int = 20) -> List[TechnicalPattern]:
+    def detect_head_and_shoulders(self) -> List[TechnicalPattern]:
         """
         Detect head and shoulders patterns in the price data.
         
@@ -209,30 +300,28 @@ class PatternRecognition:
         ...     print(f"Price range: ${pattern.price_range[0]:.2f} to ${pattern.price_range[1]:.2f}")
         ...     print(f"Confidence: {pattern.confidence:.1%}")
         """
-        patterns = []
         highs, lows = self.find_swing_points()
+        patterns = []
         
-        for i in range(len(highs) - 4):
-            left_shoulder = self.prices.iloc[highs[i]]
-            head = self.prices.iloc[highs[i + 2]]
-            right_shoulder = self.prices.iloc[highs[i + 4]]
-            
-            neckline_left = self.prices.iloc[lows[i + 1]]
-            neckline_right = self.prices.iloc[lows[i + 3]]
-            
-            if (abs(left_shoulder - right_shoulder) / left_shoulder < 0.02 and
-                head > left_shoulder * 1.02 and
-                abs(neckline_left - neckline_right) / neckline_left < 0.02):
-                
-                pattern = TechnicalPattern(
-                    pattern_type="HEAD_AND_SHOULDERS",
-                    start_idx=highs[i],
-                    end_idx=highs[i + 4],
-                    confidence=0.8,
-                    price_range=(min(neckline_left, neckline_right), head)
-                )
-                patterns.append(pattern)
+        if len(highs) < 3:
+            return patterns
         
+        if lows[0] < highs[0]:
+            lows = lows[1:]
+
+        for i in range(len(highs) - 3):
+            points = HeadAndShouldersPoints(
+                left_shoulder_idx=highs[i],
+                head_idx=highs[i + 1],
+                right_shoulder_idx=highs[i + 2],
+                left_trough_idx=lows[i],
+                right_trough_idx=lows[i + 1]
+            )
+            
+            validation = validate_head_and_shoulders(self.prices, points)
+            if validation.is_valid:
+                patterns.append(TechnicalPattern("HEAD_AND_SHOULDERS", highs[i], highs[i+2], 0.8, highs[i+1]-min(lows[i], lows[i+1])))
+
         return patterns
     
     def detect_double_bottom(self, window: int = 20, tolerance: float = 0.02) -> List[TechnicalPattern]:
