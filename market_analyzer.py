@@ -109,7 +109,7 @@ class PatternRecognition:
         self.volumes = volumes
         self.patterns = []
     
-    def find_swing_points(self, window: int = 20) -> Tuple[np.ndarray, np.ndarray]:
+    def find_swing_points(self) -> Tuple[np.ndarray, np.ndarray]:
         """
         Identify swing high and low points in the price series using local extrema detection.
         
@@ -118,13 +118,6 @@ class PatternRecognition:
         - Swing Lows: Local price troughs (price lower than surrounding prices)
         - Used as building blocks to identify larger technical patterns
         
-        Parameters:
-        -----------
-        window : int, default=20
-            Number of days to use for identifying local extrema
-            Larger values find major swings, smaller values find minor ones
-            Example: window=5 finds short-term swings, window=20 finds major swings
-
         Returns:
         --------
         Tuple[np.ndarray, np.ndarray]
@@ -141,9 +134,42 @@ class PatternRecognition:
         >>> swing_high_prices = prices.iloc[highs]
         >>> swing_low_prices = prices.iloc[lows]
         """
-        highs = argrelextrema(self.prices.values, np.greater, order=window)[0]
-        lows = argrelextrema(self.prices.values, np.less, order=window)[0]
-        return highs, lows
+        diff = np.diff(self.prices)
+        maxima = []
+        minima = []
+        
+        i = 0
+        while i < len(diff):
+            # Found increasing then decreasing (potential maximum)
+            if i > 0 and diff[i-1] > 0 and diff[i] < 0:
+                maxima.append(i)
+                
+            # Found decreasing then increasing (potential minimum)
+            elif i > 0 and diff[i-1] < 0 and diff[i] > 0:
+                minima.append(i)
+                
+            # Handle plateau
+            elif diff[i] == 0:
+                plateau_start = i
+                # Find end of plateau
+                while i < len(diff) and diff[i] == 0:
+                    i += 1
+                    
+                plateau_end = i
+                plateau_center = plateau_start + (plateau_end - plateau_start) // 2
+                
+                # Check if it's a maximum or minimum plateau
+                if plateau_start > 0:
+                    if diff[plateau_start-1] > 0 and (i < len(diff) and diff[i] < 0):
+                        maxima.append(plateau_center)
+                    elif diff[plateau_start-1] < 0 and (i < len(diff) and diff[i] > 0):
+                        minima.append(plateau_center)
+                
+                continue
+                
+            i += 1
+        
+        return np.array(maxima), np.array(minima)
     
     def detect_head_and_shoulders(self, window: int = 20) -> List[TechnicalPattern]:
         """
@@ -184,7 +210,7 @@ class PatternRecognition:
         ...     print(f"Confidence: {pattern.confidence:.1%}")
         """
         patterns = []
-        highs, lows = self.find_swing_points(window)
+        highs, lows = self.find_swing_points()
         
         for i in range(len(highs) - 4):
             left_shoulder = self.prices.iloc[highs[i]]
@@ -250,7 +276,7 @@ class PatternRecognition:
         ...     print(f"Pattern confidence: {pattern.confidence:.1%}")
         """
         patterns = []
-        _, lows = self.find_swing_points(window)
+        _, lows = self.find_swing_points()
         
         for i in range(len(lows) - 1):
             bottom1 = self.prices.iloc[lows[i]]

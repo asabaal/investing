@@ -39,7 +39,7 @@ def pattern_data():
        - Clear directional difference for detection
     """
     # Create date range
-    dates = pd.date_range(start='2023-01-01', end='2023-12-31', freq='B')
+    dates = pd.date_range(start='2023-01-01', end='2024-12-31', freq='B')
     
     # Head and Shoulders pattern (90 days total)
     h_and_s = np.concatenate([
@@ -201,7 +201,7 @@ class TestPatternRecognition:
     
     def test_swing_points_detection(self, pattern_recognition):
         """Test identification of swing highs and lows."""
-        highs, lows = pattern_recognition.find_swing_points(window=10)
+        highs, lows = pattern_recognition.find_swing_points()
         
         assert isinstance(highs, np.ndarray)
         assert isinstance(lows, np.ndarray)
