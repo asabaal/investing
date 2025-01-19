@@ -10,3 +10,10 @@ __pycache__/
 
 # Log files
 *.log
+
+# data files
+*.parquet
+*.csv
+
+# debugging files
+*.coverage
