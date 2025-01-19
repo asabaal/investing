@@ -234,7 +234,28 @@ class TestPatternRecognition:
             
             assert prices.iloc[head_idx] > left_shoulder
             assert prices.iloc[head_idx] > prices.iloc[right_shoulder_idx]
-    
+
+    def test_head_and_shoulders_validation(self, pattern_recognition):
+        """Test specific validation scenarios for head and shoulders patterns."""
+        patterns = pattern_recognition.detect_head_and_shoulders()
+        
+        for pattern in patterns:
+            if pattern.specific_points:
+                head_idx = pattern.specific_points['head'][0]
+                
+                # Head should be global maximum in pattern
+                pattern_slice = pattern_recognition.prices.iloc[pattern.start_idx:pattern.end_idx]
+                assert pattern_recognition.prices.iloc[head_idx] == pattern_slice.max()
+                
+                # Verify troughs
+                left_trough_idx = pattern.specific_points['left_trough'][0]
+                right_trough_idx = pattern.specific_points['right_trough'][0]
+                
+                assert left_trough_idx > pattern.start_idx
+                assert left_trough_idx < head_idx
+                assert right_trough_idx > head_idx
+                assert right_trough_idx < pattern.end_idx   
+
     def test_double_bottom_detection(self, pattern_recognition):
         """Test double bottom pattern detection."""
         patterns = pattern_recognition.detect_double_bottom()

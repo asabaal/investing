@@ -320,7 +320,7 @@ class PatternRecognition:
             
             validation = validate_head_and_shoulders(self.prices, points)
             if validation.is_valid:
-                patterns.append(TechnicalPattern("HEAD_AND_SHOULDERS", highs[i], highs[i+2], 0.8, highs[i+1]-min(lows[i], lows[i+1])))
+                patterns.append(TechnicalPattern("HEAD_AND_SHOULDERS", highs[i], highs[i+2], 0.8, (min(lows[i], lows[i+1]), highs[i+1])))
 
         return patterns
     
