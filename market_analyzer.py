@@ -62,6 +62,15 @@ class TechnicalPattern:
     failure_reasons: Optional[Dict[str, str]] = None
     specific_points: Optional[dict] = None
 
+    def __post_init__(self):
+        # Convert numpy integers to Python integers
+        self.start_idx = int(self.start_idx)
+        self.end_idx = int(self.end_idx)
+        # Convert numpy numbers in price_range to Python numbers
+        self.price_range = (float(self.price_range[0]), float(self.price_range[1]))
+        # Convert confidence to float if needed
+        self.confidence = float(self.confidence)
+
 @dataclass
 class HeadAndShouldersPoints:
     left_shoulder_idx: int
@@ -386,44 +395,29 @@ class PatternRecognition:
         
         return patterns
     
-    def detect_volume_price_divergence(self, window: int = 20) -> List[TechnicalPattern]:
+    def detect_volume_price_divergence(self, window: int = 20, min_price_change: float = 0.02) -> List[TechnicalPattern]:
         """
-        Detect divergences between price and volume trends.
+        Detect meaningful divergences between price and volume trends.
         
         What is Volume-Price Divergence?
         - Occurs when price and volume trends move in opposite directions
-        - Often signals potential trend reversals
+        - Only considered valid when there's a significant price trend
         - Examples:
-          * Prices rising but volume declining (weak uptrend)
-          * Prices falling but volume declining (weak downtrend)
-        
-        Why Important?
-        - Volume often confirms price movements
-        - Divergences suggest current trend might be weakening
-        - Used to identify potential trend reversals
+        * Prices rising significantly but volume declining (weak uptrend)
+        * Prices falling significantly but volume declining (weak downtrend)
         
         Parameters:
         -----------
         window : int, default=20
             Window size for calculating trends
-            Larger windows smooth out noise but lag more
-            Example: window=20 looks at monthly trends
+        min_price_change : float, default=0.02
+            Minimum price change (as percentage) required to consider a valid trend
+            Example: 0.02 means 2% minimum price movement required
 
         Returns:
         --------
         List[TechnicalPattern]
             List of detected divergence patterns
-            Each pattern includes:
-            - Start/end points of divergence
-            - Confidence (based on degree of divergence)
-            - Price range during divergence
-
-        Example:
-        --------
-        >>> patterns = pattern_finder.detect_volume_price_divergence()
-        >>> for pattern in patterns:
-        ...     print(f"Divergence found from index {pattern.start_idx} to {pattern.end_idx}")
-        ...     print(f"Confidence in signal: {pattern.confidence:.1%}")
         """
         patterns = []
         
@@ -431,18 +425,24 @@ class PatternRecognition:
         volume_trend = self.volumes.rolling(window).mean().pct_change()
         
         for i in range(window, len(self.prices) - window):
-            price_direction = np.sign(price_trend.iloc[i])
-            volume_direction = np.sign(volume_trend.iloc[i])
+            start_price = self.prices.iloc[i - window]
+            end_price = self.prices.iloc[i]
+            price_change = (end_price - start_price) / start_price
             
-            if price_direction != volume_direction:
-                pattern = TechnicalPattern(
-                    pattern_type="VOLUME_PRICE_DIVERGENCE",
-                    start_idx=i - window,
-                    end_idx=i,
-                    confidence=abs(price_trend.iloc[i] - volume_trend.iloc[i]),
-                    price_range=(self.prices.iloc[i-window], self.prices.iloc[i])
-                )
-                patterns.append(pattern)
+            # Only consider windows with significant price movement
+            if abs(price_change) >= min_price_change:
+                price_direction = np.sign(price_change)
+                volume_direction = np.sign(volume_trend.iloc[i])
+                
+                if price_direction != volume_direction:
+                    pattern = TechnicalPattern(
+                        pattern_type="VOLUME_PRICE_DIVERGENCE",
+                        start_idx=i - window,
+                        end_idx=i,
+                        confidence=abs(price_change * volume_trend.iloc[i]),  # Higher confidence when both moves are larger
+                        price_range=(min(start_price, end_price), max(start_price, end_price))
+                    )
+                    patterns.append(pattern)
         
         return patterns
 
