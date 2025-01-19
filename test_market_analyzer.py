@@ -465,7 +465,7 @@ class TestMarketAnalyzerPatterns:
                 'low': prices * 0.99,
                 'close': prices,
                 'volume': volumes
-            })
+            }, index = prices.index)
         }
         return MarketAnalyzer(data=data, market_indices=[])
     
@@ -494,7 +494,11 @@ class TestMarketAnalyzerPatterns:
         # Use dates that match our synthetic data patterns
         start_date = '2023-02-01'
         end_date = '2023-11-30'
-        
+
+        data = market_analyzer_with_patterns.data['TEST'].copy()
+        data = data.loc[data.index >= start_date]
+        data = data.loc[data.index <= end_date]
+
         patterns = market_analyzer_with_patterns.analyze_patterns(
             'TEST',
             start_date=start_date,
@@ -503,11 +507,11 @@ class TestMarketAnalyzerPatterns:
         
         # Check that we got some patterns
         assert any(len(pattern_list) > 0 for pattern_list in patterns.values())
-        
+
         # Verify patterns are within date range
         for pattern_list in patterns.values():
             for pattern in pattern_list:
-                pattern_dates = market_analyzer_with_patterns.data['TEST'].index
+                pattern_dates = data.index
                 pattern_start = pattern_dates[pattern.start_idx]
                 pattern_end = pattern_dates[pattern.end_idx]
                 

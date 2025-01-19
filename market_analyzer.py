@@ -783,6 +783,7 @@ class MarketAnalyzer:
         - Example: Double bottom + positive volume divergence suggests stronger upward move
         - Check for conflicting patterns before making decisions
         """
+
         # Get symbol data
         df = self.data[symbol]
         if start_date:
