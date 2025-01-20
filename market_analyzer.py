@@ -5,12 +5,17 @@ https://claude.ai/chat/e57d8498-85ed-478a-9aa4-a5dcba070116
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
+from sklearn.preprocessing import StandardScaler
+from statsmodels.tsa.stattools import adfuller
 from arch import arch_model
 import warnings
-from scipy.signal import argrelextrema
-from typing import Tuple, List, Dict, Optional
+from scipy.signal import find_peaks, argrelextrema
+from typing import Tuple, List, Dict, Optional, Union, Set
 from dataclasses import dataclass
+from statsmodels.tsa.stattools import grangercausalitytests
+from scipy.stats import pearsonr
+import networkx as nx
 warnings.filterwarnings('ignore')
 
 @dataclass
@@ -155,6 +160,181 @@ def validate_head_and_shoulders(
         failure_reasons=failure_reasons,
         price_range=price_range
     )
+
+class LeadLagAnalyzer:
+    """
+    Analyzes lead-lag relationships between securities using various methods.
+    """
+    def __init__(self, returns_data: Dict[str, pd.DataFrame]):
+        self.returns_data = returns_data
+        self.relationships = {}
+        
+    def calculate_cross_correlations(self, 
+                                   symbols: List[str], 
+                                   max_lags: int = 5) -> pd.DataFrame:
+        """
+        Calculate cross-correlations between multiple symbols at different lags.
+        
+        Args:
+            symbols: List of symbols to analyze
+            max_lags: Maximum number of lags to consider
+            
+        Returns:
+            DataFrame with cross-correlations at different lags
+        """
+        results = []
+        
+        for i, symbol1 in enumerate(symbols):
+            for j, symbol2 in enumerate(symbols):
+                if i >= j:  # Only calculate upper triangle
+                    continue
+                    
+                returns1 = self.returns_data[symbol1]['daily_return'].dropna()
+                returns2 = self.returns_data[symbol2]['daily_return'].dropna()
+                
+                # Align the time series
+                common_idx = returns1.index.intersection(returns2.index)
+                returns1 = returns1[common_idx]
+                returns2 = returns2[common_idx]
+                
+                # Calculate correlations at different lags
+                for lag in range(-max_lags, max_lags + 1):
+                    if lag < 0:
+                        corr = pearsonr(returns1.iloc[-lag:], returns2.iloc[:lag])[0]
+                    elif lag > 0:
+                        corr = pearsonr(returns1.iloc[:-lag], returns2.iloc[lag:])[0]
+                    else:
+                        corr = pearsonr(returns1, returns2)[0]
+                        
+                    results.append({
+                        'symbol1': symbol1,
+                        'symbol2': symbol2,
+                        'lag': lag,
+                        'correlation': corr
+                    })
+        
+        return pd.DataFrame(results)
+    
+    def test_granger_causality(self, 
+                              symbol1: str, 
+                              symbol2: str, 
+                              max_lag: int = 5) -> Dict[str, float]:
+        """
+        Test for Granger causality between two symbols.
+        
+        Args:
+            symbol1: First symbol
+            symbol2: Second symbol
+            max_lag: Maximum number of lags to test
+            
+        Returns:
+            Dictionary with test results
+        """
+        returns1 = self.returns_data[symbol1]['daily_return'].dropna()
+        returns2 = self.returns_data[symbol2]['daily_return'].dropna()
+        
+        # Align the time series
+        common_idx = returns1.index.intersection(returns2.index)
+        returns1 = returns1[common_idx]
+        returns2 = returns2[common_idx]
+        
+        # Create DataFrame for testing
+        data = pd.DataFrame({
+            'y': returns2,
+            'x': returns1
+        })
+        
+        # Run Granger causality test
+        try:
+            results = grangercausalitytests(data, maxlag=max_lag, verbose=False)
+            
+            # Extract p-values for each lag
+            p_values = {
+                f'lag_{i+1}': round(results[i+1][0]['ssr_chi2test'][1], 4)
+                for i in range(max_lag)
+            }
+            
+            return p_values
+        except:
+            return {f'lag_{i+1}': np.nan for i in range(max_lag)}
+    
+    def build_relationship_network(self, 
+                                 symbols: List[str], 
+                                 threshold: float = 0.5) -> nx.Graph:
+        """
+        Build a network of relationships between symbols based on correlations.
+        
+        Args:
+            symbols: List of symbols to include in network
+            threshold: Minimum absolute correlation to include edge
+            
+        Returns:
+            NetworkX graph object
+        """
+        G = nx.Graph()
+        
+        # Add nodes
+        G.add_nodes_from(symbols)
+        
+        # Calculate correlations and add edges
+        for i, symbol1 in enumerate(symbols):
+            for j, symbol2 in enumerate(symbols[i+1:], i+1):
+                returns1 = self.returns_data[symbol1]['daily_return'].dropna()
+                returns2 = self.returns_data[symbol2]['daily_return'].dropna()
+                
+                # Align the time series
+                common_idx = returns1.index.intersection(returns2.index)
+                if len(common_idx) < 252:  # Require at least 1 year of common data
+                    continue
+                    
+                returns1 = returns1[common_idx]
+                returns2 = returns2[common_idx]
+                
+                corr = pearsonr(returns1, returns2)[0]
+                
+                if abs(corr) >= threshold:
+                    G.add_edge(symbol1, symbol2, weight=corr)
+        
+        return G
+    
+    def find_market_leaders(self, 
+                           symbols: List[str], 
+                           max_lag: int = 5) -> Dict[str, float]:
+        """
+        Identify market leaders based on Granger causality relationships.
+        
+        Args:
+            symbols: List of symbols to analyze
+            max_lag: Maximum number of lags to test
+            
+        Returns:
+            Dictionary with leadership scores for each symbol
+        """
+        leadership_scores = {symbol: 0.0 for symbol in symbols}
+        
+        for i, symbol1 in enumerate(symbols):
+            for symbol2 in symbols[i+1:]:
+                # Test both directions
+                results1 = self.test_granger_causality(symbol1, symbol2, max_lag)
+                results2 = self.test_granger_causality(symbol2, symbol1, max_lag)
+                
+                # Compare minimum p-values
+                min_p1 = min(results1.values())
+                min_p2 = min(results2.values())
+                
+                if min_p1 < 0.05 and min_p1 < min_p2:
+                    leadership_scores[symbol1] += 1
+                elif min_p2 < 0.05 and min_p2 < min_p1:
+                    leadership_scores[symbol2] += 1
+        
+        # Normalize scores
+        max_score = max(leadership_scores.values())
+        if max_score > 0:
+            leadership_scores = {
+                k: v/max_score for k, v in leadership_scores.items()
+            }
+        
+        return leadership_scores
 
 class PatternRecognition:
     """

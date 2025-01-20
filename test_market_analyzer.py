@@ -1,7 +1,42 @@
 import pytest
 import pandas as pd
 import numpy as np
-from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern
+from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer
+import networkx as nx
+from scipy.stats import pearsonr
+from statsmodels.tsa.stattools import grangercausalitytests
+from typing import Dict, List
+    
+@pytest.fixture
+def lead_lag_sample_returns_data():
+    """Create sample return data for testing."""
+    dates = pd.date_range(start='2020-01-01', end='2021-12-31', freq='D')
+    np.random.seed(42)
+    
+    # Create correlated returns for testing
+    returns_A = np.random.normal(0, 0.01, len(dates))
+    # B follows A with lag
+    returns_B = np.roll(returns_A, 2) + np.random.normal(0, 0.005, len(dates))
+    # C is independent
+    returns_C = np.random.normal(0, 0.01, len(dates))
+    
+    data = {
+        'A': pd.DataFrame({
+            'daily_return': pd.Series(returns_A, index=dates)
+        }),
+        'B': pd.DataFrame({
+            'daily_return': pd.Series(returns_B, index=dates)
+        }),
+        'C': pd.DataFrame({
+            'daily_return': pd.Series(returns_C, index=dates)
+        })
+    }
+    return data
+
+@pytest.fixture
+def lead_lag_analyzer(lead_lag_sample_returns_data):
+    """Create LeadLagAnalyzer instance with sample data."""
+    return LeadLagAnalyzer(lead_lag_sample_returns_data)
 
 @pytest.fixture
 def pattern_data():
@@ -131,6 +166,109 @@ def market_analyzer(sample_data):
         market_indices=['^GSPC', '^DJI'],
         benchmark_index='^GSPC'
     )
+
+class TestLeadLagBasics:
+    """Basic functionality tests for LeadLagAnalyzer."""
+    
+    def test_init(self, lead_lag_sample_returns_data):
+        """Test initialization of LeadLagAnalyzer."""
+        analyzer = LeadLagAnalyzer(lead_lag_sample_returns_data)
+        assert analyzer.returns_data == lead_lag_sample_returns_data
+        assert analyzer.relationships == {}
+
+    def test_calculate_cross_correlations(self, lead_lag_analyzer):
+        """Test cross-correlation calculation."""
+        symbols = ['A', 'B', 'C']
+        results = lead_lag_analyzer.calculate_cross_correlations(symbols, max_lags=3)
+        
+        # Check basic properties of the results
+        assert isinstance(results, pd.DataFrame)
+        assert set(results.columns) == {'symbol1', 'symbol2', 'lag', 'correlation'}
+        assert all(s in symbols for s in results['symbol1'].unique())
+        assert all(s in symbols for s in results['symbol2'].unique())
+        assert all(-3 <= lag <= 3 for lag in results['lag'])
+        assert all(-1 <= corr <= 1 for corr in results['correlation'])
+
+    def test_granger_causality(self, lead_lag_analyzer):
+        """Test Granger causality testing."""
+        results = lead_lag_analyzer.test_granger_causality('A', 'B', max_lag=3)
+        
+        # Check basic properties of results
+        assert isinstance(results, dict)
+        assert all(f'lag_{i}' in results for i in range(1, 4))
+        assert all(isinstance(v, float) for v in results.values())
+        assert all(0 <= v <= 1 for v in results.values() if not np.isnan(v))
+
+
+class TestNetworkAnalysis:
+    """Tests for network-related functionality."""
+    
+    def test_build_relationship_network(self, lead_lag_analyzer):
+        """Test network building functionality."""
+        symbols = ['A', 'B', 'C']
+        G = lead_lag_analyzer.build_relationship_network(symbols, threshold=0.1)
+        
+        # Check basic properties of the network
+        assert isinstance(G, nx.Graph)
+        assert set(G.nodes()) == set(symbols)
+        assert all(isinstance(d['weight'], float) for _, _, d in G.edges(data=True))
+        assert all(-1 <= d['weight'] <= 1 for _, _, d in G.edges(data=True))
+
+    def test_find_market_leaders(self, lead_lag_analyzer):
+        """Test market leader identification."""
+        symbols = ['A', 'B', 'C']
+        scores = lead_lag_analyzer.find_market_leaders(symbols, max_lag=3)
+        
+        # Check basic properties of the results
+        assert isinstance(scores, dict)
+        assert set(scores.keys()) == set(symbols)
+        assert all(isinstance(v, float) for v in scores.values())
+        assert all(0 <= v <= 1 for v in scores.values())
+        assert any(v == 1 for v in scores.values()) or all(v == 0 for v in scores.values())
+
+
+class TestEdgeCases:
+    """Tests for edge cases and error handling."""
+    
+    def test_empty_and_single_inputs(self, lead_lag_analyzer):
+        """Test handling of empty and single-symbol inputs."""
+        # Test with empty symbol list
+        empty_corr = lead_lag_analyzer.calculate_cross_correlations([])
+        assert len(empty_corr) == 0
+        
+        # Test with single symbol
+        single_corr = lead_lag_analyzer.calculate_cross_correlations(['A'])
+        assert len(single_corr) == 0
+
+    def test_missing_data(self, lead_lag_sample_returns_data):
+        """Test handling of missing data."""
+        # Add empty series
+        lead_lag_sample_returns_data['D'] = pd.DataFrame({
+            'daily_return': pd.Series([], dtype=float)
+        })
+        analyzer_with_missing = LeadLagAnalyzer(lead_lag_sample_returns_data)
+        results = analyzer_with_missing.test_granger_causality('A', 'D')
+        assert all(np.isnan(v) for v in results.values())
+
+    def test_data_alignment(self, lead_lag_sample_returns_data):
+        """Test handling of differently aligned time series."""
+        # Create data with different date ranges
+        dates1 = pd.date_range('2020-01-01', '2021-12-31')
+        dates2 = pd.date_range('2020-06-01', '2021-06-30')
+        
+        lead_lag_sample_returns_data['E'] = pd.DataFrame({
+            'daily_return': pd.Series(np.random.normal(0, 0.01, len(dates1)), index=dates1)
+        })
+        lead_lag_sample_returns_data['F'] = pd.DataFrame({
+            'daily_return': pd.Series(np.random.normal(0, 0.01, len(dates2)), index=dates2)
+        })
+        
+        analyzer = LeadLagAnalyzer(lead_lag_sample_returns_data)
+        results = analyzer.calculate_cross_correlations(['E', 'F'])
+        
+        # Check that results are based on properly aligned data
+        assert not results['correlation'].isnull().any()
+        assert len(results) > 0
 
 def test_pattern_data_validation(pattern_data):
     """Verify that our test data contains the patterns we expect."""
