@@ -1,12 +1,9 @@
 import pytest
 import pandas as pd
 import numpy as np
-from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer
+from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer, RegimeAnalyzer
 import networkx as nx
-from scipy.stats import pearsonr
-from statsmodels.tsa.stattools import grangercausalitytests
-from typing import Dict, List
-    
+
 @pytest.fixture
 def lead_lag_sample_returns_data():
     """Create sample return data for testing."""
@@ -166,6 +163,232 @@ def market_analyzer(sample_data):
         market_indices=['^GSPC', '^DJI'],
         benchmark_index='^GSPC'
     )
+
+class TestRelationshipAnalysis:
+    """Tests for the analyze_relationships method."""
+    
+    @pytest.fixture
+    def sample_market_data(self):
+        """Create sample market data for testing relationships."""
+        dates = pd.date_range(start='2020-01-01', end='2021-12-31', freq='D')
+        np.random.seed(42)
+        
+        # Create base returns with known relationships
+        base_returns = np.random.normal(0, 0.01, len(dates))
+        
+        # SPY leads QQQ
+        spy_returns = base_returns
+        qqq_returns = np.roll(base_returns, 2) + np.random.normal(0, 0.003, len(dates))
+        
+        # AAPL independent
+        aapl_returns = np.random.normal(0, 0.015, len(dates))
+        
+        data = {
+            'SPY': pd.DataFrame({
+                'daily_return': pd.Series(spy_returns, index=dates),
+                'close': pd.Series(1000 * (1 + spy_returns).cumprod(), index=dates),
+                'volume': pd.Series(np.random.randint(1000000, 2000000, len(dates)), index=dates)
+            }),
+            'QQQ': pd.DataFrame({
+                'daily_return': pd.Series(qqq_returns, index=dates),
+                'close': pd.Series(900 * (1 + qqq_returns).cumprod(), index=dates),
+                'volume': pd.Series(np.random.randint(800000, 1600000, len(dates)), index=dates)
+            }),
+            'AAPL': pd.DataFrame({
+                'daily_return': pd.Series(aapl_returns, index=dates),
+                'close': pd.Series(150 * (1 + aapl_returns).cumprod(), index=dates),
+                'volume': pd.Series(np.random.randint(500000, 1000000, len(dates)), index=dates)
+            })
+        }
+        return data
+
+    @pytest.fixture
+    def market_analyzer(self, sample_market_data):
+        """Create MarketAnalyzer instance with sample data."""
+        return MarketAnalyzer(data=sample_market_data)
+
+    def test_analyze_relationships_basic(self, market_analyzer):
+        """Test basic functionality of analyze_relationships."""
+        symbols = ['SPY', 'QQQ', 'AAPL']
+        results = market_analyzer.analyze_relationships(symbols)
+        
+        # Check all expected keys are present
+        expected_keys = {'cross_correlations', 'relationship_network', 
+                        'market_leaders', 'granger_causality'}
+        assert set(results.keys()) == expected_keys
+        
+        # Check cross_correlations structure
+        assert isinstance(results['cross_correlations'], pd.DataFrame)
+        assert set(results['cross_correlations'].columns) == {'symbol1', 'symbol2', 'lag', 'correlation'}
+        
+        # Check relationship_network structure
+        assert isinstance(results['relationship_network'], nx.Graph)
+        assert set(results['relationship_network'].nodes()) <= set(symbols)
+        
+        # Check market_leaders structure
+        assert isinstance(results['market_leaders'], dict)
+        assert set(results['market_leaders'].keys()) <= set(symbols)
+        
+        # Check granger_causality structure
+        assert isinstance(results['granger_causality'], dict)
+        for key in results['granger_causality']:
+            assert '->' in key
+            assert isinstance(results['granger_causality'][key], dict)
+
+    def test_relationship_thresholds(self, market_analyzer):
+        """Test behavior with different correlation thresholds."""
+        symbols = ['SPY', 'QQQ', 'AAPL']
+        
+        # Test with high threshold
+        high_thresh_results = market_analyzer.analyze_relationships(
+            symbols, correlation_threshold=0.8
+        )
+        
+        # Test with low threshold
+        low_thresh_results = market_analyzer.analyze_relationships(
+            symbols, correlation_threshold=0.2
+        )
+        
+        # High threshold should have fewer edges
+        assert (len(high_thresh_results['relationship_network'].edges()) <=
+                len(low_thresh_results['relationship_network'].edges()))
+
+    def test_max_lags_impact(self, market_analyzer):
+        """Test impact of different max_lags values."""
+        symbols = ['SPY', 'QQQ']
+        
+        # Test with different lag values
+        short_lag_results = market_analyzer.analyze_relationships(symbols, max_lags=2)
+        long_lag_results = market_analyzer.analyze_relationships(symbols, max_lags=10)
+        
+        # More lags should mean more correlation rows
+        assert (len(short_lag_results['cross_correlations']) <
+                len(long_lag_results['cross_correlations']))
+        
+        # More lags should mean more Granger test results
+        assert all(len(v) <= 2 for v in short_lag_results['granger_causality'].values())
+        assert all(len(v) <= 10 for v in long_lag_results['granger_causality'].values())
+
+
+class TestRegimeAnalysis:
+    """Tests for the analyze_regimes method."""
+    
+    @pytest.fixture
+    def sample_regime_data(self):
+        """Create sample data with known regime changes."""
+        dates = pd.date_range(start='2020-01-01', end='2021-12-31', freq='D')
+        n_points = len(dates)
+        np.random.seed(42)
+        
+        # Create returns with regime shifts
+        returns = []
+        volumes = []
+        
+        # Normal regime
+        returns.extend(np.random.normal(0.001, 0.01, n_points//3))
+        volumes.extend(np.random.normal(1000000, 100000, n_points//3))
+        
+        # High volatility regime
+        returns.extend(np.random.normal(-0.002, 0.03, n_points//3))
+        volumes.extend(np.random.normal(2000000, 300000, n_points//3))
+        
+        # Low volatility regime
+        returns.extend(np.random.normal(0.0005, 0.005, n_points//3))
+        volumes.extend(np.random.normal(800000, 50000, n_points//3))
+        
+        returns = np.array(returns)[:n_points]
+        volumes = np.array(volumes)[:n_points]
+        prices = 100 * (1 + returns).cumprod()
+        
+        data = {
+            'TEST': pd.DataFrame({
+                'daily_return': pd.Series(returns, index=dates),
+                'close': pd.Series(prices, index=dates),
+                'volume': pd.Series(volumes, index=dates)
+            })
+        }
+        return data
+
+    @pytest.fixture
+    def regime_analyzer(self, sample_regime_data):
+        """Create MarketAnalyzer instance with regime test data."""
+        return MarketAnalyzer(data=sample_regime_data)
+
+    def test_analyze_regimes_basic(self, regime_analyzer):
+        """Test basic functionality of analyze_regimes."""
+        results = regime_analyzer.analyze_regimes('TEST')
+        
+        # Check all expected keys are present
+        expected_keys = {'hmm_regimes', 'structural_breaks', 
+                        'combined_regimes', 'volatility_regimes'}
+        assert set(results.keys()) == expected_keys
+        
+        # Check each result type
+        assert isinstance(results['hmm_regimes'], pd.DataFrame)
+        assert isinstance(results['structural_breaks'], pd.DataFrame)
+        assert isinstance(results['combined_regimes'], pd.DataFrame)
+        assert isinstance(results['volatility_regimes'], pd.DataFrame)
+        
+        # Check hmm_regimes structure
+        assert 'regime' in results['hmm_regimes'].columns
+        assert 'regime_type' in results['hmm_regimes'].columns
+        
+        # Check structural_breaks structure
+        assert 'significant_break' in results['structural_breaks'].columns
+        
+        # Check combined_regimes structure
+        assert 'composite_regime' in results['combined_regimes'].columns
+
+    def test_date_filtering(self, regime_analyzer):
+        """Test date range filtering in analyze_regimes."""
+        start_date = '2020-06-01'
+        end_date = '2021-06-01'
+        
+        results = regime_analyzer.analyze_regimes(
+            'TEST', start_date=start_date, end_date=end_date
+        )
+        
+        # Check date ranges
+        for df in results.values():
+            assert df.index[0].strftime('%Y-%m-%d') >= start_date
+            assert df.index[-1].strftime('%Y-%m-%d') <= end_date
+
+    def test_hmm_states_parameter(self, regime_analyzer):
+        """Test impact of different HMM state numbers."""
+        results_2_states = regime_analyzer.analyze_regimes('TEST', hmm_states=2)
+        results_4_states = regime_analyzer.analyze_regimes('TEST', hmm_states=4)
+        
+        # Check number of unique regimes
+        assert results_2_states['hmm_regimes']['regime'].nunique() <= 2
+        assert results_4_states['hmm_regimes']['regime'].nunique() <= 4
+
+    def test_window_parameter(self, regime_analyzer):
+        """Test impact of different window sizes."""
+        results_small_window = regime_analyzer.analyze_regimes('TEST', window=126)
+        results_large_window = regime_analyzer.analyze_regimes('TEST', window=252)
+        
+        # Smaller window should have more breaks due to higher sensitivity
+        small_breaks = results_small_window['structural_breaks']['significant_break'].sum()
+        large_breaks = results_large_window['structural_breaks']['significant_break'].sum()
+        assert small_breaks >= large_breaks
+
+    def test_regime_characteristics(self, regime_analyzer):
+        """Test characteristics of detected regimes."""
+        results = regime_analyzer.analyze_regimes('TEST')
+        
+        # Check regime types
+        regime_types = results['hmm_regimes']['regime_type'].unique()
+        assert all(rt.split('_')[0] in ['bullish', 'bearish'] for rt in regime_types)
+        assert all('vol' in rt for rt in regime_types)
+        
+        # Check trend identification
+        trends = results['combined_regimes']['trend'].unique()
+        assert set(trends) <= {'uptrend', 'downtrend'}
+        
+        # Check composite regime format
+        composite_regimes = results['combined_regimes']['composite_regime'].unique()
+        assert all('_' in cr for cr in composite_regimes)
+        assert all(cr.endswith(('uptrend', 'downtrend')) for cr in composite_regimes)
 
 class TestLeadLagBasics:
     """Basic functionality tests for LeadLagAnalyzer."""

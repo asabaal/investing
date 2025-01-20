@@ -16,6 +16,10 @@ from dataclasses import dataclass
 from statsmodels.tsa.stattools import grangercausalitytests
 from scipy.stats import pearsonr
 import networkx as nx
+from hmmlearn import hmm
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.stats.diagnostic import het_breuschpagan
+from scipy.stats import norm
 warnings.filterwarnings('ignore')
 
 @dataclass
@@ -160,6 +164,148 @@ def validate_head_and_shoulders(
         failure_reasons=failure_reasons,
         price_range=price_range
     )
+
+class RegimeAnalyzer:
+    """
+    Advanced market regime analysis using multiple detection methods.
+    """
+    def __init__(self, returns: pd.Series, prices: pd.Series, volumes: pd.Series):
+        self.returns = returns
+        self.prices = prices
+        self.volumes = volumes
+        
+    def detect_hmm_regimes(self, n_states: int = 3) -> pd.DataFrame:
+        """
+        Detect market regimes using Hidden Markov Models.
+        
+        Args:
+            n_states: Number of distinct market states to identify
+            
+        Returns:
+            DataFrame with regime probabilities and states
+        """
+        # Prepare data
+        X = np.column_stack([
+            self.returns.values.reshape(-1, 1),
+            self.volumes.pct_change().values.reshape(-1, 1)
+        ])
+        X = np.nan_to_num(X)
+        
+        # Initialize and fit HMM
+        model = hmm.GaussianHMM(n_components=n_states, covariance_type="full", n_iter=100)
+        model.fit(X)
+        
+        # Get state sequence and probabilities
+        hidden_states = model.predict(X)
+        state_probs = model.predict_proba(X)
+        
+        # Create results DataFrame
+        results = pd.DataFrame(index=self.returns.index)
+        results['regime'] = hidden_states
+        
+        for i in range(n_states):
+            results[f'regime_{i}_prob'] = state_probs[:, i]
+            
+        # Add regime characteristics
+        means = pd.DataFrame(model.means_, columns=['returns', 'volume_change'])
+        state_chars = {}
+        for i in range(n_states):
+            if means.loc[i, 'returns'] > means['returns'].mean():
+                vol = 'high' if means.loc[i, 'volume_change'] > means['volume_change'].mean() else 'low'
+                state_chars[i] = f'bullish_{vol}_vol'
+            else:
+                vol = 'high' if means.loc[i, 'volume_change'] > means['volume_change'].mean() else 'low'
+                state_chars[i] = f'bearish_{vol}_vol'
+                
+        results['regime_type'] = results['regime'].map(state_chars)
+        
+        return results
+    
+    def detect_structural_breaks(self, window: int = 252) -> pd.DataFrame:
+        """
+        Detect structural breaks using rolling statistical tests.
+        
+        Args:
+            window: Rolling window size for break detection
+            
+        Returns:
+            DataFrame with structural break indicators
+        """
+        results = pd.DataFrame(index=self.returns.index)
+        results['break_chow'] = np.nan
+        results['break_volatility'] = np.nan
+        results['break_volume'] = np.nan
+        
+        for i in range(window, len(self.returns)):
+            window_returns = self.returns.iloc[i-window:i]
+            window_volumes = self.volumes.iloc[i-window:i]
+            
+            # Test for breaks in mean using Chow test-like approach
+            pre_mean = window_returns[:window//2].mean()
+            post_mean = window_returns[window//2:].mean()
+            mean_diff = abs(pre_mean - post_mean)
+            mean_std = window_returns.std()
+            results.iloc[i, 0] = mean_diff / mean_std
+            
+            # Test for breaks in volatility
+            pre_vol = window_returns[:window//2].std()
+            post_vol = window_returns[window//2:].std()
+            vol_ratio = max(pre_vol, post_vol) / min(pre_vol, post_vol)
+            results.iloc[i, 1] = vol_ratio
+            
+            # Test for breaks in volume
+            pre_vol_mean = window_volumes[:window//2].mean()
+            post_vol_mean = window_volumes[window//2:].mean()
+            vol_mean_ratio = max(pre_vol_mean, post_vol_mean) / min(pre_vol_mean, post_vol_mean)
+            results.iloc[i, 2] = vol_mean_ratio
+            
+        # Identify significant breaks
+        results['significant_break'] = (
+            (results['break_chow'] > 2) |  # 2 std dev threshold
+            (results['break_volatility'] > 2) |  # Double volatility
+            (results['break_volume'] > 2)  # Double volume
+        )
+        
+        return results
+    
+    def detect_combined_regime(self, 
+                             hmm_states: int = 3, 
+                             window: int = 252) -> pd.DataFrame:
+        """
+        Combine multiple regime detection methods.
+        
+        Args:
+            hmm_states: Number of HMM states to detect
+            window: Window size for structural break detection
+            
+        Returns:
+            DataFrame with combined regime indicators
+        """
+        # Get individual regime indicators
+        hmm_results = self.detect_hmm_regimes(hmm_states)
+        break_results = self.detect_structural_breaks(window)
+        
+        # Combine results
+        combined = pd.DataFrame(index=self.returns.index)
+        combined['hmm_regime'] = hmm_results['regime_type']
+        combined['structural_break'] = break_results['significant_break']
+        
+        # Add trend indicator
+        combined['trend'] = np.where(
+            self.prices.rolling(window).mean() > self.prices.rolling(window//2).mean(),
+            'uptrend', 'downtrend'
+        )
+        
+        # Create composite regime indicator
+        def get_composite_regime(row):
+            base_regime = row['hmm_regime']
+            if row['structural_break']:
+                base_regime = f'transition_{base_regime}'
+            return f"{base_regime}_{row['trend']}"
+            
+        combined['composite_regime'] = combined.apply(get_composite_regime, axis=1)
+        
+        return combined
 
 class LeadLagAnalyzer:
     """
@@ -1107,3 +1253,93 @@ class MarketAnalyzer:
             market_state[index] = features
             
         return market_state
+    
+    def analyze_relationships(self,
+                              symbols: List[str],
+                              max_lags: int = 5,
+                              correlation_threshold: float = 0.5) -> Dict[str, Union[pd.DataFrame, nx.Graph, Dict]]:
+        """
+        Comprehensive analysis of relationships between symbols.
+        
+        Args:
+            symbols: List of symbols to analyze
+            max_lags: Maximum number of lags for analysis
+            correlation_threshold: Minimum correlation for network relationships
+            
+        Returns:
+            Dictionary containing various relationship analyses
+        """
+        lead_lag = LeadLagAnalyzer(self.returns_data)
+        
+        results = {
+            'cross_correlations': lead_lag.calculate_cross_correlations(symbols, max_lags),
+            'relationship_network': lead_lag.build_relationship_network(symbols, correlation_threshold),
+            'market_leaders': lead_lag.find_market_leaders(symbols, max_lags)
+        }
+        
+        # Add pairwise Granger causality for market leaders
+        leader_symbols = [s for s, score in results['market_leaders'].items() if score > 0.5]
+        granger_results = {}
+        
+        for symbol1 in leader_symbols:
+            for symbol2 in symbols:
+                if symbol1 != symbol2:
+                    key = f"{symbol1}->{symbol2}"
+                    granger_results[key] = lead_lag.test_granger_causality(symbol1, symbol2, max_lags)
+        
+        results['granger_causality'] = granger_results
+        
+        return results
+
+    def analyze_regimes(self,
+                         symbol: str,
+                         start_date: Optional[str] = None,
+                         end_date: Optional[str] = None,
+                         hmm_states: int = 3,
+                         window: int = 252) -> Dict[str, pd.DataFrame]:
+        """
+        Comprehensive regime analysis for a given symbol.
+        
+        Args:
+            symbol: Stock symbol to analyze
+            start_date: Start date for analysis
+            end_date: End date for analysis
+            hmm_states: Number of HMM states to detect
+            window: Window size for structural break detection
+            
+        Returns:
+            Dictionary containing various regime analyses
+        """
+        # Get symbol data
+        returns = self.returns_data[symbol]['daily_return']
+        prices = self.data[symbol]['close']
+        volumes = self.data[symbol]['volume']
+        
+        if start_date:
+            returns = returns[returns.index >= start_date]
+            prices = prices[prices.index >= start_date]
+            volumes = volumes[volumes.index >= start_date]
+        if end_date:
+            returns = returns[returns.index <= end_date]
+            prices = prices[prices.index <= end_date]
+            volumes = volumes[volumes.index <= end_date]
+            
+        # Initialize regime analyzer
+        regime_analyzer = RegimeAnalyzer(returns, prices, volumes)
+        
+        # Get various regime analyses
+        results = {
+            'hmm_regimes': regime_analyzer.detect_hmm_regimes(hmm_states),
+            'structural_breaks': regime_analyzer.detect_structural_breaks(window),
+            'combined_regimes': regime_analyzer.detect_combined_regime(hmm_states, window)
+        }
+        
+        # Add volatility regimes from earlier method
+        vol_regimes = self.detect_volatility_regime(symbol)
+        if start_date:
+            vol_regimes = vol_regimes[vol_regimes.index >= start_date]
+        if end_date:
+            vol_regimes = vol_regimes[vol_regimes.index <= end_date]
+        results['volatility_regimes'] = vol_regimes
+        
+        return results    
