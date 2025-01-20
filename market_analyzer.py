@@ -195,6 +195,14 @@ class RegimeAnalyzer:
         model = hmm.GaussianHMM(n_components=n_states, covariance_type="full", n_iter=100)
         model.fit(X)
         
+        # Check convergence
+        if not model.monitor_.converged:
+            # If not converged, return a DataFrame with NaN values
+            results = pd.DataFrame(index=self.returns.index)
+            results['regime'] = np.nan
+            results['regime_type'] = 'unknown'
+            return results
+
         # Get state sequence and probabilities
         hidden_states = model.predict(X)
         state_probs = model.predict_proba(X)
@@ -821,11 +829,9 @@ class MarketAnalyzer:
     """
     def __init__(self, 
                  data: Dict[str, pd.DataFrame],
-                 market_indices: List[str],
-                 benchmark_index: str = '^GSPC'):
+                 market_indices: List[str] = ['^GSPC']):
         self.data = data
         self.market_indices = market_indices
-        self.benchmark_index = benchmark_index
         self.returns_data = {}
         self._prepare_returns_data()
 
