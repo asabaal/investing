@@ -6,20 +6,17 @@ https://claude.ai/chat/e57d8498-85ed-478a-9aa4-a5dcba070116
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Union
-from sklearn.preprocessing import StandardScaler
-from statsmodels.tsa.stattools import adfuller
 from arch import arch_model
 import warnings
-from scipy.signal import find_peaks, argrelextrema
-from typing import Tuple, List, Dict, Optional, Union, Set
+from typing import Tuple, List, Dict, Optional, Union, Any
 from dataclasses import dataclass
 from statsmodels.tsa.stattools import grangercausalitytests
 from scipy.stats import pearsonr
 import networkx as nx
 from hmmlearn import hmm
-from statsmodels.tsa.stattools import adfuller
-from statsmodels.stats.diagnostic import het_breuschpagan
 from scipy.stats import norm
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 warnings.filterwarnings('ignore')
 
 @dataclass
@@ -164,6 +161,265 @@ def validate_head_and_shoulders(
         failure_reasons=failure_reasons,
         price_range=price_range
     )
+
+class MarketVisualizer:
+    """
+    Creates interactive visualizations for market analysis results.
+    """
+    def __init__(self, data: Dict[str, pd.DataFrame], results: Dict[str, Any]):
+        self.data = data
+        self.results = results
+        
+    def plot_price_patterns(self, symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> go.Figure:
+        """
+        Create candlestick chart with pattern annotations.
+        
+        Args:
+            symbol: Stock symbol to plot
+            start_date: Start date for plotting
+            end_date: End date for plotting
+            
+        Returns:
+            Plotly figure object
+        """
+        df = self.data[symbol].copy()
+        if start_date:
+            df = df[df.index >= start_date]
+        if end_date:
+            df = df[df.index <= end_date]
+            
+        # Create candlestick chart
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
+                           vertical_spacing=0.05,
+                           row_heights=[0.7, 0.3])
+        
+        fig.add_trace(go.Candlestick(
+            x=df.index,
+            open=df['open'],
+            high=df['high'],
+            low=df['low'],
+            close=df['close'],
+            name='Price'
+        ), row=1, col=1)
+        
+        # Add volume bars
+        fig.add_trace(go.Bar(
+            x=df.index,
+            y=df['volume'],
+            name='Volume'
+        ), row=2, col=1)
+
+        # Add patterns if available
+        if 'patterns' in self.results:
+            patterns = self.results['patterns']
+            for pattern_type, pattern_list in patterns.items():
+                for pattern in pattern_list:
+                    # Add pattern annotation
+                    fig.add_shape(
+                        type="rect",
+                        x0=self.data[symbol].index[pattern.start_idx],
+                        x1=self.data[symbol].index[pattern.end_idx],
+                        y0=pattern.price_range[0],
+                        y1=pattern.price_range[1],
+                        line=dict(color="rgba(255, 0, 0, 0.3)"),
+                        fillcolor="rgba(255, 0, 0, 0.1)",
+                        row=1, col=1
+                    )
+                    
+                    # Add pattern label
+                    fig.add_annotation(
+                        x=df.index[pattern.start_idx],
+                        y=pattern.price_range[1],
+                        text=pattern_type,
+                        showarrow=True,
+                        arrowhead=1
+                    )
+        
+        fig.update_layout(
+            title=f"{symbol} Price and Volume with Pattern Detection",
+            xaxis_title="Date",
+            yaxis_title="Price",
+            yaxis2_title="Volume",
+            showlegend=True
+        )
+        
+        return fig
+    
+    def plot_regimes(self, symbol: str, regime_type: str = 'combined') -> go.Figure:
+        """
+        Visualize regime analysis results.
+        
+        Args:
+            symbol: Stock symbol to plot
+            regime_type: Type of regime analysis to visualize
+            
+        Returns:
+            Plotly figure object
+        """
+        if regime_type not in self.results.get('regimes', {}):
+            raise ValueError(f"Regime type {regime_type} not found in results")
+  
+        regime_data = self.results['regimes'][f'{regime_type}']
+        price_data = self.data[symbol]['close']
+        
+        # Create figure with secondary y-axis
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        
+        # Add price line
+        fig.add_trace(
+            go.Scatter(x=price_data.index, y=price_data, name="Price"),
+            secondary_y=False
+        )
+        
+        # Add regime indicators
+        if 'regime' in regime_data.columns:
+            regime_numeric = pd.Categorical(regime_data['regime']).codes
+            fig.add_trace(
+                go.Scatter(x=regime_data.index, y=regime_numeric, 
+                          name="Regime", line=dict(dash='dot')),
+                secondary_y=True
+            )
+            
+        # Add regime probability if available
+        prob_cols = [col for col in regime_data.columns if 'prob' in col]
+        for col in prob_cols:
+            fig.add_trace(
+                go.Scatter(x=regime_data.index, y=regime_data[col],
+                          name=col, line=dict(dash='dot')),
+                secondary_y=True
+            )
+            
+        fig.update_layout(
+            title=f"{symbol} Price and {regime_type.capitalize()} Regimes",
+            xaxis_title="Date",
+            yaxis_title="Price",
+            yaxis2_title="Regime/Probability",
+            showlegend=True
+        )
+        
+        return fig
+    
+    def plot_network(self, min_correlation: float = 0.5) -> go.Figure:
+        """
+        Create network visualization of stock relationships.
+        
+        Args:
+            min_correlation: Minimum correlation to show relationship
+            
+        Returns:
+            Plotly figure object
+        """
+        if 'relationship_network' not in self.results:
+            raise ValueError("Relationship network not found in results")
+            
+        G = self.results['relationship_network']
+        
+        # Get node positions using Fruchterman-Reingold force-directed algorithm
+        pos = nx.spring_layout(G)
+        
+        # Create edges
+        edge_x = []
+        edge_y = []
+        edge_text = []
+        for edge in G.edges(data=True):
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None])
+            edge_text.append(f"Correlation: {edge[2]['weight']:.2f}")
+            
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=0.5, color='#888'),
+            hoverinfo='text',
+            text=edge_text,
+            mode='lines')
+        
+        # Create nodes
+        node_x = []
+        node_y = []
+        node_text = []
+        for node in G.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+            node_text.append(node)
+            
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers+text',
+            hoverinfo='text',
+            text=node_text,
+            textposition="top center",
+            marker=dict(
+                showscale=True,
+                colorscale='YlGnBu',
+                size=10,
+                colorbar=dict(
+                    thickness=15,
+                    title='Node Connections',
+                    xanchor='left',
+                    titleside='right'
+                )
+            ))
+        
+        # Color nodes by number of connections
+        node_adjacencies = []
+        for node in G.nodes():
+            node_adjacencies.append(len(list(G.neighbors(node))))
+            
+        node_trace.marker.color = node_adjacencies
+        
+        fig = go.Figure(data=[edge_trace, node_trace],
+                       layout=go.Layout(
+                           title='Stock Relationship Network',
+                           showlegend=False,
+                           hovermode='closest',
+                           margin=dict(b=20,l=5,r=5,t=40),
+                           xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                           yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                       )
+        
+        return fig
+    
+    def plot_lead_lag_heatmap(self) -> go.Figure:
+        """
+        Create heatmap of lead-lag relationships.
+        
+        Returns:
+            Plotly figure object
+        """
+        if 'cross_correlations' not in self.results:
+            raise ValueError("Cross-correlation results not found")
+            
+        # Pivot the cross-correlation results
+        corr_data = self.results['cross_correlations']
+        heatmap_data = pd.pivot_table(
+            corr_data,
+            values='correlation',
+            index='symbol1',
+            columns='lag'
+        )
+        
+        fig = go.Figure(data=go.Heatmap(
+            z=heatmap_data.values,
+            x=heatmap_data.columns,
+            y=heatmap_data.index,
+            colorscale='RdBu',
+            zmid=0,
+            text=np.round(heatmap_data.values, 2),
+            texttemplate='%{text}',
+            textfont={"size": 10},
+            hoverongaps=False))
+        
+        fig.update_layout(
+            title='Lead-Lag Correlation Heatmap',
+            xaxis_title='Lag',
+            yaxis_title='Symbol',
+            height=800
+        )
+        
+        return fig
 
 class RegimeAnalyzer:
     """
@@ -1349,3 +1605,30 @@ class MarketAnalyzer:
         results['volatility_regimes'] = vol_regimes
         
         return results    
+    
+    def create_visualizations(self,
+                              symbol: str,
+                              start_date: Optional[str] = None,
+                              end_date: Optional[str] = None) -> Dict[str, go.Figure]:
+        """
+        Create comprehensive set of visualizations for analysis results.
+        
+        Args:
+            symbol: Stock symbol to visualize
+            start_date: Start date for visualization
+            end_date: End date for visualization
+            
+        Returns:
+            Dictionary of Plotly figure objects
+        """
+        visualizer = MarketVisualizer(self.data, self.results)
+        
+        figures = {
+            'price_patterns': visualizer.plot_price_patterns(symbol, start_date, end_date),
+            'combined_regimes': visualizer.plot_regimes(symbol, 'combined'),
+            'volatility_regimes': visualizer.plot_regimes(symbol, 'volatility'),
+            'relationship_network': visualizer.plot_network(),
+            'lead_lag_heatmap': visualizer.plot_lead_lag_heatmap()
+        }
+        
+        return figures
