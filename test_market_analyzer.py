@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 import plotly.graph_objects as go
-from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer, MarketVisualizer  
+from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer, MarketVisualizer, RiskAnalyzer
 from typing import Dict, Any
 
 @pytest.fixture
@@ -984,6 +984,59 @@ class TestMarketVisualizer:
         """Create MarketVisualizer instance with sample data."""
         return MarketVisualizer(sample_stock_data, sample_results)
 
+    @pytest.fixture
+    def sample_volatility_surface(self) -> pd.DataFrame:
+        """Create sample volatility surface data."""
+        windows = [5, 21, 63, 252]
+        quantiles = [0.1, 0.25, 0.5, 0.75, 0.9]
+        
+        surface_data = []
+        for window in windows:
+            for quantile in quantiles:
+                surface_data.append({
+                    'window': window,
+                    'quantile': quantile,
+                    'volatility': np.random.uniform(0.1, 0.4)
+                })
+        return pd.DataFrame(surface_data)
+
+    @pytest.fixture
+    def sample_risk_metrics(self) -> Dict[str, Any]:
+        """Create sample risk metrics data."""
+        return {
+            'var': {
+                'historical': 0.025,
+                'parametric': 0.028,
+                'monte_carlo': 0.027
+            },
+            'expected_shortfall': {
+                0.90: 0.032,
+                0.95: 0.038,
+                0.99: 0.045
+            }
+        }
+
+    @pytest.fixture
+    def sample_stress_test(self) -> pd.DataFrame:
+        """Create sample stress test results."""
+        scenarios = ['Market Crash', 'Rate Hike', 'Tech Bubble', 'Recovery']
+        return pd.DataFrame({
+            'scenario': scenarios,
+            'price_change': [-0.15, -0.05, -0.20, 0.10],
+            'stressed_var': [0.03, 0.02, 0.04, 0.015]
+        })
+
+    @pytest.fixture
+    def extended_visualizer(self, sample_stock_data, sample_results, sample_volatility_surface, sample_risk_metrics, sample_stress_test):
+        """Create MarketVisualizer instance with additional risk data."""
+        results = sample_results.copy()
+        results.update({
+            'volatility_surface': sample_volatility_surface,
+            'risk_metrics': sample_risk_metrics,
+            'stress_test': sample_stress_test
+        })
+        return MarketVisualizer(sample_stock_data, results)
+
     def test_plot_price_patterns(self, visualizer):
         """Test price pattern visualization."""
         fig = visualizer.plot_price_patterns('AAPL')
@@ -1077,3 +1130,235 @@ class TestMarketVisualizer:
             
         with pytest.raises(ValueError):
             visualizer.plot_lead_lag_heatmap()
+
+    def test_plot_volatility_surface(self, extended_visualizer):
+        """Test volatility surface visualization."""
+        fig = extended_visualizer.plot_volatility_surface()
+        
+        # Verify figure structure
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 1
+        assert isinstance(fig.data[0], go.Surface)
+        
+        # Verify axes labels and title
+        assert fig.layout.scene.xaxis.title.text == 'Time Window (days)'
+        assert fig.layout.scene.yaxis.title.text == 'Quantile'
+        assert fig.layout.scene.zaxis.title.text == 'Volatility'
+
+    def test_plot_risk_metrics(self, extended_visualizer):
+        """Test risk metrics dashboard visualization."""
+        fig = extended_visualizer.plot_risk_metrics()
+        
+        # Verify figure structure
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) >= 4  # Should have VaR, ES, stress test, and returns plots
+        
+        # Verify subplot titles
+        subplot_titles = fig.layout.annotations
+        expected_titles = ['VaR Comparison', 'Expected Shortfall', 
+                         'Stress Test Scenarios', 'Return Distribution']
+        for title, expected in zip(subplot_titles, expected_titles):
+            assert title.text == expected
+
+        # Verify data presence
+        var_trace = fig.data[0]
+        assert isinstance(var_trace, go.Bar)
+        assert len(var_trace.x) == 3  # Three VaR methods
+
+    def test_plot_efficient_frontier(self, extended_visualizer):
+        """Test efficient frontier visualization."""
+        # Create sample efficient frontier data
+        ef_data = pd.DataFrame({
+            'volatility': np.linspace(0.1, 0.4, 20),
+            'return': np.linspace(0.05, 0.15, 20),
+            'sharpe_ratio': np.linspace(0.5, 2.0, 20)
+        })
+        
+        fig = extended_visualizer.plot_efficient_frontier(ef_data)
+        
+        # Verify figure structure
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) >= 1  # Efficient frontier line plus individual assets
+        
+        # Verify efficient frontier trace
+        ef_trace = fig.data[0]
+        assert isinstance(ef_trace, go.Scatter)
+        assert len(ef_trace.x) == len(ef_data)
+        
+        # Verify layout
+        assert fig.layout.xaxis.title.text == 'Portfolio Volatility'
+        assert fig.layout.yaxis.title.text == 'Portfolio Return'
+
+    def test_missing_risk_metrics(self, visualizer):
+        """Test visualization with missing risk metrics."""
+        fig = visualizer.plot_risk_metrics()
+        
+        # Should still create figure but with fewer traces
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) <= 4  # Some traces might be missing
+
+    def test_invalid_efficient_frontier_data(self, visualizer):
+        """Test efficient frontier plot with invalid data."""
+        invalid_ef_data = pd.DataFrame()
+        
+        with pytest.raises(Exception):
+            visualizer.plot_efficient_frontier(invalid_ef_data)            
+
+class TestRiskAnalyzer:
+    @pytest.fixture
+    def sample_returns(self) -> pd.Series:
+        """Create sample return series with known properties."""
+        np.random.seed(42)
+        # Create returns with known mean and volatility
+        returns = pd.Series(
+            np.random.normal(loc=0.03, scale=0.02, size=252),
+            index=pd.date_range('2023-01-01', periods=252, freq='B')
+        )
+        return returns
+
+    @pytest.fixture
+    def sample_prices(self, sample_returns) -> pd.Series:
+        """Create sample price series from returns."""
+        initial_price = 100
+        prices = initial_price * (1 + sample_returns).cumprod()
+        prices.index = sample_returns.index
+        return prices
+
+    @pytest.fixture
+    def risk_analyzer(self, sample_returns, sample_prices) -> RiskAnalyzer:
+        """Create RiskAnalyzer instance with sample data."""
+        return RiskAnalyzer(sample_returns, sample_prices)
+
+    def test_calculate_var_historical(self, risk_analyzer):
+        """Test historical VaR calculation."""
+        var_results = risk_analyzer.calculate_var(
+            confidence_level=0.95,
+            time_horizon=1,
+            method='historical'
+        )
+        
+        assert 'historical_var' in var_results
+        assert isinstance(var_results['historical_var'], float)
+        assert var_results['historical_var'] > 0
+ 
+        # Test different confidence levels
+        var_90 = risk_analyzer.calculate_var(confidence_level=0.90)['historical_var']
+        var_95 = risk_analyzer.calculate_var(confidence_level=0.95)['historical_var']
+        var_99 = risk_analyzer.calculate_var(confidence_level=0.99)['historical_var']
+        
+        assert var_90 > var_95 > var_99  # Since these are negative numbers
+
+    def test_calculate_var_parametric(self, risk_analyzer):
+        """Test parametric VaR calculation."""
+        var_results = risk_analyzer.calculate_var(
+            confidence_level=0.95,
+            time_horizon=1,
+            method='parametric'
+        )
+        
+        assert 'parametric_var' in var_results
+        assert isinstance(var_results['parametric_var'], float)
+        
+        # Verify scaling with time horizon
+        var_1d = var_results['parametric_var']
+        var_10d = risk_analyzer.calculate_var(
+            confidence_level=0.95,
+            time_horizon=10,
+            method='parametric'
+        )['parametric_var']
+        
+        # Should approximately scale with square root of time
+        assert np.isclose(var_10d, var_1d * np.sqrt(10), rtol=0.1)
+
+    def test_calculate_var_monte_carlo(self, risk_analyzer):
+        """Test Monte Carlo VaR calculation."""
+        var_results = risk_analyzer.calculate_var(
+            confidence_level=0.95,
+            time_horizon=1,
+            method='monte_carlo'
+        )
+        
+        assert 'monte_carlo_var' in var_results
+        assert isinstance(var_results['monte_carlo_var'], float)
+        
+        # Run multiple times to check stability
+        results = [
+            risk_analyzer.calculate_var(method='monte_carlo')['monte_carlo_var']
+            for _ in range(5)
+        ]
+        
+        # Results should be similar but not identical
+        assert len(set(results)) > 1  # Should be random
+        assert np.std(results) < 0.01  # But not too random
+
+    def test_calculate_expected_shortfall(self, risk_analyzer):
+        """Test Expected Shortfall calculation."""
+        es = risk_analyzer.calculate_expected_shortfall(
+            confidence_level=0.95,
+            time_horizon=1
+        )
+        
+        assert isinstance(es, float)
+        assert es < 0  # ES should be negative for losses
+        
+        # ES should be more extreme than VaR
+        var = risk_analyzer.calculate_var(
+            confidence_level=0.95,
+            method='historical'
+        )['historical_var']
+        assert abs(es) > abs(var)
+
+    def test_stress_test(self, risk_analyzer):
+        """Test stress testing functionality."""
+        scenarios = {
+            'Market Crash': -0.15,
+            'Rate Hike': -0.05,
+            'Recovery': 0.10
+        }
+        
+        results = risk_analyzer.stress_test(scenarios)
+        
+        # Verify results structure
+        assert isinstance(results, pd.DataFrame)
+        assert set(results.columns) == {
+            'scenario', 'price_shock', 'stressed_price',
+            'price_change', 'normal_var', 'stressed_var'
+        }
+        
+        # Verify calculations
+        assert len(results) == len(scenarios)
+        assert all(results['stressed_var'] >= results['normal_var'])  # Stress increases VaR
+
+    def test_calculate_volatility_surface(self, risk_analyzer):
+        """Test volatility surface calculation."""
+        windows = [5, 21, 63]
+        quantiles = [0.1, 0.5, 0.9]
+
+        surface = risk_analyzer.calculate_volatility_surface(
+            windows=windows,
+            quantiles=quantiles
+        )
+
+        # Verify surface structure
+        assert isinstance(surface, pd.DataFrame)
+        assert set(surface.columns) == {'window', 'quantile', 'volatility', 'return'}
+        assert len(surface) == len(windows) * len(quantiles)
+        
+        # Verify volatility properties
+        assert all(surface['volatility'] > 0)  # Volatility should be positive
+        assert all(surface['volatility'] < 1)  # Annualized vol should be reasonable
+
+    def test_invalid_inputs(self, risk_analyzer):
+        """Test handling of invalid inputs."""
+        # Invalid confidence level
+
+        with pytest.raises(ValueError):
+            risk_analyzer.calculate_var(confidence_level=1.5)
+        
+        # Invalid VaR method
+        with pytest.raises(ValueError):
+            risk_analyzer.calculate_var(method='invalid_method')
+        
+        # Invalid time horizon
+        with pytest.raises(ValueError):
+            risk_analyzer.calculate_var(time_horizon=-1)        
