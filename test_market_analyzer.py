@@ -1,8 +1,10 @@
 import pytest
 import pandas as pd
 import numpy as np
-from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer
 import networkx as nx
+import plotly.graph_objects as go
+from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer, MarketVisualizer  
+from typing import Dict, Any
 
 @pytest.fixture
 def lead_lag_sample_returns_data():
@@ -902,3 +904,176 @@ class TestMarketAnalyzerPatterns:
                 
                 assert pattern_start >= pd.Timestamp(start_date)
                 assert pattern_end <= pd.Timestamp(end_date)          
+
+
+class TestMarketVisualizer:
+    @pytest.fixture
+    def sample_stock_data(self) -> Dict[str, pd.DataFrame]:
+        """Create sample stock price data for testing."""
+        # Set random seed for reproducibility
+        np.random.seed(42)
+        
+        dates = pd.date_range(start='2023-01-01', end='2023-01-10', freq='D')
+        symbols = ['AAPL', 'GOOGL']
+        
+        data = {}
+        for symbol in symbols:
+            # Create a double bottom pattern in the close prices
+            base_price = 100
+            prices = [
+                base_price + 10,  # Start higher
+                base_price,       # First bottom
+                base_price + 5,   # Middle peak
+                base_price,       # Second bottom
+                base_price + 15   # End higher
+            ]
+            # Pad with additional random prices
+            prices = prices + list(np.random.uniform(base_price, base_price + 20, len(dates) - len(prices)))
+            
+            df = pd.DataFrame(
+                {
+                    'close': prices,
+                    'volume': np.random.uniform(1000000, 5000000, len(dates))
+                },
+                index=dates
+            )
+            
+            # Generate OHLC data around close prices
+            df['open'] = df['close'] + np.random.uniform(-5, 5, len(df))
+            df['high'] = df[['open', 'close']].max(axis=1) + np.random.uniform(0, 5, len(df))
+            df['low'] = df[['open', 'close']].min(axis=1) - np.random.uniform(0, 5, len(df))
+            
+            data[symbol] = df
+            
+        return data
+
+    @pytest.fixture
+    def sample_results(self) -> Dict[str, Any]:
+        """Create sample analysis results for testing."""
+        class Pattern:
+            def __init__(self, start_idx, end_idx, price_range):
+                self.start_idx = start_idx
+                self.end_idx = end_idx
+                self.price_range = price_range
+
+        return {
+            'patterns': {
+                'double_bottom': [
+                    Pattern(1, 3, (95, 110))  # Indices correspond to actual pattern in data
+                ]
+            },
+            'regimes': {
+                    'combined': pd.DataFrame({
+                        'regime': ['bull', 'bear', 'bull'],
+                        'bull_prob': [0.8, 0.3, 0.7],
+                        'bear_prob': [0.2, 0.7, 0.3]
+                    }, index=pd.date_range('2023-01-01', '2023-01-03'))
+            },
+            'relationship_network': nx.Graph([
+                ('AAPL', 'GOOGL', {'weight': 0.75})
+            ]),
+            'cross_correlations': pd.DataFrame({
+                'symbol1': ['AAPL', 'AAPL', 'GOOGL'],
+                'lag': [-1, 0, 1],
+                'correlation': [0.5, 0.75, 0.6]
+            })
+        }
+
+    @pytest.fixture
+    def visualizer(self, sample_stock_data, sample_results):
+        """Create MarketVisualizer instance with sample data."""
+        return MarketVisualizer(sample_stock_data, sample_results)
+
+    def test_plot_price_patterns(self, visualizer):
+        """Test price pattern visualization."""
+        fig = visualizer.plot_price_patterns('AAPL')
+        
+        # Verify figure structure
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) >= 2  # Should have at least candlestick and volume traces
+        assert isinstance(fig.data[0], go.Candlestick)  # First trace should be candlestick
+        assert isinstance(fig.data[1], go.Bar)  # Second trace should be volume
+        
+        # Verify pattern annotations
+        shapes = fig.layout.shapes
+        assert len(shapes) == 1  # Should have one pattern rectangle
+        
+        annotations = fig.layout.annotations
+        assert len(annotations) == 1  # Should have one pattern label
+
+    def test_plot_price_patterns_date_filtering(self, visualizer):
+        """Test price pattern visualization with date filtering."""
+        start_date = '2023-01-02'  # Include the pattern period
+        end_date = '2023-01-04'
+        
+        fig = visualizer.plot_price_patterns('AAPL', start_date, end_date)
+        
+        # Verify date range in plot
+        candlestick_trace = fig.data[0]
+        dates = pd.to_datetime(candlestick_trace.x)
+        assert min(dates) >= pd.to_datetime(start_date)
+        assert max(dates) <= pd.to_datetime(end_date)
+
+    def test_plot_regimes(self, visualizer):
+        """Test regime visualization."""
+        fig = visualizer.plot_regimes('AAPL', regime_type='combined')
+        
+        # Verify figure structure
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) >= 3  # Price line, regime indicator, and probabilities
+        
+        # Verify traces
+        trace_names = [trace.name for trace in fig.data]
+        assert 'Price' in trace_names
+        assert any('prob' in name.lower() for name in trace_names)
+
+    def test_plot_regimes_invalid_type(self, visualizer):
+        """Test regime visualization with invalid regime type."""
+        with pytest.raises(ValueError):
+            visualizer.plot_regimes('AAPL', regime_type='invalid')
+
+    def test_plot_network(self, visualizer):
+        """Test network visualization."""
+        fig = visualizer.plot_network(min_correlation=0.5)
+        
+        # Verify figure structure
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 2  # Should have edge and node traces
+        
+        # Verify node and edge data
+        edge_trace, node_trace = fig.data
+        assert isinstance(edge_trace, go.Scatter)
+        assert isinstance(node_trace, go.Scatter)
+        
+        # Verify node count
+        unique_nodes = len(set(node_trace.text))
+        assert unique_nodes == 2  # Should have AAPL and GOOGL
+
+    def test_plot_lead_lag_heatmap(self, visualizer):
+        """Test lead-lag heatmap visualization."""
+        fig = visualizer.plot_lead_lag_heatmap()
+        
+        # Verify figure structure
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 1  # Should have one heatmap trace
+        assert isinstance(fig.data[0], go.Heatmap)
+        
+        # Verify heatmap dimensions
+        heatmap = fig.data[0]
+        assert len(heatmap.x) == 3  # Three lag values
+        assert len(heatmap.y) == 2  # Two symbols
+
+    def test_invalid_symbol(self, visualizer):
+        """Test handling of invalid symbol."""
+        with pytest.raises(KeyError):
+            visualizer.plot_price_patterns('INVALID')
+
+    def test_missing_results(self, sample_stock_data):
+        """Test handling of missing results."""
+        visualizer = MarketVisualizer(sample_stock_data, {})
+        
+        with pytest.raises(ValueError):
+            visualizer.plot_network()
+            
+        with pytest.raises(ValueError):
+            visualizer.plot_lead_lag_heatmap()
