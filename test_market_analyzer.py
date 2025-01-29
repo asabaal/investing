@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 import plotly.graph_objects as go
-from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer, MarketVisualizer, RiskAnalyzer
+from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer, MarketVisualizer, RiskAnalyzer, PortfolioOptimizer
 from typing import Dict, Any
 
 @pytest.fixture
@@ -1165,30 +1165,6 @@ class TestMarketVisualizer:
         assert isinstance(var_trace, go.Bar)
         assert len(var_trace.x) == 3  # Three VaR methods
 
-    def test_plot_efficient_frontier(self, extended_visualizer):
-        """Test efficient frontier visualization."""
-        # Create sample efficient frontier data
-        ef_data = pd.DataFrame({
-            'volatility': np.linspace(0.1, 0.4, 20),
-            'return': np.linspace(0.05, 0.15, 20),
-            'sharpe_ratio': np.linspace(0.5, 2.0, 20)
-        })
-        
-        fig = extended_visualizer.plot_efficient_frontier(ef_data)
-        
-        # Verify figure structure
-        assert isinstance(fig, go.Figure)
-        assert len(fig.data) >= 1  # Efficient frontier line plus individual assets
-        
-        # Verify efficient frontier trace
-        ef_trace = fig.data[0]
-        assert isinstance(ef_trace, go.Scatter)
-        assert len(ef_trace.x) == len(ef_data)
-        
-        # Verify layout
-        assert fig.layout.xaxis.title.text == 'Portfolio Volatility'
-        assert fig.layout.yaxis.title.text == 'Portfolio Return'
-
     def test_missing_risk_metrics(self, visualizer):
         """Test visualization with missing risk metrics."""
         fig = visualizer.plot_risk_metrics()
@@ -1362,3 +1338,196 @@ class TestRiskAnalyzer:
         # Invalid time horizon
         with pytest.raises(ValueError):
             risk_analyzer.calculate_var(time_horizon=-1)        
+
+
+class TestPortfolioOptimizer:
+    @pytest.fixture
+    def sample_returns_data(self) -> Dict[str, pd.DataFrame]:
+        """Create sample return data with known properties."""
+        np.random.seed(42)
+        
+        # Create dates for one year of trading
+        dates = pd.date_range('2023-01-01', '2023-12-31', freq='B')
+        
+        # Create correlated returns for testing
+        returns_a = np.random.normal(0.01, 0.02, len(dates))
+        returns_b = 0.7 * returns_a + np.random.normal(0.05, 0.01, len(dates))
+        returns_c = -0.5 * returns_a + np.random.normal(0.07, 0.015, len(dates))
+        
+        assets = {
+            'AAPL': pd.DataFrame({
+                'daily_return': returns_a
+            }, index=dates),
+            'GOOGL': pd.DataFrame({
+                'daily_return': returns_b
+            }, index=dates),
+            'MSFT': pd.DataFrame({
+                'daily_return': returns_c
+            }, index=dates)
+        }
+        
+        return assets
+
+    @pytest.fixture
+    def optimizer(self, sample_returns_data):
+        """Create PortfolioOptimizer instance."""
+        return PortfolioOptimizer(sample_returns_data, risk_free_rate=0.02)
+
+    def test_calculate_portfolio_metrics(self, optimizer):
+        """Test portfolio metrics calculation."""
+        # Test with equal weights
+        weights = np.array([1/3, 1/3, 1/3])
+        metrics = optimizer.calculate_portfolio_metrics(weights)
+        
+        # Check metric types and ranges
+        assert isinstance(metrics, dict)
+        assert all(key in metrics for key in ['return', 'volatility', 'sharpe_ratio', 'sortino_ratio'])
+        assert metrics['volatility'] > 0
+        assert isinstance(metrics['sharpe_ratio'], float)
+        assert isinstance(metrics['sortino_ratio'], float)
+
+    def test_optimize_portfolio_sharpe(self, optimizer):
+        """Test portfolio optimization with Sharpe ratio objective."""
+        result = optimizer.optimize_portfolio(objective='sharpe_ratio')
+        
+        # Check optimization results
+        assert isinstance(result, dict)
+        assert all(key in result for key in ['weights', 'metrics', 'optimization_success'])
+        assert result['optimization_success']
+        
+        # Check weights sum to 1
+        weights = np.array(list(result['weights'].values()))
+        assert np.isclose(np.sum(weights), 1.0)
+        assert all(w >= 0 for w in weights)  # No short selling
+
+    def test_optimize_portfolio_min_vol(self, optimizer):
+        """Test portfolio optimization with minimum volatility objective."""
+        result = optimizer.optimize_portfolio(objective='min_volatility')
+        
+        # Verify minimum volatility portfolio
+        equal_weights = np.array([1/3, 1/3, 1/3])
+        equal_weight_metrics = optimizer.calculate_portfolio_metrics(equal_weights)
+        
+        # Minimum volatility should be lower than equal-weighted
+        assert result['metrics']['volatility'] <= equal_weight_metrics['volatility']
+
+    def test_optimize_portfolio_with_constraints(self, optimizer):
+        """Test portfolio optimization with constraints."""
+        constraints = {
+            'min_weight': 0.1,
+            'max_weight': 0.5
+        }
+        
+        result = optimizer.optimize_portfolio(
+            objective='sharpe_ratio',
+            constraints=constraints
+        )
+        
+        # Check constraint satisfaction
+        weights = np.array(list(result['weights'].values()))
+        assert all(w >= constraints['min_weight'] for w in weights)
+        assert all(w <= constraints['max_weight'] for w in weights)
+
+    def test_calculate_efficient_frontier(self, optimizer):
+        """Test efficient frontier calculation."""
+        ef_data = optimizer.calculate_efficient_frontier(n_points=20)
+        breakpoint()
+        # Check structure
+        assert isinstance(ef_data, pd.DataFrame)
+        assert all(col in ef_data.columns 
+                  for col in ['return', 'volatility', 'sharpe_ratio'])
+        
+        # Check properties
+        assert len(ef_data) <= 20  # Might be fewer points if some optimizations fail
+        assert ef_data['volatility'].is_monotonic_increasing  # Should be sorted by volatility
+
+        # Higher return should generally mean higher volatility
+        correlation = ef_data['return'].corr(ef_data['volatility'])
+        assert correlation > 0
+
+    def test_plot_efficient_frontier(self, optimizer):
+        """Test efficient frontier plotting."""
+        # Create sample efficient frontier data
+        ef_data = pd.DataFrame({
+            'return': np.linspace(0.05, 0.15, 10),
+            'volatility': np.linspace(0.1, 0.3, 10),
+            'sharpe_ratio': np.linspace(0.5, 1.5, 10),
+        })
+        
+        fig = optimizer.plot_efficient_frontier(ef_data)
+        
+        # Check figure structure
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == len(optimizer.returns.columns) + 1  # EF line + asset points
+        
+        # Check axis labels
+        assert fig.layout.xaxis.title.text == 'Portfolio Volatility'
+        assert fig.layout.yaxis.title.text == 'Portfolio Return'
+
+    def test_plot_portfolio_weights(self, optimizer):
+        """Test portfolio weights visualization."""
+        weights = {
+            'AAPL': 0.4,
+            'GOOGL': 0.35,
+            'MSFT': 0.25
+        }
+        
+        fig = optimizer.plot_portfolio_weights(weights)
+        
+        # Check figure structure
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 1
+        assert isinstance(fig.data[0], go.Bar)
+        
+        # Check data
+        bar_data = fig.data[0]
+        assert list(bar_data.x) == list(weights.keys())
+        assert list(bar_data.y) == list(weights.values())
+
+    def test_invalid_inputs(self, optimizer):
+        """Test handling of invalid inputs."""
+        # Invalid objective
+        with pytest.raises(ValueError, match="Invalid objective"):
+            optimizer.optimize_portfolio(objective='invalid_objective')
+            
+        # Invalid constraints
+        with pytest.raises(ValueError, match="min_weight cannot be greater than max_weight"):
+            optimizer.optimize_portfolio(constraints={'min_weight': 0.6, 'max_weight': 0.4})
+            
+        with pytest.raises(ValueError, match="max_weight cannot be greater than 1"):
+            optimizer.optimize_portfolio(constraints={'max_weight': 1.5})
+
+    def test_edge_cases(self, sample_returns_data):
+        """Test edge cases."""
+        # Single asset
+        single_asset_data = {'AAPL': sample_returns_data['AAPL']}
+        single_optimizer = PortfolioOptimizer(single_asset_data)
+        result = single_optimizer.optimize_portfolio()
+        assert result['optimization_success']
+        assert np.isclose(list(result['weights'].values())[0], 1.0)
+        
+        # Empty returns data
+        with pytest.raises(ValueError, match="returns_data cannot be empty"):
+            PortfolioOptimizer({})
+            
+        # Invalid returns data
+        with pytest.raises(ValueError, match="No valid return data provided"):
+            PortfolioOptimizer({'AAPL': pd.DataFrame()})
+
+    def test_sector_constraints(self, optimizer):
+        """Test portfolio optimization with sector constraints."""
+        constraints = {
+            'sector_constraints': {
+                'Tech': (0.4, 0.6)  # Min 40%, max 60% in Tech
+            },
+            'sector_mapping': {
+                'Tech': ['AAPL', 'MSFT']
+            }
+        }
+        
+        result = optimizer.optimize_portfolio(constraints=constraints)
+        
+        # Check sector constraint satisfaction
+        tech_weight = sum(result['weights'][symbol] 
+                         for symbol in constraints['sector_mapping']['Tech'])
+        assert 0.4 <= tech_weight <= 0.6

@@ -14,10 +14,12 @@ from statsmodels.tsa.stattools import grangercausalitytests
 from scipy.stats import pearsonr
 import networkx as nx
 from hmmlearn import hmm
+from scipy.optimize import minimize
 from scipy.stats import norm
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 warnings.filterwarnings('ignore')
+
 
 @dataclass
 class TechnicalPattern:
@@ -670,60 +672,6 @@ class MarketVisualizer:
         )
         
         return fig    
-
-    def plot_efficient_frontier(self, ef_data: pd.DataFrame) -> go.Figure:
-        """
-        Plot the efficient frontier.
-        
-        Args:
-            ef_data: DataFrame with efficient frontier data
-            
-        Returns:
-            Plotly figure object
-        """
-        # Create scatter plot of efficient frontier
-        fig = go.Figure()
-        
-        # Add efficient frontier line
-        fig.add_trace(go.Scatter(
-            x=ef_data['volatility'],
-            y=ef_data['return'],
-            mode='lines+markers',
-            name='Efficient Frontier',
-            marker=dict(
-                color=ef_data['sharpe_ratio'],
-                colorscale='Viridis',
-                showscale=True,
-                colorbar=dict(title='Sharpe Ratio')
-            )
-        ))
-        
-        # Add individual assets
-        for symbol in self.returns.columns:
-            asset_vol = np.sqrt(self.returns[symbol].var() * 252)
-            asset_ret = self.returns[symbol].mean() * 252
-            
-            fig.add_trace(go.Scatter(
-                x=[asset_vol],
-                y=[asset_ret],
-                mode='markers+text',
-                name=symbol,
-                text=[symbol],
-                textposition="top center",
-                marker=dict(size=10)
-            ))
-            
-        # Update layout
-        fig.update_layout(
-            title='Efficient Frontier',
-            xaxis_title='Portfolio Volatility',
-            yaxis_title='Portfolio Return',
-            showlegend=True,
-            width=800,
-            height=600
-        )
-        
-        return fig
 
 class RegimeAnalyzer:
     """
@@ -1936,3 +1884,286 @@ class MarketAnalyzer:
         }
         
         return figures
+
+class PortfolioOptimizer:
+    """
+    Portfolio optimization using various strategies and constraints.
+    """
+    def __init__(self, returns_data: Dict[str, pd.DataFrame], risk_free_rate: float = 0.02):
+        """Initialize portfolio optimizer."""
+        if not returns_data:
+            raise ValueError("returns_data cannot be empty")
+            
+        self.returns = pd.DataFrame({
+            symbol: data['daily_return'] 
+            for symbol, data in returns_data.items()
+        })
+        
+        if self.returns.empty:
+            raise ValueError("No valid return data provided")
+            
+        self.risk_free_rate = risk_free_rate / 252  # Daily risk-free rate
+        
+    def calculate_portfolio_metrics(self, weights: np.ndarray) -> Dict[str, float]:
+        """
+        Calculate key portfolio metrics.
+        
+        Args:
+            weights: Array of portfolio weights
+            
+        Returns:
+            Dictionary of portfolio metrics
+        """
+        # Convert weights to array if needed
+        weights = np.array(weights)
+        
+        # Calculate portfolio metrics
+        portfolio_return = np.sum(self.returns.mean() * weights) * 252  # Annualized
+        portfolio_vol = np.sqrt(
+            np.dot(weights.T, np.dot(self.returns.cov() * 252, weights))
+        )
+        
+        # Sharpe Ratio
+        sharpe_ratio = (portfolio_return - self.risk_free_rate * 252) / portfolio_vol
+        
+        # Sortino Ratio (using only negative returns for denominator)
+        negative_returns = self.returns[self.returns < 0]
+        downside_vol = np.sqrt(
+            np.dot(weights.T, np.dot(negative_returns.cov() * 252, weights))
+        )
+        sortino_ratio = (portfolio_return - self.risk_free_rate * 252) / downside_vol
+        
+        return {
+            'return': portfolio_return,
+            'volatility': portfolio_vol,
+            'sharpe_ratio': sharpe_ratio,
+            'sortino_ratio': sortino_ratio
+        }
+    
+    def optimize_portfolio(self, 
+                        objective: str = 'sharpe_ratio',
+                        constraints: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Optimize portfolio based on specified objective and constraints."""
+        # Validate objective
+        valid_objectives = ['sharpe_ratio', 'min_volatility', 'max_return']
+        if objective not in valid_objectives:
+            raise ValueError(f"Invalid objective. Must be one of {valid_objectives}")
+            
+        # Validate constraints
+        if constraints:
+            if 'min_weight' in constraints and 'max_weight' in constraints:
+                if constraints['min_weight'] > constraints['max_weight']:
+                    raise ValueError("min_weight cannot be greater than max_weight")
+            if 'min_weight' in constraints and constraints['min_weight'] < 0:
+                raise ValueError("min_weight cannot be negative")
+            if 'max_weight' in constraints and constraints['max_weight'] > 1:
+                raise ValueError("max_weight cannot be greater than 1")
+            
+        n_assets = len(self.returns.columns)
+        
+        # Set default constraints if none provided
+        if constraints is None:
+            constraints = {
+                'min_weight': 0.0,  # No short-selling
+                'max_weight': 1.0,  # No leverage
+                'sector_constraints': None
+            }
+            
+        # Define optimization bounds
+        bounds = tuple(
+            (constraints.get('min_weight', 0), 
+             constraints.get('max_weight', 1)) 
+            for _ in range(n_assets)
+        )
+        
+        # Define constraint that weights sum to 1
+        constraints_list = [
+            {'type': 'eq', 'fun': lambda x: np.sum(x) - 1}
+        ]
+        
+        # Add sector constraints if provided
+        if constraints.get('sector_constraints'):
+            for sector, (min_weight, max_weight) in constraints['sector_constraints'].items():
+                sector_assets = constraints.get('sector_mapping', {}).get(sector, [])
+                sector_indices = [list(self.returns.columns).index(asset) for asset in sector_assets]
+                
+                if min_weight is not None:
+                    constraints_list.append({
+                        'type': 'ineq',
+                        'fun': lambda x, idx=sector_indices: np.sum(x[idx]) - min_weight
+                    })
+                if max_weight is not None:
+                    constraints_list.append({
+                        'type': 'ineq',
+                        'fun': lambda x, idx=sector_indices: max_weight - np.sum(x[idx])
+                    })
+        
+        # Define objective function
+        def objective_function(weights):
+            metrics = self.calculate_portfolio_metrics(weights)
+            
+            if objective == 'sharpe_ratio':
+                return -metrics['sharpe_ratio']  # Negative because we minimize
+            elif objective == 'min_volatility':
+                return metrics['volatility']
+            elif objective == 'max_return':
+                return -metrics['return']  # Negative because we minimize
+            
+        # Initial guess - equal weights
+        initial_weights = np.array([1/n_assets] * n_assets)
+        
+        # Optimize
+        result = minimize(
+            objective_function,
+            initial_weights,
+            method='SLSQP',
+            bounds=bounds,
+            constraints=constraints_list
+        )
+        
+        # Calculate metrics for optimal portfolio
+        optimal_weights = result.x
+        optimal_metrics = self.calculate_portfolio_metrics(optimal_weights)
+        
+        return {
+            'weights': dict(zip(self.returns.columns, optimal_weights)),
+            'metrics': optimal_metrics,
+            'optimization_success': result.success,
+            'optimization_message': result.message
+        }
+    
+    def calculate_efficient_frontier(self, 
+                                  n_points: int = 100,
+                                  constraints: Dict[str, Any] = None) -> pd.DataFrame:
+        """
+        Calculate the efficient frontier.
+        
+        Args:
+            n_points: Number of points on the efficient frontier
+            constraints: Portfolio constraints
+            
+        Returns:
+            DataFrame with efficient frontier points
+        """
+        target_returns = np.linspace(
+            self.returns.mean().min() * 252,
+            self.returns.mean().max() * 252,
+            n_points
+        )
+        
+        efficient_portfolios = []
+        
+        for target_return in target_returns:
+            if constraints is None:
+                constraints = {
+                    'min_weight': 0.0,
+                    'max_weight': 1.0
+                }
+                
+            # Add return target constraint
+            constraints_with_return = constraints.copy()
+            constraints_with_return['target_return'] = target_return
+            
+            # Optimize for minimum volatility at this return level
+            result = self.optimize_portfolio(
+                objective='min_volatility',
+                constraints=constraints_with_return
+            )
+            
+            if result['optimization_success']:
+                efficient_portfolios.append({
+                    'return': result['metrics']['return'],
+                    'volatility': result['metrics']['volatility'],
+                    'sharpe_ratio': result['metrics']['sharpe_ratio'],
+                    'weights': result['weights']
+                })
+                
+        return pd.DataFrame(efficient_portfolios)
+    
+    def plot_efficient_frontier(self, ef_data: pd.DataFrame) -> go.Figure:
+        """
+        Plot the efficient frontier.
+        
+        Args:
+            ef_data: DataFrame with efficient frontier data
+            
+        Returns:
+            Plotly figure object
+        """
+        # Create scatter plot of efficient frontier
+        fig = go.Figure()
+        
+        # Add efficient frontier line
+        fig.add_trace(go.Scatter(
+            x=ef_data['volatility'],
+            y=ef_data['return'],
+            mode='lines+markers',
+            name='Efficient Frontier',
+            marker=dict(
+                color=ef_data['sharpe_ratio'],
+                colorscale='Viridis',
+                showscale=True,
+                colorbar=dict(title='Sharpe Ratio')
+            )
+        ))
+        
+        # Add individual assets
+        for symbol in self.returns.columns:
+            asset_vol = np.sqrt(self.returns[symbol].var() * 252)
+            asset_ret = self.returns[symbol].mean() * 252
+            
+            fig.add_trace(go.Scatter(
+                x=[asset_vol],
+                y=[asset_ret],
+                mode='markers+text',
+                name=symbol,
+                text=[symbol],
+                textposition="top center",
+                marker=dict(size=10)
+            ))
+            
+        # Update layout
+        fig.update_layout(
+            title='Efficient Frontier',
+            xaxis_title='Portfolio Volatility',
+            yaxis_title='Portfolio Return',
+            showlegend=True,
+            width=800,
+            height=600
+        )
+        
+        return fig
+    
+    def plot_portfolio_weights(self, weights: Dict[str, float]) -> go.Figure:
+        """
+        Create visualization of portfolio weights.
+        
+        Args:
+            weights: Dictionary of asset weights
+            
+        Returns:
+            Plotly figure object
+        """
+        # Sort weights by value
+        sorted_weights = dict(sorted(weights.items(), key=lambda x: x[1], reverse=True))
+        
+        fig = go.Figure([
+            go.Bar(
+                x=list(sorted_weights.keys()),
+                y=list(sorted_weights.values()),
+                text=[f'{w:.1%}' for w in sorted_weights.values()],
+                textposition='auto'
+            )
+        ])
+        
+        fig.update_layout(
+            title='Optimal Portfolio Weights',
+            xaxis_title='Asset',
+            yaxis_title='Weight',
+            yaxis_tickformat=',.0%',
+            showlegend=False,
+            width=800,
+            height=400
+        )
+        
+        return fig
