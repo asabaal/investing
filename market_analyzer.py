@@ -935,6 +935,27 @@ class LeadLagAnalyzer:
                               max_lag: int = 5) -> Dict[str, float]:
         """
         Test for Granger causality between two symbols.
+
+        Imagine you're trying to figure out if rainy weather actually causes people to carry umbrellas. 
+        Common sense says yes, but how can we prove it statistically? 
+        This is where Granger Causality comes in.
+        Granger Causality, developed by Clive Granger, 
+        is a statistical concept that helps determine 
+        if one time series (let's call it X) 
+        helps predict another time series (Y). 
+        The key idea is that if X "Granger-causes" Y, 
+        then past values of X should contain information that helps predict Y, 
+        beyond what we can predict just using past values of Y alone.
+        Let's break this down with our rain and umbrellas example:
+
+        First, try to predict umbrella usage using only past umbrella usage data
+        Then, try to predict umbrella usage using both past umbrella usage AND past rainfall data
+        If adding rainfall data significantly improves our prediction of umbrella usage, we say that rainfall "Granger-causes" umbrella usage
+
+        Here's the catch though - Granger Causality isn't the same as real causation.
+        It really just tells us about predictive ability. 
+        For instance, dark clouds might Granger-cause rainfall, 
+        but they don't directly cause rain - they're both part of the same weather system.        
         
         Args:
             symbol1: First symbol
