@@ -10,6 +10,7 @@ from arch import arch_model
 import warnings
 from typing import Tuple, List, Dict, Optional, Union, Any
 from dataclasses import dataclass
+from enum import Enum
 from statsmodels.tsa.stattools import grangercausalitytests
 from scipy.stats import pearsonr
 import networkx as nx
@@ -18,6 +19,21 @@ from scipy.stats import norm
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 warnings.filterwarnings('ignore')
+
+class VolumePatternType(Enum):
+    DIVERGENCE = "DIVERGENCE"          # Volume actively moving opposite to price
+    NON_CONFIRMATION = "NON_CONFIRMATION"  # Volume flat while price moves
+    VOLUME_FORCE = "VOLUME_FORCE"      # Volume moving while price is flat
+    NEUTRAL = "NEUTRAL"                # Both price and volume are flat
+    CONCORDANT = "CONCORDANT"          # Price is moving in same direction as volume
+
+@dataclass
+class VolumePattern:
+    pattern_type: VolumePatternType
+    start_idx: int
+    end_idx: int
+    price_range: Tuple[float, float]
+    volume_range: Tuple[float, float]
 
 @dataclass
 class TechnicalPattern:
@@ -1309,55 +1325,135 @@ class PatternRecognition:
                 patterns.append(pattern)
         
         return patterns
-    
-    def detect_volume_price_divergence(self, window: int = 20, min_price_change: float = 0.02) -> List[TechnicalPattern]:
-        """
-        Detect meaningful divergences between price and volume trends.
         
-        What is Volume-Price Divergence?
-        - Occurs when price and volume trends move in opposite directions
-        - Only considered valid when there's a significant price trend
-        - Examples:
-        * Prices rising significantly but volume declining (weak uptrend)
-        * Prices falling significantly but volume declining (weak downtrend)
+    def detect_volume_price_patterns(self,
+                    min_pattern_length: int = 4,
+                    min_price_change: float = 0.002,
+                    min_volume_change: float = 0.01
+                    ) -> List[VolumePattern]:
+        """
+        Detect volume-price patterns in the data.
         
         Parameters:
         -----------
-        window : int, default=20
-            Window size for calculating trends
-        min_price_change : float, default=0.02
-            Minimum price change (as percentage) required to consider a valid trend
-            Example: 0.02 means 2% minimum price movement required
-
+        prices : np.ndarray
+            Array of price values
+        volumes : np.ndarray
+            Array of volume values
+        min_pattern_length : int
+            Minimum number of consecutive points required to form a pattern
+        min_price_change : float
+            Minimum relative change to consider price as moving
+        min_volume_change : float
+            Minimum relative change to consider volume as moving
+        
         Returns:
         --------
-        List[TechnicalPattern]
-            List of detected divergence patterns
+        List[VolumePattern]
+            Detected patterns that meet minimum length requirement
         """
-        patterns = []
-        
-        price_trend = self.prices.rolling(window).mean().pct_change()
-        volume_trend = self.volumes.rolling(window).mean().pct_change()
-        
-        for i in range(window, len(self.prices) - window):
-            start_price = self.prices.iloc[i - window]
-            end_price = self.prices.iloc[i]
-            price_change = (end_price - start_price) / start_price
+
+        def classify_points(prices: pd.Series, volumes: pd.Series, 
+                        min_price_change: float = 0.002,  # 0.2% minimum change for price
+                        min_volume_change: float = 0.01   # 1% minimum change for volume
+                        ) -> List[VolumePatternType]:
+            """
+            Classify each point based on price and volume movement.
             
-            # Only consider windows with significant price movement
-            if abs(price_change) >= min_price_change:
-                price_direction = np.sign(price_change)
-                volume_direction = np.sign(volume_trend.iloc[i])
+            Parameters:
+            -----------
+            prices : pd.Series
+                Series of price values
+            volumes : pd.Series
+                Series of volume values
+            min_price_change : float
+                Minimum relative change to consider price as moving
+            min_volume_change : float
+                Minimum relative change to consider volume as moving
+            
+            Returns:
+            --------
+            List[VolumePatternType]
+                Pattern classification for each point
+            """
+            # Calculate point-to-point percentage changes
+            price_changes = prices.pct_change()
+            volume_changes = volumes.pct_change()
+            
+            # First point has no change (classify as NEUTRAL)
+            point_patterns = [VolumePatternType.NEUTRAL]
+            
+            # Classify each subsequent point
+            for i in range(1, len(prices)):
+                price_moving = abs(price_changes[i]) >= min_price_change
+                volume_moving = abs(volume_changes[i]) >= min_volume_change
                 
-                if price_direction != volume_direction:
-                    pattern = TechnicalPattern(
-                        pattern_type="VOLUME_PRICE_DIVERGENCE",
-                        start_idx=i - window,
-                        end_idx=i,
-                        confidence=abs(price_change * volume_trend.iloc[i]),  # Higher confidence when both moves are larger
-                        price_range=(min(start_price, end_price), max(start_price, end_price))
-                    )
-                    patterns.append(pattern)
+                if not price_moving and not volume_moving:
+                    pattern = VolumePatternType.NEUTRAL
+                elif price_moving and not volume_moving:
+                    pattern = VolumePatternType.NON_CONFIRMATION
+                elif not price_moving and volume_moving:
+                    pattern = VolumePatternType.VOLUME_FORCE
+                else:  # Both moving
+                    if np.sign(price_changes[i]) != np.sign(volume_changes[i]):
+                        pattern = VolumePatternType.DIVERGENCE
+                    else:
+                        pattern = VolumePatternType.CONCORDANT
+                
+                point_patterns.append(pattern)
+            
+            return point_patterns
+
+
+        # First classify all points
+        point_patterns = classify_points(self.prices, self.volumes, 
+                                    min_price_change=min_price_change,
+                                    min_volume_change=min_volume_change)
+
+        patterns = []
+        current_pattern = None
+        start_idx = 0
+        current_length = 1
+        
+        # Scan through points to find consecutive patterns
+        for i in range(1, len(point_patterns)):
+            if point_patterns[i] == point_patterns[i-1] and point_patterns[i] != VolumePatternType.CONCORDANT:
+                # Continuing the current pattern
+                current_length += 1
+                current_pattern = point_patterns[i]
+            else:
+                # Pattern broken, check if previous pattern meets minimum length
+                if (current_pattern is not None and 
+                    current_pattern != VolumePatternType.CONCORDANT and 
+                    current_length >= min_pattern_length):
+                    patterns.append(VolumePattern(
+                        pattern_type=current_pattern,
+                        start_idx=start_idx,
+                        end_idx=i-1,
+                        price_range=(float(min(self.prices[start_idx:i])), 
+                                float(max(self.prices[start_idx:i]))),
+                        volume_range=(float(min(self.volumes[start_idx:i])), 
+                                    float(max(self.volumes[start_idx:i])))
+                    ))
+                
+                # Start new pattern
+                start_idx = i
+                current_length = 1
+                current_pattern = point_patterns[i] if point_patterns[i] != VolumePatternType.CONCORDANT else None
+        
+        # Check final pattern
+        if (current_pattern is not None and 
+            current_pattern != VolumePatternType.CONCORDANT and 
+            current_length >= min_pattern_length):
+            patterns.append(VolumePattern(
+                pattern_type=current_pattern,
+                start_idx=start_idx,
+                end_idx=len(point_patterns)-1,
+                price_range=(float(min(self.prices[start_idx:])), 
+                            float(max(self.prices[start_idx:]))),
+                volume_range=(float(min(self.volumes[start_idx:])), 
+                            float(max(self.volumes[start_idx:])))
+            ))
         
         return patterns
 
@@ -1711,7 +1807,7 @@ class MarketAnalyzer:
         patterns = {
             'head_and_shoulders': pattern_finder.detect_head_and_shoulders(),
             'double_bottom': pattern_finder.detect_double_bottom(),
-            'volume_price_divergence': pattern_finder.detect_volume_price_divergence()
+            'volume_price_divergence': pattern_finder.detect_volume_patterns()
         }
         
         return patterns
