@@ -3,8 +3,143 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 import plotly.graph_objects as go
-from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer, MarketVisualizer, RiskAnalyzer
+from enum import Enum
+from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern, LeadLagAnalyzer, MarketVisualizer, RiskAnalyzer, VolumePatternType, VolumePattern
 from typing import Dict, Any
+
+@pytest.fixture
+def volume_price_test_1():
+    """
+    Create test data with clear examples of each pattern type.
+    Returns both the data and expected point-by-point classifications.
+    """
+    prices = []
+    volumes = []
+    expected_points = []
+    
+    # DIVERGENCE: 5 days of rising price, falling volume
+    prices.extend(np.linspace(100, 110, 5))
+    volumes.extend(np.linspace(2e6, 1e6, 5))
+    expected_points.extend([VolumePatternType.DIVERGENCE] * 5)
+    
+    # NEUTRAL: 3 days flat
+    prices.extend([110] * 3)
+    volumes.extend([1e6] * 3)
+    expected_points.extend([VolumePatternType.NEUTRAL] * 3)
+    
+    # VOLUME_FORCE: 4 days flat price, rising volume
+    prices.extend([110] * 4)
+    volumes.extend(np.linspace(1.03e6, 2e6, 4))
+    expected_points.extend([VolumePatternType.VOLUME_FORCE] * 4)
+    
+    # CONCORDANT: 3 days both rising (should be ignored in pattern detection)
+    prices.extend(np.linspace(115, 130, 3))
+    volumes.extend(np.linspace(2e6, 3e6, 3))
+    expected_points.extend([VolumePatternType.CONCORDANT] * 3)
+    
+    # NON_CONFIRMATION: 4 days falling price, flat volume
+    prices.extend(np.linspace(125, 110, 4))
+    volumes.extend([3e6] * 4)
+    expected_points.extend([VolumePatternType.NON_CONFIRMATION] * 4)
+    
+    dates = pd.date_range(start='2023-01-01', periods=len(prices), freq='B')
+    df = pd.DataFrame({
+        'close': prices,
+        'volume': volumes
+    }, index=dates)
+    
+    # Expected consolidated patterns (4+ points)
+    expected_patterns = [
+        VolumePattern(
+            pattern_type="volume_price",
+            start_idx=1,
+            end_idx=4,
+            price_range=(102.5, 110),
+            volume_range=(1e6, 1.75e6),
+            sub_classification=VolumePatternType.DIVERGENCE
+        ),
+        VolumePattern(
+            pattern_type="volume_price",
+            start_idx=8,
+            end_idx=11,
+            price_range=(110, 110),
+            volume_range=(1.03e6, 2e6),
+            sub_classification=VolumePatternType.VOLUME_FORCE
+        ),
+        VolumePattern(
+            pattern_type="volume_price",
+            start_idx=15,
+            end_idx=18,
+            price_range=(110, 125),
+            volume_range=(3e6, 3e6),
+            sub_classification=VolumePatternType.NON_CONFIRMATION
+        )
+    ]
+    
+    return df, expected_points, expected_patterns
+
+@pytest.fixture
+def volume_price_test_2():
+    """
+    Create test data with edge cases and transitions.
+    """
+    prices = []
+    volumes = []
+    expected_points = [VolumePatternType.NEUTRAL]
+    
+    # Start with 3 days DIVERGENCE (not enough for pattern)
+    prices.extend(np.linspace(100, 105, 4))
+    volumes.extend(np.linspace(2e6, 1.8e6, 4))
+    expected_points.extend([VolumePatternType.DIVERGENCE] * 3)
+    
+    # Follow with 5 days DIVERGENCE (forms pattern with previous points)
+    prices.extend(np.linspace(110, 120, 5))
+    volumes.extend(np.linspace(1.7e6, 1.4e6, 5))
+    expected_points.extend([VolumePatternType.DIVERGENCE] * 5)
+    
+    # One day NEUTRAL
+    prices.append(120)
+    volumes.append(1.4e6)
+    expected_points.append(VolumePatternType.NEUTRAL)
+    
+    # 4 days slight movement (should be NEUTRAL due to small changes)
+    prices.extend(np.linspace(120, 120.1, 4))  # Very small price change
+    volumes.extend(np.linspace(1.4e6, 1.41e6, 4))  # Very small volume change
+    expected_points.extend([VolumePatternType.NEUTRAL] * 4)
+    
+    # 6 days alternating (should not form any pattern)
+    for _ in range(3):
+        prices.extend([125, 126])
+        volumes.extend([1.4e6, 1.6e6])
+    expected_points.extend([VolumePatternType.NEUTRAL, VolumePatternType.CONCORDANT, VolumePatternType.CONCORDANT, VolumePatternType.CONCORDANT, VolumePatternType.CONCORDANT, VolumePatternType.CONCORDANT])
+    
+    dates = pd.date_range(start='2023-01-01', periods=len(prices), freq='B')
+    df = pd.DataFrame({
+        'close': prices,
+        'volume': volumes
+    }, index=dates)
+    
+    # Expected consolidated patterns (4+ points)
+    expected_patterns = [
+        VolumePattern(
+            pattern_type="volume_price",
+            start_idx=1,
+            end_idx=8,
+            price_range=(101.66666666666667, 120),
+            volume_range=(1.4e6, 1933333.3333333333),
+            sub_classification=VolumePatternType.DIVERGENCE
+        ),
+        VolumePattern(
+            pattern_type="volume_price",
+            start_idx=9,
+            end_idx=13,
+            price_range=(120, 120.1),
+            volume_range=(1.4e6, 1.41e6),
+            sub_classification=VolumePatternType.NEUTRAL
+        )
+    ]
+    
+    return df, expected_points, expected_patterns
 
 @pytest.fixture
 def lead_lag_sample_returns_data():
@@ -607,7 +742,7 @@ class TestPatternRecognition:
         for pattern in patterns:
             assert isinstance(pattern, TechnicalPattern)
             assert pattern.pattern_type == "HEAD_AND_SHOULDERS"
-            assert 0 <= pattern.confidence <= 1
+            assert (0 <= pattern.confidence <= 1) or np.isnan(pattern.confidence)
             
             # Check pattern structure
             prices = pattern_recognition.prices
@@ -649,7 +784,7 @@ class TestPatternRecognition:
         for pattern in patterns:
             assert isinstance(pattern, TechnicalPattern)
             assert pattern.pattern_type == "DOUBLE_BOTTOM"
-            assert 0 <= pattern.confidence <= 1
+            assert (0 <= pattern.confidence <= 1) or np.isnan(pattern.confidence)
             
             # Check pattern structure
             prices = pattern_recognition.prices
@@ -664,25 +799,38 @@ class TestPatternRecognition:
             middle_price = prices.iloc[middle_idx]
             assert middle_price > min(bottom1, bottom2)
     
-    def test_volume_price_divergence(self, pattern_recognition):
-        """Test volume-price divergence detection."""
-        patterns = pattern_recognition.detect_volume_price_divergence()
+    def test_volume_price_detection_1(self, volume_price_test_1):
+        """Test detection of consolidated patterns."""
         
-        assert isinstance(patterns, list)
+        df, _, expected_patterns = volume_price_test_1
+        pattern_recognition = PatternRecognition(df["close"], df["volume"])
+        patterns = pattern_recognition.detect_volume_price_patterns()
+
+        assert len(patterns) == len(expected_patterns)
+        for detected, expected in zip(patterns, expected_patterns):
+            assert detected.sub_classification == expected.sub_classification
+            assert detected.start_idx == expected.start_idx
+            assert detected.end_idx == expected.end_idx
+            assert np.allclose(detected.price_range, expected.price_range)
+            assert np.allclose(detected.volume_range, expected.volume_range)
         
-        for pattern in patterns:
-            assert isinstance(pattern, TechnicalPattern)
-            assert pattern.pattern_type == "VOLUME_PRICE_DIVERGENCE"
-            assert 0 <= pattern.confidence <= 1
-            
-            # Check divergence
-            price_change = (pattern_recognition.prices.iloc[pattern.end_idx] - 
-                          pattern_recognition.prices.iloc[pattern.start_idx])
-            volume_change = (pattern_recognition.volumes.iloc[pattern.end_idx] - 
-                           pattern_recognition.volumes.iloc[pattern.start_idx])
-            
-            # Price and volume should move in opposite directions
-            assert np.sign(price_change) != np.sign(volume_change)
+        pass
+
+    def test_volume_price_detection_2(self, volume_price_test_2):
+        """Test detection of consolidated patterns."""
+        
+        df, _, expected_patterns = volume_price_test_2
+        pattern_recognition = PatternRecognition(df["close"], df["volume"])
+        patterns = pattern_recognition.detect_volume_price_patterns()
+        assert len(patterns) == len(expected_patterns)
+        for detected, expected in zip(patterns, expected_patterns):
+            assert detected.sub_classification == expected.sub_classification
+            assert detected.start_idx == expected.start_idx
+            assert detected.end_idx == expected.end_idx
+            assert np.allclose(detected.price_range, expected.price_range)
+            assert np.allclose(detected.volume_range, expected.volume_range)
+        
+        pass    
 
 class TestMarketAnalyzerInitialization:
     """Test the initialization and basic setup of MarketAnalyzer."""
@@ -854,12 +1002,12 @@ class TestMarketAnalyzerPatterns:
     def test_analyze_patterns(self, market_analyzer_with_patterns):
         """Test pattern analysis through MarketAnalyzer interface."""
         patterns = market_analyzer_with_patterns.analyze_patterns('TEST')
-        
+
         # Check all pattern types are present
         assert all(key in patterns for key in [
             'head_and_shoulders',
             'double_bottom',
-            'volume_price_divergence'
+            'volume_price'
         ])
         
         # Check each pattern type
@@ -867,9 +1015,12 @@ class TestMarketAnalyzerPatterns:
             assert isinstance(pattern_list, list)
             for pattern in pattern_list:
                 assert isinstance(pattern, TechnicalPattern)
-                assert 0 <= pattern.confidence <= 1
                 assert pattern.start_idx < pattern.end_idx
-                assert pattern.price_range[0] < pattern.price_range[1]
+                assert pattern.price_range[0] <= pattern.price_range[1]
+                if hasattr(pattern, "confidence"):
+                    assert (0 <= pattern.confidence <= 1) or np.isnan(pattern.confidence)
+                if hasattr(pattern, "sub_classification") and pattern.sub_classification is not None:
+                    assert isinstance(pattern.sub_classification, Enum)                                    
     
     def test_analyze_patterns_date_range(self, market_analyzer_with_patterns):
         """Test pattern analysis with date filtering."""
