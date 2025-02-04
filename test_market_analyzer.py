@@ -8,140 +8,6 @@ from market_analyzer import MarketAnalyzer, PatternRecognition, TechnicalPattern
 from typing import Dict, Any
 
 @pytest.fixture
-def volume_price_test_1():
-    """
-    Create test data with clear examples of each pattern type.
-    Returns both the data and expected point-by-point classifications.
-    """
-    prices = []
-    volumes = []
-    expected_points = []
-    
-    # DIVERGENCE: 5 days of rising price, falling volume
-    prices.extend(np.linspace(100, 110, 5))
-    volumes.extend(np.linspace(2e6, 1e6, 5))
-    expected_points.extend([VolumePatternType.DIVERGENCE] * 5)
-    
-    # NEUTRAL: 3 days flat
-    prices.extend([110] * 3)
-    volumes.extend([1e6] * 3)
-    expected_points.extend([VolumePatternType.NEUTRAL] * 3)
-    
-    # VOLUME_FORCE: 4 days flat price, rising volume
-    prices.extend([110] * 4)
-    volumes.extend(np.linspace(1.03e6, 2e6, 4))
-    expected_points.extend([VolumePatternType.VOLUME_FORCE] * 4)
-    
-    # CONCORDANT: 3 days both rising (should be ignored in pattern detection)
-    prices.extend(np.linspace(115, 130, 3))
-    volumes.extend(np.linspace(2e6, 3e6, 3))
-    expected_points.extend([VolumePatternType.CONCORDANT] * 3)
-    
-    # NON_CONFIRMATION: 4 days falling price, flat volume
-    prices.extend(np.linspace(125, 110, 4))
-    volumes.extend([3e6] * 4)
-    expected_points.extend([VolumePatternType.NON_CONFIRMATION] * 4)
-    
-    dates = pd.date_range(start='2023-01-01', periods=len(prices), freq='B')
-    df = pd.DataFrame({
-        'close': prices,
-        'volume': volumes
-    }, index=dates)
-    
-    # Expected consolidated patterns (4+ points)
-    expected_patterns = [
-        VolumePattern(
-            pattern_type="volume_price",
-            start_idx=1,
-            end_idx=4,
-            price_range=(102.5, 110),
-            volume_range=(1e6, 1.75e6),
-            sub_classification=VolumePatternType.DIVERGENCE
-        ),
-        VolumePattern(
-            pattern_type="volume_price",
-            start_idx=8,
-            end_idx=11,
-            price_range=(110, 110),
-            volume_range=(1.03e6, 2e6),
-            sub_classification=VolumePatternType.VOLUME_FORCE
-        ),
-        VolumePattern(
-            pattern_type="volume_price",
-            start_idx=15,
-            end_idx=18,
-            price_range=(110, 125),
-            volume_range=(3e6, 3e6),
-            sub_classification=VolumePatternType.NON_CONFIRMATION
-        )
-    ]
-    
-    return df, expected_points, expected_patterns
-
-@pytest.fixture
-def volume_price_test_2():
-    """
-    Create test data with edge cases and transitions.
-    """
-    prices = []
-    volumes = []
-    expected_points = [VolumePatternType.NEUTRAL]
-    
-    # Start with 3 days DIVERGENCE (not enough for pattern)
-    prices.extend(np.linspace(100, 105, 4))
-    volumes.extend(np.linspace(2e6, 1.8e6, 4))
-    expected_points.extend([VolumePatternType.DIVERGENCE] * 3)
-    
-    # Follow with 5 days DIVERGENCE (forms pattern with previous points)
-    prices.extend(np.linspace(110, 120, 5))
-    volumes.extend(np.linspace(1.7e6, 1.4e6, 5))
-    expected_points.extend([VolumePatternType.DIVERGENCE] * 5)
-    
-    # One day NEUTRAL
-    prices.append(120)
-    volumes.append(1.4e6)
-    expected_points.append(VolumePatternType.NEUTRAL)
-    
-    # 4 days slight movement (should be NEUTRAL due to small changes)
-    prices.extend(np.linspace(120, 120.1, 4))  # Very small price change
-    volumes.extend(np.linspace(1.4e6, 1.41e6, 4))  # Very small volume change
-    expected_points.extend([VolumePatternType.NEUTRAL] * 4)
-    
-    # 6 days alternating (should not form any pattern)
-    for _ in range(3):
-        prices.extend([125, 126])
-        volumes.extend([1.4e6, 1.6e6])
-    expected_points.extend([VolumePatternType.NEUTRAL, VolumePatternType.CONCORDANT, VolumePatternType.CONCORDANT, VolumePatternType.CONCORDANT, VolumePatternType.CONCORDANT, VolumePatternType.CONCORDANT])
-    
-    dates = pd.date_range(start='2023-01-01', periods=len(prices), freq='B')
-    df = pd.DataFrame({
-        'close': prices,
-        'volume': volumes
-    }, index=dates)
-    
-    # Expected consolidated patterns (4+ points)
-    expected_patterns = [
-        VolumePattern(
-            pattern_type="volume_price",
-            start_idx=1,
-            end_idx=8,
-            price_range=(101.66666666666667, 120),
-            volume_range=(1.4e6, 1933333.3333333333),
-            sub_classification=VolumePatternType.DIVERGENCE
-        ),
-        VolumePattern(
-            pattern_type="volume_price",
-            start_idx=9,
-            end_idx=13,
-            price_range=(120, 120.1),
-            volume_range=(1.4e6, 1.41e6),
-            sub_classification=VolumePatternType.NEUTRAL
-        )
-    ]
-    
-    return df, expected_points, expected_patterns
-
-@pytest.fixture
 def lead_lag_sample_returns_data():
     """Create sample return data for testing."""
     dates = pd.date_range(start='2020-01-01', end='2021-12-31', freq='D')
@@ -798,39 +664,128 @@ class TestPatternRecognition:
             middle_idx = (pattern.start_idx + pattern.end_idx) // 2
             middle_price = prices.iloc[middle_idx]
             assert middle_price > min(bottom1, bottom2)
-    
-    def test_volume_price_detection_1(self, volume_price_test_1):
-        """Test detection of consolidated patterns."""
-        
-        df, _, expected_patterns = volume_price_test_1
-        pattern_recognition = PatternRecognition(df["close"], df["volume"])
-        patterns = pattern_recognition.detect_volume_price_patterns()
 
-        assert len(patterns) == len(expected_patterns)
-        for detected, expected in zip(patterns, expected_patterns):
-            assert detected.sub_classification == expected.sub_classification
-            assert detected.start_idx == expected.start_idx
-            assert detected.end_idx == expected.end_idx
-            assert np.allclose(detected.price_range, expected.price_range)
-            assert np.allclose(detected.volume_range, expected.volume_range)
+    def test_neutral_pattern(self):
+        """Test detection of neutral pattern when changes are below thresholds"""
+        # Create enough data points to accommodate window size
+        prices = pd.Series([100.0 + i*0.1 for i in range(30)])  # 30 small increments
+        volumes = pd.Series([1000 + i for i in range(30)])      # 30 small increments
         
-        pass
+        detector_instance = PatternRecognition(prices, volumes)
+        results = detector_instance.detect_volume_price_patterns(
+            min_price_change=0.005,  # 0.5% threshold
+            min_volume_change=0.02   # 2% threshold
+        )
+        
+        assert len(results) > 0
+        assert 'NEUTRAL' in results.columns
+        assert results['NEUTRAL'].mean() > 0.5  # Relaxed threshold, most points should be neutral
 
-    def test_volume_price_detection_2(self, volume_price_test_2):
-        """Test detection of consolidated patterns."""
+    def test_divergence_pattern(self):
+        """Test detection of divergence pattern (price up, volume down)"""
+        # Create clear divergence pattern with enough points
+        prices = pd.Series([100.0 + i for i in range(30)])  # Steadily increasing
+        volumes = pd.Series([1000 - i*10 for i in range(30)])  # Steadily decreasing
         
-        df, _, expected_patterns = volume_price_test_2
-        pattern_recognition = PatternRecognition(df["close"], df["volume"])
-        patterns = pattern_recognition.detect_volume_price_patterns()
-        assert len(patterns) == len(expected_patterns)
-        for detected, expected in zip(patterns, expected_patterns):
-            assert detected.sub_classification == expected.sub_classification
-            assert detected.start_idx == expected.start_idx
-            assert detected.end_idx == expected.end_idx
-            assert np.allclose(detected.price_range, expected.price_range)
-            assert np.allclose(detected.volume_range, expected.volume_range)
+        detector_instance = PatternRecognition(prices, volumes)
+        results = detector_instance.detect_volume_price_patterns()
+                
+        assert len(results) > 0
+        assert 'DIVERGENCE' in results.columns
+        assert results['DIVERGENCE'].mean() > 0.4  # Significant divergence presence
+
+    def test_concordant_pattern(self):
+        """Test detection of concordant pattern (price and volume moving together)"""
+        # Create clear concordant pattern with enough points
+        base_series = [i for i in range(30)]
+        prices = pd.Series([100.0 + i for i in base_series])
+        volumes = pd.Series([1000 * (1 + i*1.03) for i in base_series])
         
-        pass    
+        detector_instance = PatternRecognition(prices, volumes)
+        results = detector_instance.detect_volume_price_patterns()
+
+        assert len(results) > 0
+        assert 'CONCORDANT' in results.columns
+        assert results['CONCORDANT'].mean() > 0.4
+
+    def test_mixed_patterns(self):
+        """Test behavior with mixed patterns in the window"""
+        # Create a longer sequence with mixed behavior
+        prices = []
+        volumes = []
+        for i in range(30):
+            if i % 3 == 0:
+                prices.append(100 + i)
+                volumes.append(1000 - i*10)  # Divergence
+            elif i % 3 == 1:
+                prices.append(100 + i)
+                volumes.append(1000 + i*10)  # Concordant
+            else:
+                prices.append(100 + 0.1)
+                volumes.append(1000 + 1)     # Neutral
+        
+        detector_instance = PatternRecognition(pd.Series(prices), pd.Series(volumes))
+        results = detector_instance.detect_volume_price_patterns()
+        
+        assert len(results) > 0
+        # We should see a mix of patterns - no single pattern should dominate completely
+        for pattern in ['DIVERGENCE', 'CONCORDANT', 'NEUTRAL']:
+            assert results[pattern].mean() < 0.7
+
+    def test_window_size(self):
+        """Test that window size affects the distribution calculation"""
+        # Create longer series
+        prices = pd.Series(np.linspace(100, 110, 50))
+        volumes = pd.Series(np.linspace(1000, 1200, 50))
+        
+        detector_small = PatternRecognition(prices, volumes)
+        detector_large = PatternRecognition(prices, volumes)
+        
+        results_small = detector_small.detect_volume_price_patterns(window_size=5)
+        results_large = detector_large.detect_volume_price_patterns(window_size=20)
+        
+        assert len(results_small) == len(results_large)
+        # Small window should be more sensitive to local changes
+        assert results_small['NEUTRAL'].std() >= results_large['NEUTRAL'].std()
+
+    def test_minimum_changes(self):
+        """Test sensitivity to minimum change thresholds"""
+        # Create longer series with small changes
+        prices = pd.Series([100.0 + i*0.1 for i in range(30)])
+        volumes = pd.Series([1000 * (1 + 1.03*i) for i in range(30)])
+        
+        detector_instance = PatternRecognition(prices, volumes)
+        
+        results_sensitive = detector_instance.detect_volume_price_patterns(
+            min_price_change=0.001,
+            min_volume_change=0.02
+        )
+        
+        results_insensitive = detector_instance.detect_volume_price_patterns(
+            min_price_change=0.001,
+            min_volume_change=0.05
+        )
+        
+        assert 'NEUTRAL' in results_sensitive.columns
+        assert results_sensitive['NEUTRAL'].mean() < results_insensitive['NEUTRAL'].mean()
+
+    def test_primary_pattern_threshold(self):
+        """Test that primary pattern threshold works correctly"""
+        # Create clear pattern with enough points
+        prices = pd.Series([100.0 + i for i in range(30)])
+        volumes = pd.Series([1000 + i*10 for i in range(30)])
+        
+        detector_loose = PatternRecognition(prices, volumes)
+        detector_strict = PatternRecognition(prices, volumes)
+        
+        results_loose = detector_loose.detect_volume_price_patterns(min_primary_pct=0.6)
+        results_strict = detector_strict.detect_volume_price_patterns(min_primary_pct=0.9)
+        
+        assert 'pattern' in results_loose.columns
+        # Strict threshold should have more null patterns
+        assert (results_strict['pattern'].isna().sum() >= 
+                results_loose['pattern'].isna().sum())
+
 
 class TestMarketAnalyzerInitialization:
     """Test the initialization and basic setup of MarketAnalyzer."""

@@ -1329,63 +1329,53 @@ class PatternRecognition:
         return patterns
         
     def detect_volume_price_patterns(self,
-                    min_pattern_length: int = 4,
-                    min_price_change: float = 0.002,
-                    min_volume_change: float = 0.01
-                    ) -> List[VolumePattern]:
+                                min_price_change: float = 0.002,
+                                min_volume_change: float = 0.01,
+                                window_size: int = 20,
+                                min_primary_pct: float = 0.9
+                                ) -> pd.DataFrame:
         """
-        Detect volume-price patterns in the data.
+        Detect volume-price patterns in the data using a growing window approach.
+        
+        For the first window_size points, uses all available points up to the current point.
+        After that, uses a sliding window of window_size points.
         
         Parameters:
         -----------
-        prices : np.ndarray
-            Array of price values
-        volumes : np.ndarray
-            Array of volume values
         min_pattern_length : int
             Minimum number of consecutive points required to form a pattern
         min_price_change : float
             Minimum relative change to consider price as moving
         min_volume_change : float
             Minimum relative change to consider volume as moving
+        window_size: int
+            Size of rolling window for pattern identification
+        min_primary_pct: float
+            Minimum percentage of primary pattern within window to be classified as a pattern.
         
         Returns:
         --------
-        List[VolumePattern]
-            Detected patterns that meet minimum length requirement
+        pd.DataFrame with columns:
+            - timestamp_idx: index of the time point
+            - primary_pattern: dominant pattern type if above threshold, else None
+            - primary_percentage: percentage of dominant pattern
+            - pattern: classification if primary_percentage > threshold, else None
+            - DIVERGENCE: percentage of window meeting DIVERGENCE pattern
+            - NON_CONFIRMATION: percentage of window meeting NON_CONFIRMATION pattern
+            - VOLUME_FORCE: percentage of window meeting VOLUME_FORCE pattern
+            - NEUTRAL: percentage of window meeting NEUTRAL pattern
+            - CONCORDANT: percentage of window meeting CONCORDANT pattern
         """
-
         def classify_points(prices: pd.Series, volumes: pd.Series, 
-                        min_price_change: float = 0.002,  # 0.2% minimum change for price
-                        min_volume_change: float = 0.01   # 1% minimum change for volume
+                        min_price_change: float = 0.002,
+                        min_volume_change: float = 0.01
                         ) -> List[VolumePatternType]:
-            """
-            Classify each point based on price and volume movement.
-            
-            Parameters:
-            -----------
-            prices : pd.Series
-                Series of price values
-            volumes : pd.Series
-                Series of volume values
-            min_price_change : float
-                Minimum relative change to consider price as moving
-            min_volume_change : float
-                Minimum relative change to consider volume as moving
-            
-            Returns:
-            --------
-            List[VolumePatternType]
-                Pattern classification for each point
-            """
-            # Calculate point-to-point percentage changes
+            # First classify all points
             price_changes = prices.pct_change()
             volume_changes = volumes.pct_change()
             
-            # First point has no change (classify as NEUTRAL)
-            point_patterns = [VolumePatternType.NEUTRAL]
+            point_patterns = [VolumePatternType.NEUTRAL]  # First point has no change
             
-            # Classify each subsequent point
             for i in range(1, len(prices)):
                 price_moving = abs(price_changes[i]) >= min_price_change
                 volume_moving = abs(volume_changes[i]) >= min_volume_change
@@ -1405,61 +1395,47 @@ class PatternRecognition:
                 point_patterns.append(pattern)
             
             return point_patterns
-
-
+        
         # First classify all points
         point_patterns = classify_points(self.prices, self.volumes, 
                                     min_price_change=min_price_change,
                                     min_volume_change=min_volume_change)
-
-        patterns = []
-        current_pattern = None
-        start_idx = 0
-        current_length = 1
         
-        # Scan through points to find consecutive patterns
-        for i in range(1, len(point_patterns)):
-            if point_patterns[i] == point_patterns[i-1] and point_patterns[i] != VolumePatternType.CONCORDANT:
-                # Continuing the current pattern
-                current_length += 1
-                current_pattern = point_patterns[i]
+        # Initialize results storage
+        results = []
+        
+        # Process points with growing/sliding window
+        for i in range(len(point_patterns)):
+            # For early points, use growing window
+            if i < window_size:
+                window = point_patterns[:i+1]
             else:
-                # Pattern broken, check if previous pattern meets minimum length
-                if (current_pattern is not None and 
-                    current_pattern != VolumePatternType.CONCORDANT and 
-                    current_length >= min_pattern_length):
-                    patterns.append(VolumePattern(
-                        pattern_type="volume_price",
-                        start_idx=start_idx,
-                        end_idx=i-1,
-                        price_range=(float(min(self.prices[start_idx:i])), 
-                                float(max(self.prices[start_idx:i]))),
-                        volume_range=(float(min(self.volumes[start_idx:i])), 
-                                    float(max(self.volumes[start_idx:i]))),
-                        sub_classification=current_pattern
-                    ))
-                
-                # Start new pattern
-                start_idx = i
-                current_length = 1
-                current_pattern = point_patterns[i] if point_patterns[i] != VolumePatternType.CONCORDANT else None
+                # For later points, use sliding window
+                window = point_patterns[i - window_size + 1:i + 1]
+            
+            # Calculate pattern distribution
+            distribution = {
+                pattern_type.value: window.count(pattern_type) / len(window)
+                for pattern_type in VolumePatternType
+            }
+            
+            # Find primary pattern
+            primary_pattern = max(distribution.items(), key=lambda x: x[1])
+            
+            # Create result entry
+            result = {
+                'timestamp_idx': i,
+                'primary_pattern': primary_pattern[0],
+                'primary_percentage': primary_pattern[1],
+                'pattern': primary_pattern[0] if primary_pattern[1] >= min_primary_pct else None
+            }
+            result.update(distribution)
+            results.append(result)
         
-        # Check final pattern
-        if (current_pattern is not None and 
-            current_pattern != VolumePatternType.CONCORDANT and 
-            current_length >= min_pattern_length):
-            patterns.append(VolumePattern(
-                pattern_type="volume_price",
-                start_idx=start_idx,
-                end_idx=len(point_patterns)-1,
-                price_range=(float(min(self.prices[start_idx:])), 
-                            float(max(self.prices[start_idx:]))),
-                volume_range=(float(min(self.volumes[start_idx:])), 
-                            float(max(self.volumes[start_idx:]))),
-                sub_classification=current_pattern
-            ))
+        # Convert to DataFrame
+        df = pd.DataFrame(results)
         
-        return patterns
+        return df
 
 class MarketAnalyzer:
     """
