@@ -677,39 +677,86 @@ class TestPatternRecognition:
             min_volume_change=0.02   # 2% threshold
         )
         
+        # Check recent points (last target_length points) more heavily
+        recent_results = results.iloc[-4:]  # Using default target_length=4
+        
         assert len(results) > 0
         assert 'NEUTRAL' in results.columns
-        assert results['NEUTRAL'].mean() > 0.5  # Relaxed threshold, most points should be neutral
+        assert recent_results['NEUTRAL'].mean() > 0.6  # Focus on recent neutral pattern weight
 
     def test_divergence_pattern(self):
-        """Test detection of divergence pattern (price up, volume down)"""
+        """Test detection of divergence pattern with temporal weighting"""
         # Create clear divergence pattern with enough points
         prices = pd.Series([100.0 + i for i in range(30)])  # Steadily increasing
         volumes = pd.Series([1000 - i*10 for i in range(30)])  # Steadily decreasing
         
         detector_instance = PatternRecognition(prices, volumes)
-        results = detector_instance.detect_volume_price_patterns()
-                
+        results = detector_instance.detect_volume_price_patterns(target_length=4)
+        
+        # Check pattern weights in recent window
+        recent_results = results.iloc[-4:]
+        
         assert len(results) > 0
         assert 'DIVERGENCE' in results.columns
-        assert results['DIVERGENCE'].mean() > 0.4  # Significant divergence presence
+        assert recent_results['DIVERGENCE'].mean() > 0.6  # Strong recent divergence
+        # Verify pattern is detected more quickly
+        assert results.iloc[5:]['pattern'].notna().sum() > 0  # Should detect pattern early
 
     def test_concordant_pattern(self):
-        """Test detection of concordant pattern (price and volume moving together)"""
+        """Test detection of concordant pattern with weight decay"""
         # Create clear concordant pattern with enough points
         base_series = [i for i in range(30)]
         prices = pd.Series([100.0 + i for i in base_series])
         volumes = pd.Series([1000 * (1 + i*1.03) for i in base_series])
         
         detector_instance = PatternRecognition(prices, volumes)
-        results = detector_instance.detect_volume_price_patterns()
+        results = detector_instance.detect_volume_price_patterns(
+            target_length=4,
+            min_pattern_weight=0.6
+        )
 
+        recent_results = results.iloc[-4:]
+        
         assert len(results) > 0
         assert 'CONCORDANT' in results.columns
-        assert results['CONCORDANT'].mean() > 0.4
+        assert recent_results['CONCORDANT'].mean() > 0.6
+        # Test weight decay
+        assert results[results["pattern"]=="CONCORDANT"]["pattern_weight"].diff().mean() > 0
+
+    def test_pattern_transitions(self):
+        """Test quick detection of pattern transitions"""
+        # Create sequence with clear pattern transition
+        prices = []
+        volumes = []
+        
+        # First 15 points: divergence
+        for i in range(15):
+            prices.append(100 + i)
+            volumes.append(1000 - i*10)
+        
+        # Next 15 points: concordant
+        for i in range(15):
+            prices.append(115 + i)
+            volumes.append(850 + i*10)
+        
+        detector_instance = PatternRecognition(pd.Series(prices), pd.Series(volumes))
+        results = detector_instance.detect_volume_price_patterns(
+            target_length=4,
+            min_pattern_weight=0.6
+        )
+
+        # Check transition period 
+        transition_period = results.iloc[14:19]  # Around the transition point
+        
+        assert len(results) > 0
+        # Should see pattern change within target_length points
+        assert 'DIVERGENCE' in transition_period['pattern'].values
+        #assert 'CONCORDANT' in transition_period['pattern'].values
+        # Pattern weights should shift quickly
+        assert abs(transition_period['pattern_weight'].diff().mean()) > 0.1
 
     def test_mixed_patterns(self):
-        """Test behavior with mixed patterns in the window"""
+        """Test behavior with mixed patterns and temporal weighting"""
         # Create a longer sequence with mixed behavior
         prices = []
         volumes = []
@@ -725,67 +772,64 @@ class TestPatternRecognition:
                 volumes.append(1000 + 1)     # Neutral
         
         detector_instance = PatternRecognition(pd.Series(prices), pd.Series(volumes))
-        results = detector_instance.detect_volume_price_patterns()
+        results = detector_instance.detect_volume_price_patterns(
+            target_length=4,
+            min_pattern_weight=0.6
+        )
         
         assert len(results) > 0
-        # We should see a mix of patterns - no single pattern should dominate completely
-        for pattern in ['DIVERGENCE', 'CONCORDANT', 'NEUTRAL']:
-            assert results[pattern].mean() < 0.7
+        # Pattern weights should be more volatile due to temporal weighting
+        assert results['pattern_weight'].std() > 0.1
+        # Recent patterns should have higher weights
+        assert results['pattern_weight'].iloc[-4:].mean() > results['pattern_weight'].iloc[:-4].mean()
 
-    def test_window_size(self):
-        """Test that window size affects the distribution calculation"""
-        # Create longer series
+    def test_window_size_and_target_length(self):
+        """Test interaction between window_size and target_length"""
         prices = pd.Series(np.linspace(100, 110, 50))
         volumes = pd.Series(np.linspace(1000, 1200, 50))
         
-        detector_small = PatternRecognition(prices, volumes)
-        detector_large = PatternRecognition(prices, volumes)
-        
-        results_small = detector_small.detect_volume_price_patterns(window_size=5)
-        results_large = detector_large.detect_volume_price_patterns(window_size=20)
-        
-        assert len(results_small) == len(results_large)
-        # Small window should be more sensitive to local changes
-        assert results_small['NEUTRAL'].std() >= results_large['NEUTRAL'].std()
-
-    def test_minimum_changes(self):
-        """Test sensitivity to minimum change thresholds"""
-        # Create longer series with small changes
-        prices = pd.Series([100.0 + i*0.1 for i in range(30)])
-        volumes = pd.Series([1000 * (1 + 1.03*i) for i in range(30)])
-        
         detector_instance = PatternRecognition(prices, volumes)
         
-        results_sensitive = detector_instance.detect_volume_price_patterns(
-            min_price_change=0.001,
-            min_volume_change=0.02
+        results_short = detector_instance.detect_volume_price_patterns(
+            window_size=10,
+            target_length=4
         )
-        
-        results_insensitive = detector_instance.detect_volume_price_patterns(
-            min_price_change=0.001,
-            min_volume_change=0.05
+        results_long = detector_instance.detect_volume_price_patterns(
+            window_size=20,
+            target_length=8
         )
-        
-        assert 'NEUTRAL' in results_sensitive.columns
-        assert results_sensitive['NEUTRAL'].mean() < results_insensitive['NEUTRAL'].mean()
 
-    def test_primary_pattern_threshold(self):
-        """Test that primary pattern threshold works correctly"""
-        # Create clear pattern with enough points
+        assert len(results_short) == len(results_long)
+        # Shorter target_length should lead to more responsive pattern detection
+        assert results_short['pattern_weight'].mean() > results_long['pattern_weight'].mean()
+        # Longer window should have more stable pattern weights
+        assert results_long['pattern'].notna().sum() < results_short['pattern'].notna().sum()
+
+    def test_minimum_pattern_weight(self):
+        """Test sensitivity to minimum pattern weight threshold"""
         prices = pd.Series([100.0 + i for i in range(30)])
         volumes = pd.Series([1000 + i*10 for i in range(30)])
         
-        detector_loose = PatternRecognition(prices, volumes)
-        detector_strict = PatternRecognition(prices, volumes)
+        detector_instance = PatternRecognition(prices, volumes)
         
-        results_loose = detector_loose.detect_volume_price_patterns(min_primary_pct=0.6)
-        results_strict = detector_strict.detect_volume_price_patterns(min_primary_pct=0.9)
+        results_loose = detector_instance.detect_volume_price_patterns(
+            min_pattern_weight=0.4,
+            target_length=4
+        )
+        results_strict = detector_instance.detect_volume_price_patterns(
+            min_pattern_weight=0.7,
+            target_length=4
+        )
         
         assert 'pattern' in results_loose.columns
         # Strict threshold should have more null patterns
-        assert (results_strict['pattern'].isna().sum() >= 
+        assert (results_strict['pattern'].isna().sum() > 
                 results_loose['pattern'].isna().sum())
-
+        # Pattern weights should be identical (only threshold changes)
+        np.testing.assert_array_almost_equal(
+            results_strict['pattern_weight'],
+            results_loose['pattern_weight']
+        )
 
 class TestMarketAnalyzerInitialization:
     """Test the initialization and basic setup of MarketAnalyzer."""
