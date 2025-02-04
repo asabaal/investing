@@ -20,21 +20,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 warnings.filterwarnings('ignore')
 
-class VolumePatternType(Enum):
-    DIVERGENCE = "DIVERGENCE"          # Volume actively moving opposite to price
-    NON_CONFIRMATION = "NON_CONFIRMATION"  # Volume flat while price moves
-    VOLUME_FORCE = "VOLUME_FORCE"      # Volume moving while price is flat
-    NEUTRAL = "NEUTRAL"                # Both price and volume are flat
-    CONCORDANT = "CONCORDANT"          # Price is moving in same direction as volume
-
-@dataclass
-class VolumePattern:
-    pattern_type: VolumePatternType
-    start_idx: int
-    end_idx: int
-    price_range: Tuple[float, float]
-    volume_range: Tuple[float, float]
-
 @dataclass
 class TechnicalPattern:
     """
@@ -79,10 +64,13 @@ class TechnicalPattern:
     pattern_type: str
     start_idx: int
     end_idx: int
-    confidence: float
     price_range: Tuple[float, float]
     failure_reasons: Optional[Dict[str, str]] = None
     specific_points: Optional[dict] = None
+    volume_range: Optional[Tuple[float, float]] = None
+    sub_classification: Optional[Enum] = None
+    confidence: Optional[float] = np.nan
+
 
     def __post_init__(self):
         # Convert numpy integers to Python integers
@@ -107,6 +95,20 @@ class PatternValidation:
     confidence: float
     failure_reasons: Dict[str, str]  # Key is check name, value is failure description
     price_range: Optional[Tuple[float, float]] = None
+
+
+class VolumePatternType(Enum):
+    DIVERGENCE = "DIVERGENCE"          # Volume actively moving opposite to price
+    NON_CONFIRMATION = "NON_CONFIRMATION"  # Volume flat while price moves
+    VOLUME_FORCE = "VOLUME_FORCE"      # Volume moving while price is flat
+    NEUTRAL = "NEUTRAL"                # Both price and volume are flat
+    CONCORDANT = "CONCORDANT"          # Price is moving in same direction as volume
+
+@dataclass
+class VolumePattern(TechnicalPattern):
+    pattern_type: VolumePatternType
+    price_range: Tuple[float, float]
+    volume_range: Tuple[float, float]
 
 def validate_head_and_shoulders(
     prices: np.ndarray,
@@ -1260,7 +1262,7 @@ class PatternRecognition:
             
             validation = validate_head_and_shoulders(self.prices, points)
             if validation.is_valid:
-                patterns.append(TechnicalPattern("HEAD_AND_SHOULDERS", highs[i], highs[i+2], 0.8, (min(lows[i], lows[i+1]), highs[i+1])))
+                patterns.append(TechnicalPattern("HEAD_AND_SHOULDERS", highs[i], highs[i+2], price_range=(min(lows[i], lows[i+1]), highs[i+1])))
 
         return patterns
     
@@ -1427,13 +1429,14 @@ class PatternRecognition:
                     current_pattern != VolumePatternType.CONCORDANT and 
                     current_length >= min_pattern_length):
                     patterns.append(VolumePattern(
-                        pattern_type=current_pattern,
+                        pattern_type="volume_price",
                         start_idx=start_idx,
                         end_idx=i-1,
                         price_range=(float(min(self.prices[start_idx:i])), 
                                 float(max(self.prices[start_idx:i]))),
                         volume_range=(float(min(self.volumes[start_idx:i])), 
-                                    float(max(self.volumes[start_idx:i])))
+                                    float(max(self.volumes[start_idx:i]))),
+                        sub_classification=current_pattern
                     ))
                 
                 # Start new pattern
@@ -1446,13 +1449,14 @@ class PatternRecognition:
             current_pattern != VolumePatternType.CONCORDANT and 
             current_length >= min_pattern_length):
             patterns.append(VolumePattern(
-                pattern_type=current_pattern,
+                pattern_type="volume_price",
                 start_idx=start_idx,
                 end_idx=len(point_patterns)-1,
                 price_range=(float(min(self.prices[start_idx:])), 
                             float(max(self.prices[start_idx:]))),
                 volume_range=(float(min(self.volumes[start_idx:])), 
-                            float(max(self.volumes[start_idx:])))
+                            float(max(self.volumes[start_idx:]))),
+                sub_classification=current_pattern
             ))
         
         return patterns
@@ -1750,7 +1754,7 @@ class MarketAnalyzer:
         --------
         Dict[str, List[TechnicalPattern]]
             Dictionary where:
-            - Keys: Pattern types ('head_and_shoulders', 'double_bottom', 'volume_price_divergence')
+            - Keys: Pattern types ('head_and_shoulders', 'double_bottom', 'volume_price')
             - Values: Lists of TechnicalPattern objects for each type found
 
         Example Usage:
@@ -1807,7 +1811,7 @@ class MarketAnalyzer:
         patterns = {
             'head_and_shoulders': pattern_finder.detect_head_and_shoulders(),
             'double_bottom': pattern_finder.detect_double_bottom(),
-            'volume_price_divergence': pattern_finder.detect_volume_patterns()
+            'volume_price': pattern_finder.detect_volume_price_patterns()
         }
         
         return patterns
