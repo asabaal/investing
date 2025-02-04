@@ -1332,39 +1332,37 @@ class PatternRecognition:
                                 min_price_change: float = 0.002,
                                 min_volume_change: float = 0.01,
                                 window_size: int = 20,
-                                min_primary_pct: float = 0.9
+                                target_length: int = 4,
+                                min_pattern_weight: float = 0.6
                                 ) -> pd.DataFrame:
         """
-        Detect volume-price patterns in the data using a growing window approach.
-        
-        For the first window_size points, uses all available points up to the current point.
-        After that, uses a sliding window of window_size points.
+        Detect volume-price patterns using weighted pattern detection with temporal decay.
         
         Parameters:
         -----------
-        min_pattern_length : int
-            Minimum number of consecutive points required to form a pattern
         min_price_change : float
             Minimum relative change to consider price as moving
         min_volume_change : float
             Minimum relative change to consider volume as moving
         window_size: int
             Size of rolling window for pattern identification
-        min_primary_pct: float
-            Minimum percentage of primary pattern within window to be classified as a pattern.
+        target_length: int
+            Target number of points for pattern confirmation (used for decay rate)
+        min_pattern_weight: float
+            Minimum weighted score required to confirm a pattern
         
         Returns:
         --------
         pd.DataFrame with columns:
             - timestamp_idx: index of the time point
             - primary_pattern: dominant pattern type if above threshold, else None
-            - primary_percentage: percentage of dominant pattern
-            - pattern: classification if primary_percentage > threshold, else None
-            - DIVERGENCE: percentage of window meeting DIVERGENCE pattern
-            - NON_CONFIRMATION: percentage of window meeting NON_CONFIRMATION pattern
-            - VOLUME_FORCE: percentage of window meeting VOLUME_FORCE pattern
-            - NEUTRAL: percentage of window meeting NEUTRAL pattern
-            - CONCORDANT: percentage of window meeting CONCORDANT pattern
+            - pattern_weight: weighted score of dominant pattern
+            - pattern: classification if pattern_weight > threshold, else None
+            - DIVERGENCE: weighted score for DIVERGENCE pattern
+            - NON_CONFIRMATION: weighted score for NON_CONFIRMATION pattern
+            - VOLUME_FORCE: weighted score for VOLUME_FORCE pattern
+            - NEUTRAL: weighted score for NEUTRAL pattern
+            - CONCORDANT: weighted score for CONCORDANT pattern
         """
         def classify_points(prices: pd.Series, volumes: pd.Series, 
                         min_price_change: float = 0.002,
@@ -1396,6 +1394,13 @@ class PatternRecognition:
             
             return point_patterns
         
+        # Calculate decay rate based on target length
+        decay_rate = np.log(2) / target_length  # Half-life at target length
+        
+        # Generate weights for the window
+        weights = np.exp(-decay_rate * np.arange(window_size))
+        weights = np.flip(weights / weights.sum())  # Normalize weights
+        
         # First classify all points
         point_patterns = classify_points(self.prices, self.volumes, 
                                     min_price_change=min_price_change,
@@ -1403,21 +1408,27 @@ class PatternRecognition:
         
         # Initialize results storage
         results = []
-        
+
         # Process points with growing/sliding window
         for i in range(len(point_patterns)):
-            # For early points, use growing window
+            # For early points, use growing window with adjusted weights
             if i < window_size:
                 window = point_patterns[:i+1]
+                current_weights = weights[-(i+1):]
+                current_weights = current_weights / current_weights.sum()
             else:
                 # For later points, use sliding window
                 window = point_patterns[i - window_size + 1:i + 1]
+                current_weights = weights
             
-            # Calculate pattern distribution
-            distribution = {
-                pattern_type.value: window.count(pattern_type) / len(window)
-                for pattern_type in VolumePatternType
-            }
+            # Calculate weighted pattern distribution
+            distribution = {}
+            for pattern_type in VolumePatternType:
+                # Create mask for this pattern type
+                pattern_mask = [1 if p == pattern_type else 0 for p in window]
+                # Calculate weighted sum
+                weighted_sum = np.sum(pattern_mask * current_weights)
+                distribution[pattern_type.value] = weighted_sum
             
             # Find primary pattern
             primary_pattern = max(distribution.items(), key=lambda x: x[1])
@@ -1426,8 +1437,8 @@ class PatternRecognition:
             result = {
                 'timestamp_idx': i,
                 'primary_pattern': primary_pattern[0],
-                'primary_percentage': primary_pattern[1],
-                'pattern': primary_pattern[0] if primary_pattern[1] >= min_primary_pct else None
+                'pattern_weight': primary_pattern[1],
+                'pattern': primary_pattern[0] if primary_pattern[1] >= min_pattern_weight else None
             }
             result.update(distribution)
             results.append(result)
