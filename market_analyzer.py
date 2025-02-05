@@ -950,7 +950,7 @@ class LeadLagAnalyzer:
     def test_granger_causality(self, 
                               symbols: List[str],
                               max_lag: int = 5,
-                              significance_level=0.05) -> Dict[str, float]:
+                              significance_level=0.05) -> pd.DataFrame:
         """
         Test for Granger causality between two symbols.
 
