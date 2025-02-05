@@ -948,9 +948,9 @@ class LeadLagAnalyzer:
         return pd.DataFrame(results)
     
     def test_granger_causality(self, 
-                              symbol1: str, 
-                              symbol2: str, 
-                              max_lag: int = 5) -> Dict[str, float]:
+                              symbols: List[str],
+                              max_lag: int = 5,
+                              significance_level=0.05) -> pd.DataFrame:
         """
         Test for Granger causality between two symbols.
 
@@ -976,40 +976,110 @@ class LeadLagAnalyzer:
         but they don't directly cause rain - they're both part of the same weather system.        
         
         Args:
-            symbol1: First symbol
-            symbol2: Second symbol
+            symbols: The symbols to check for Granger Causality
             max_lag: Maximum number of lags to test
+            significance_level: default value for "passing" the causality test
             
         Returns:
             Dictionary with test results
         """
-        returns1 = self.returns_data[symbol1]['daily_return'].dropna()
-        returns2 = self.returns_data[symbol2]['daily_return'].dropna()
+        results = []
         
-        # Align the time series
-        common_idx = returns1.index.intersection(returns2.index)
-        returns1 = returns1[common_idx]
-        returns2 = returns2[common_idx]
+        # Test each possible pair of symbols
+        for cause_symbol in symbols:
+            for effect_symbol in symbols:
+                # Skip self-causation tests
+                if cause_symbol == effect_symbol:
+                    continue
+                    
+                # Get the return series
+                returns1 = self.returns_data[cause_symbol]['daily_return'].dropna()
+                returns2 = self.returns_data[effect_symbol]['daily_return'].dropna()
+                
+                # Align the time series
+                common_idx = returns1.index.intersection(returns2.index)
+                returns1 = returns1[common_idx]
+                returns2 = returns2[common_idx]
+                
+                # Create DataFrame for testing
+                data = pd.DataFrame({
+                    'y': returns2,  # effect
+                    'x': returns1   # cause
+                })
+                
+                try:
+                    test_results = grangercausalitytests(data, maxlag=max_lag, verbose=False)
+                    
+                    # Extract results for each lag
+                    for lag in range(1, max_lag + 1):
+                        # Get test statistics and coefficients
+                        model_results = test_results[lag][1][1]  # unrestricted model
+                        
+                        # Get coefficient names and values
+                        coef_names = [f'y_lag_{i+1}' for i in range(lag)]
+                        coef_names.extend([f'x_lag_{i+1}' for i in range(lag)])
+                        if model_results.model.k_constant:
+                            coef_names.append('const')
+                        
+                        coeffs = pd.Series(model_results.params, index=coef_names)
+                        pvalues = pd.Series(model_results.pvalues, index=coef_names)
+                        
+                        # Store results
+                        row = {
+                            'cause': cause_symbol,
+                            'effect': effect_symbol,
+                            'lag': lag,
+                            'ssr_chi2_pvalue': test_results[lag][0]['ssr_chi2test'][1],
+                            'ssr_f_pvalue': test_results[lag][0]['ssr_ftest'][1],
+                            'r2': model_results.rsquared,
+                            'adj_r2': model_results.rsquared_adj
+                        }
+                        
+                        # Add coefficients and their p-values
+                        for name in coef_names:
+                            row[f'coef_{name}'] = coeffs[name]
+                            row[f'pval_{name}'] = pvalues[name]
+                        
+                        results.append(row)
+                        
+                except Exception as e:
+                    print(f"Error testing {cause_symbol} -> {effect_symbol}: {e}")
+                    continue
         
-        # Create DataFrame for testing
-        data = pd.DataFrame({
-            'y': returns2,
-            'x': returns1
-        })
+        # Convert to DataFrame
+        results_df = pd.DataFrame(results)
         
-        # Run Granger causality test
-        try:
-            results = grangercausalitytests(data, maxlag=max_lag, verbose=False)
+        # Sort by p-value to highlight most significant relationships
+        results_df = results_df.sort_values('ssr_f_pvalue')
+
+        #significant_results = results_df[results_df['ssr_f_pvalue'] < significance_level].copy()
+        
+        # Add effect size (using R-squared as a simple measure)
+        results_df['effect_size'] = results_df['r2']
+        
+        # Create summary with relevant coefficients
+        summaries = []
+        for _, row in results_df.iterrows():
+            coef_cols = [col for col in row.index if col.startswith('coef_x_lag_')]
+            pval_cols = [col for col in row.index if col.startswith('pval_x_lag_')]
             
-            # Extract p-values for each lag
-            p_values = {
-                f'lag_{i+1}': round(results[i+1][0]['ssr_chi2test'][1], 4)
-                for i in range(max_lag)
-            }
+            # Get significant coefficients
+            sig_coeffs = []
+            for coef_col, pval_col in zip(coef_cols, pval_cols):
+                if row[pval_col] < significance_level:
+                    lag_num = coef_col.split('_')[-1]
+                    sig_coeffs.append(f"Lag {lag_num}: {row[coef_col]:.4f}")
             
-            return p_values
-        except:
-            return {f'lag_{i+1}': np.nan for i in range(max_lag)}
+            summaries.append({
+                'cause': row['cause'],
+                'effect': row['effect'],
+                'lag': row['lag'],
+                'p_value': row['ssr_f_pvalue'],
+                'r2': row['r2'],
+                'significant_coefficients': ', '.join(sig_coeffs)
+            })
+        
+        return pd.DataFrame(summaries)
     
     def build_relationship_network(self, 
                                  symbols: List[str], 
