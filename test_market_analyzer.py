@@ -1,4 +1,5 @@
 import pytest
+import re
 import pandas as pd
 import numpy as np
 import networkx as nx
@@ -436,14 +437,81 @@ class TestLeadLagBasics:
         assert all(-1 <= corr <= 1 for corr in results['correlation'])
 
     def test_granger_causality(self, lead_lag_analyzer):
-        """Test Granger causality testing."""
-        results = lead_lag_analyzer.test_granger_causality('A', 'B', max_lag=3)
+        """Test Granger causality testing."""        
+        # Run the Granger causality tests
+        results = lead_lag_analyzer.test_granger_causality(['A', 'B', 'C'], max_lag=3)
+
+        # Test 1: Check basic structure of results DataFrame
+        assert isinstance(results, pd.DataFrame), "Results should be a DataFrame"
+        expected_columns = {
+            'cause', 'effect', 'lag', 'p_value', 'r2',
+            'significant_coefficients'
+        }
+        assert all(col in results.columns for col in expected_columns), \
+            f"Missing expected columns. Found {results.columns}"
         
-        # Check basic properties of results
-        assert isinstance(results, dict)
-        assert all(f'lag_{i}' in results for i in range(1, 4))
-        assert all(isinstance(v, float) for v in results.values())
-        assert all(0 <= v <= 1 for v in results.values() if not np.isnan(v))
+        # Test 2: Check number of results
+        # For 3 symbols, we expect 6 relationships (n*(n-1)) * 3 lags = 18 rows
+        assert len(results) == 18, \
+            f"Expected 18 results (6 relationships * 3 lags), got {len(results)}"
+        
+        # Test 3: Check value ranges
+        assert all(0 <= r <= 1 for r in results['r2']), "R² values should be between 0 and 1"
+        assert all(0 <= p <= 1 for p in results['p_value']), "P-values should be between 0 and 1"
+        
+        # Test 4: Check relationship presence
+        relationships = set((row['cause'], row['effect']) for _, row in results.iterrows())
+        expected_relationships = {
+            ('A', 'B'), ('B', 'A'), 
+            ('A', 'C'), ('C', 'A'),
+            ('B', 'C'), ('C', 'B')
+        }
+        assert relationships == expected_relationships, \
+            "Missing some expected relationships"
+        
+        # Test 5: Check lag values
+        assert all(lag in [1, 2, 3] for lag in results['lag']), \
+            "All lags should be between 1 and 3"
+        
+        # Test 6: Check for expected strong relationship (A → B at lag 2)
+        ab_lag2 = results[
+            (results['cause'] == 'A') & 
+            (results['effect'] == 'B') & 
+            (results['lag'] == 2)
+        ]
+        assert len(ab_lag2) == 1, "Should find exactly one A→B relationship at lag 2"
+        
+        # Test 7: Check lack of relationship with C
+        c_relationships = results[
+            (results['cause'] == 'C') | (results['effect'] == 'C')
+        ]
+        # These relationships should generally have higher p-values as C is independent
+        
+        # Test 8: Test with invalid inputs
+        with pytest.raises(Exception):
+            lead_lag_analyzer.test_granger_causality(['NonExistentSymbol'], max_lag=3)
+        
+        # Test 9: Test with different significance levels
+        results_strict = lead_lag_analyzer.test_granger_causality(
+            ['A', 'B', 'C'], 
+            max_lag=3, 
+            significance_level=0.01
+        )
+        results_loose = lead_lag_analyzer.test_granger_causality(
+            ['A', 'B', 'C'], 
+            max_lag=3, 
+            significance_level=0.1
+        )
+        assert isinstance(results_strict, pd.DataFrame)
+        assert isinstance(results_loose, pd.DataFrame)
+        
+        # Test 10: Check coefficient format in significant_coefficients column
+        coef_pattern = r'Lag \d+: -?\d+\.\d+'
+        non_empty_coeffs = results['significant_coefficients'].str.len() > 0
+        if any(non_empty_coeffs):
+            sample_coeff = results.loc[non_empty_coeffs, 'significant_coefficients'].iloc[0]
+            assert re.match(coef_pattern, sample_coeff.split(', ')[0]), \
+                "Coefficient format should match 'Lag X: Y.YYYY'"
 
 
 class TestNetworkAnalysis:
