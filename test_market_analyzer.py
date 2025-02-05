@@ -528,18 +528,78 @@ class TestNetworkAnalysis:
         assert all(isinstance(d['weight'], float) for _, _, d in G.edges(data=True))
         assert all(-1 <= d['weight'] <= 1 for _, _, d in G.edges(data=True))
 
-    def test_find_market_leaders(self, lead_lag_analyzer):
-        """Test market leader identification."""
+    def test_market_leader_relationships(self, lead_lag_analyzer):
+        """Test that the market leader identification correctly captures the synthetic relationships."""
         symbols = ['A', 'B', 'C']
-        scores = lead_lag_analyzer.find_market_leaders(symbols, max_lag=3)
         
-        # Check basic properties of the results
-        assert isinstance(scores, dict)
-        assert set(scores.keys()) == set(symbols)
-        assert all(isinstance(v, float) for v in scores.values())
-        assert all(0 <= v <= 1 for v in scores.values())
-        assert any(v == 1 for v in scores.values()) or all(v == 0 for v in scores.values())
+        # Test without effect size weighting for clearer causality testing
+        scores = lead_lag_analyzer.find_market_leaders(
+            symbols, 
+            max_lag=3,
+            use_effect_size=False
+        )
+        
+        # Given our synthetic data setup:
+        # - A leads B (with lag 2)
+        # - C is independent
+        # Therefore:
+        # - A should have the highest leadership score
+        # - B should have a lower score
+        # - C should have the lowest score
 
+        # Check if A has highest leadership score
+        assert scores['A'] == 1.0, "A should be the primary market leader"
+        assert scores['B'] < scores['A'], "B should have lower leadership score than A"
+        assert scores['C'] < scores['A'], "C should have lower leadership score than A"
+
+    def test_market_leader_effect_size_impact(self, lead_lag_analyzer):
+        """Test that effect size weighting impacts the scores appropriately."""
+        symbols = ['A', 'B', 'C']
+        
+        # Get scores with and without effect size weighting
+        scores_basic = lead_lag_analyzer.find_market_leaders(
+            symbols, 
+            max_lag=3,
+            use_effect_size=False
+        )
+        
+        scores_weighted = lead_lag_analyzer.find_market_leaders(
+            symbols, 
+            max_lag=3,
+            use_effect_size=True
+        )
+        
+        # The relative ordering should remain the same
+        # but the absolute values should differ
+        assert scores_basic['A'] >= scores_basic['B'], "A should lead B in both cases"
+        assert scores_weighted['A'] >= scores_weighted['B'], "A should lead B in both cases"
+        
+        # Check that at least some scores are different when using effect size
+        assert any(scores_basic[s] != scores_weighted[s] for s in symbols), \
+            "Effect size weighting should impact the scores"
+
+    def test_market_leader_different_lags(self, lead_lag_analyzer):
+        """Test that the function works with different maximum lag values."""
+        symbols = ['A', 'B', 'C']
+        
+        # Test with different lag values
+        for max_lag in [1, 3, 5]:
+            scores = lead_lag_analyzer.find_market_leaders(
+                symbols, 
+                max_lag=max_lag,
+                use_effect_size=False
+            )
+            
+            # Basic checks
+            assert isinstance(scores, dict)
+            assert set(scores.keys()) == set(symbols)
+            assert all(0 <= v <= 1 for v in scores.values())
+       
+            # Since our synthetic data has lag 2:
+            # - With max_lag=1, the relationship might be weaker
+            # - With max_lag>=2, we should definitely see A leading
+            if max_lag >= 2:
+                assert scores['A'] == 1.0, f"A should be the leader with max_lag={max_lag}"
 
 class TestEdgeCases:
     """Tests for edge cases and error handling."""

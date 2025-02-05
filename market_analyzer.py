@@ -1120,35 +1120,54 @@ class LeadLagAnalyzer:
         
         return G
     
-    def find_market_leaders(self, 
-                           symbols: List[str], 
-                           max_lag: int = 5) -> Dict[str, float]:
+    def find_market_leaders(self,
+                            symbols: List[str],
+                            max_lag: int = 5,
+                            significance_level: float = 0.05,
+                            use_effect_size: bool = True) -> Dict[str, float]:
         """
         Identify market leaders based on Granger causality relationships.
+        
+        This function analyzes the Granger causality relationships between all pairs of symbols
+        to identify which symbols tend to lead others in price movements. A symbol's leadership
+        score increases when it Granger-causes other symbols with statistical significance.
+        
+        The scoring incorporates both statistical significance (-log(p-value)) and optionally
+        the effect size (R²) to provide a robust measure of leadership.
         
         Args:
             symbols: List of symbols to analyze
             max_lag: Maximum number of lags to test
+            significance_level: P-value threshold for statistical significance
+            use_effect_size: If True, incorporates R² in the leadership scoring
             
         Returns:
-            Dictionary with leadership scores for each symbol
+            Dictionary mapping each symbol to its normalized leadership score (0 to 1)
         """
+        # Get Granger causality test results for all pairs
+        results_df = self.test_granger_causality(symbols, max_lag, significance_level)
+        
+        # Initialize leadership scores
         leadership_scores = {symbol: 0.0 for symbol in symbols}
         
-        for i, symbol1 in enumerate(symbols):
-            for symbol2 in symbols[i+1:]:
-                # Test both directions
-                results1 = self.test_granger_causality(symbol1, symbol2, max_lag)
-                results2 = self.test_granger_causality(symbol2, symbol1, max_lag)
+        # Group by cause-effect pairs and get the minimum p-value for each relationship
+        pair_results = (results_df.groupby(['cause', 'effect'])
+                                .agg({'p_value': 'min',
+                                    'r2': 'max'})
+                                .reset_index())
+        
+        # Calculate leadership scores
+        for _, row in pair_results.iterrows():
+            if row['p_value'] < significance_level:
+                # Base score using -log(p-value) to reflect strength of significance
+                # Add small epsilon to prevent log(0) for extremely small p-values
+                score_increment = -np.log10(row['p_value'] + 1e-300)
                 
-                # Compare minimum p-values
-                min_p1 = min(results1.values())
-                min_p2 = min(results2.values())
+                # Optionally weight by effect size (R²)
+                if use_effect_size:
+                    score_increment *= row['r2']
                 
-                if min_p1 < 0.05 and min_p1 < min_p2:
-                    leadership_scores[symbol1] += 1
-                elif min_p2 < 0.05 and min_p2 < min_p1:
-                    leadership_scores[symbol2] += 1
+                leadership_scores[row['cause']] += score_increment
         
         # Normalize scores
         max_score = max(leadership_scores.values())
@@ -1156,6 +1175,11 @@ class LeadLagAnalyzer:
             leadership_scores = {
                 k: v/max_score for k, v in leadership_scores.items()
             }
+        
+        # Sort by score in descending order
+        leadership_scores = dict(sorted(leadership_scores.items(),
+                                    key=lambda x: x[1],
+                                    reverse=True))
         
         return leadership_scores
 
