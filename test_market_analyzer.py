@@ -454,9 +454,12 @@ class TestRegimeAnalyzer:
         assert 'break_volatility' in results.columns
         assert 'break_volume' in results.columns
         assert 'significant_break' in results.columns
+
+        # First few periods should be NaN (minimum required for break detection)
+        assert results['break_chow'].iloc[:5].isna().all()  # Need at least 3 points each for pre/post
         
-        # First window periods should be NaN
-        assert results['break_chow'].iloc[:20].isna().all()
+        # After minimum required points, should start getting values
+        assert not results['break_chow'].iloc[6:].isna().all()
         
         # Should have some breaks detected
         assert results['significant_break'].sum() > 0
@@ -526,6 +529,59 @@ class TestRegimeAnalyzer:
         assert isinstance(results, pd.DataFrame)
         assert 'regime' in results.columns
         assert 'regime_type' in results.columns
+
+    def test_break_detection_initialization(self, sample_regime_data):
+        """Test that break detection handles initialization period properly"""
+        detector = RegimeAnalyzer(
+            window=20,
+            detection_methods=['breaks']
+        )
+        results = detector.fit_transform(sample_regime_data)
+        
+        # Check early periods
+        early_results = results.iloc[:detector.window]
+        
+        # Should have some valid calculations even in early periods
+        assert not early_results['break_chow'].isna().all()
+        assert not early_results['break_volatility'].isna().all()
+        assert not early_results['break_volume'].isna().all()
+        
+        # Values should be continuous (no sudden jumps)
+        for col in ['break_chow', 'break_volatility', 'break_volume']:
+            values = results[col].dropna()
+            if len(values) > 1:
+                differences = np.abs(values.diff().dropna())
+                assert differences.max() < 10  # No extreme jumps
+        
+        # Significant breaks should be properly initialized
+        assert not results['significant_break'].isna().any()
+
+    def test_break_detection_edge_cases(self, sample_regime_data):
+        """Test break detection with various edge cases"""
+        # Create test data with some edge cases
+        edge_data = sample_regime_data.copy()
+        
+        # Add some constant periods (zero variance)
+        edge_data.iloc[10:15, edge_data.columns.get_loc('returns')] = 0.0
+        edge_data.iloc[30:35, edge_data.columns.get_loc('volume')] = 1000.0
+        
+        # Add some extreme jumps
+        edge_data.iloc[50, edge_data.columns.get_loc('returns')] = edge_data['returns'].mean() + 10 * edge_data['returns'].std()
+        
+        detector = RegimeAnalyzer(
+            window=20,
+            detection_methods=['breaks']
+        )
+        results = detector.fit_transform(edge_data)
+        
+        # Should handle constant periods without errors
+        assert not results['break_chow'].isna().all()
+        assert not results['break_volatility'].isna().all()
+        assert not results['break_volume'].isna().all()
+        
+        # Should detect the extreme jump
+        jump_idx = 50
+        assert results.iloc[jump_idx:jump_idx+5]['significant_break'].any()
 
 class TestRegimeAnalysis:
     """Tests for the analyze_regimes method."""

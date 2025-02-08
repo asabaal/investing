@@ -959,7 +959,7 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
         return results
     
     def _detect_breaks(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Detect structural breaks using rolling statistical tests."""
+        """Detect structural breaks using rolling statistical tests with proper initialization."""
         results = pd.DataFrame(index=X.index)
         results['break_chow'] = np.nan
         results['break_volatility'] = np.nan
@@ -968,35 +968,57 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
         returns = X['returns']
         volumes = X['volume']
         
-        for i in range(self.window, len(returns)):
-            window_returns = returns.iloc[i-self.window:i]
-            window_volumes = volumes.iloc[i-self.window:i]
+        min_required = 3  # Minimum periods needed for each half (pre/post) to calculate mean and std
+        
+        for i in range(len(returns)):
+            if i < min_required:
+                # Not enough data for even a minimal comparison
+                continue
+                
+            # Use expanding window for initial periods
+            window_size = min(i + 1, self.window)
+            start_idx = max(0, i - window_size + 1)
+            mid_point = start_idx + window_size // 2
             
-            # Test for breaks in mean using Chow test-like approach
-            pre_mean = window_returns[:self.window//2].mean()
-            post_mean = window_returns[self.window//2:].mean()
-            mean_diff = abs(pre_mean - post_mean)
-            mean_std = window_returns.std()
-            results.iloc[i, 0] = mean_diff / mean_std
+            window_returns = returns.iloc[start_idx:i+1]
+            window_volumes = volumes.iloc[start_idx:i+1]
             
-            # Test for breaks in volatility
-            pre_vol = window_returns[:self.window//2].std()
-            post_vol = window_returns[self.window//2:].std()
-            vol_ratio = max(pre_vol, post_vol) / min(pre_vol, post_vol)
-            results.iloc[i, 1] = vol_ratio
+            # Divide window into pre and post periods
+            pre_returns = window_returns[:mid_point-start_idx]
+            post_returns = window_returns[mid_point-start_idx:]
+            pre_volumes = window_volumes[:mid_point-start_idx]
+            post_volumes = window_volumes[mid_point-start_idx:]
             
-            # Test for breaks in volume
-            pre_vol_mean = window_volumes[:self.window//2].mean()
-            post_vol_mean = window_volumes[self.window//2:].mean()
-            vol_mean_ratio = max(pre_vol_mean, post_vol_mean) / min(pre_vol_mean, post_vol_mean)
-            results.iloc[i, 2] = vol_mean_ratio
+            # Calculate break statistics using available data
+            if len(pre_returns) >= min_required and len(post_returns) >= min_required:
+                # Test for breaks in mean using Chow test-like approach
+                pre_mean = pre_returns.mean()
+                post_mean = post_returns.mean()
+                mean_diff = abs(pre_mean - post_mean)
+                mean_std = window_returns.std()
+                if mean_std > 0:  # Avoid division by zero
+                    results.iloc[i, 0] = mean_diff / mean_std
+                
+                # Test for breaks in volatility
+                pre_vol = pre_returns.std()
+                post_vol = post_returns.std()
+                if min(pre_vol, post_vol) > 0:  # Avoid division by zero
+                    vol_ratio = max(pre_vol, post_vol) / min(pre_vol, post_vol)
+                    results.iloc[i, 1] = vol_ratio
+                
+                # Test for breaks in volume
+                pre_vol_mean = pre_volumes.mean()
+                post_vol_mean = post_volumes.mean()
+                if min(pre_vol_mean, post_vol_mean) > 0:  # Avoid division by zero
+                    vol_mean_ratio = max(pre_vol_mean, post_vol_mean) / min(pre_vol_mean, post_vol_mean)
+                    results.iloc[i, 2] = vol_mean_ratio
         
         # Identify significant breaks
         results['significant_break'] = (
             (results['break_chow'] > 2) |  # 2 std dev threshold
             (results['break_volatility'] > 2) |  # Double volatility
             (results['break_volume'] > 2)  # Double volume
-        )
+        ).fillna(False)  # Handle NaN values explicitly
         
         return results
     
