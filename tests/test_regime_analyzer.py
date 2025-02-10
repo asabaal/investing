@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from market_analyzer import RegimeAnalyzer
+from market_analyzer.regime_analyzer import RegimeAnalyzer
 
 @pytest.fixture
 def sample_regime_data():

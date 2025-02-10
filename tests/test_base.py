@@ -6,7 +6,8 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from enum import Enum
-from market_analyzer import MarketAnalyzer, TechnicalPattern, MarketVisualizer
+from market_analyzer import MarketAnalyzer, MarketVisualizer
+from market_analyzer.pattern_recognition import TechnicalPattern
 from typing import Dict, Any
 
 @pytest.fixture

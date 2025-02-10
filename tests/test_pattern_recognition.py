@@ -5,7 +5,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
-from market_analyzer import PatternRecognition, TechnicalPattern, LeadLagAnalyzer
+from market_analyzer.pattern_recognition import PatternRecognition, TechnicalPattern, LeadLagAnalyzer
 
 @pytest.fixture
 def lead_lag_sample_returns_data():

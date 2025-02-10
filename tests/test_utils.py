@@ -1,11 +1,11 @@
 import numpy as np
 import pandas as pd
-from market_analyzer import (rolling_growing_window,
-                             growing_max,
-                             growing_mean,
-                             growing_min,
-                             growing_std,
-                             growing_sum)
+from market_analyzer.utils import (rolling_growing_window,
+                                   growing_max,
+                                   growing_mean,
+                                   growing_min,
+                                   growing_std,
+                                   growing_sum)
 from numpy.testing import assert_array_almost_equal
 
 class TestGrowingWindowRolling:

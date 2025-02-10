@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from market_analyzer import RiskAnalyzer
+from market_analyzer.risk_analyzer import RiskAnalyzer
 
 class TestRiskAnalyzer:
     @pytest.fixture
