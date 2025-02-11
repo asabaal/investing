@@ -1,1 +1,1 @@
-from market_analyzer.base import MarketAnalyzer
+from market_analyzer.base import MarketAnalyzer, MarketVisualizer
