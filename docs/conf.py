@@ -18,6 +18,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'nbsphinx',
     'sphinx.ext.mathjax',
+    'sphinx.ext.doctest',
 ]
 
 autosummary_generate = True

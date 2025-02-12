@@ -25,16 +25,16 @@ def rolling_growing_window(
     Returns:
         np.ndarray: Array of same length as input with rolling calculation results
 
-    Example:
+    Examples:
         >>> data = pd.Series([1, 2, 3, 4, 5])
-        >>> rolling_growing_window(data, window=3, func=np.mean)
-        array([1., 1.5, 2., 3., 4.])
+        >>> rolling_growing_window(data, window=3, func=np.mean)  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+        array([1. , 1.5, 2. , 3. , 4. ])
 
-        >>> # Custom function example
         >>> def weighted_mean(x):
         ...     weights = np.arange(1, len(x) + 1)
         ...     return np.average(x, weights=weights)
-        >>> rolling_growing_window(data, window=3, func=weighted_mean)
+        >>> rolling_growing_window(data, window=3, func=weighted_mean)  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+        array([1.        , 1.66666667, 2.33333333, 3.33333333, 4.33333333])
 
     Notes:
         The function handles the initial periods (i < window) by using all available
@@ -79,10 +79,18 @@ def growing_mean(
         data (Union[pd.Series, np.ndarray]): Input data to compute rolling mean
         window (int): Maximum size of the rolling window
         min_periods (Optional[int], optional): Minimum observations required. 
-            Defaults to None.
+            Defaults to None.        
 
     Returns:
         np.ndarray: Array of rolling means with growing window for initial periods
+
+    Examples:
+        >>> data = pd.Series([1, 2, 3, 4, 5])
+        >>> growing_mean(data, window=3)  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+        array([1. , 1.5, 2. , 3. , 4. ])
+
+        >>> growing_mean(data, window=3, min_periods=2)  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+        array([nan, 1.5, 2. , 3. , 4. ])
     """
     return rolling_growing_window(data, window, np.mean, min_periods)
 
@@ -102,6 +110,14 @@ def growing_std(
 
     Returns:
         np.ndarray: Array of rolling standard deviations with growing window for initial periods
+
+    Examples:
+        >>> data = pd.Series([1, 2, 3, 4, 5])
+        >>> growing_std(data, window=3)  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+        array([0.        , 0.5       , 0.81649658, 0.81649658, 0.81649658])
+
+        >>> growing_std(np.array([1, 2, 3, 4, 5]), window=2)  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+        array([0. , 0.5, 0.5, 0.5, 0.5])     
     """
     return rolling_growing_window(data, window, np.std, min_periods)
 
@@ -121,6 +137,14 @@ def growing_sum(
 
     Returns:
         np.ndarray: Array of rolling sums with growing window for initial periods
+
+    Examples:
+        >>> data = pd.Series([1, 2, 3, 4, 5])
+        >>> growing_sum(data, window=3)  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+        array([ 1.,  3.,  6.,  9., 12.])
+
+        >>> growing_sum(data, window=2)  # doctest: +NORMALIZE_WHITESPACE
+        array([1., 3., 5., 7., 9.])  
     """
     return rolling_growing_window(data, window, np.sum, min_periods)
 
@@ -140,6 +164,14 @@ def growing_max(
 
     Returns:
         np.ndarray: Array of rolling maxs with growing window for initial periods
+
+    Examples:
+        >>> data = pd.Series([1, 2, 3, 2, 1])
+        >>> growing_max(data, window=3)  # doctest: +NORMALIZE_WHITESPACE
+        array([1., 2., 3., 3., 3.])
+
+        >>> growing_max(data, window=3, min_periods=2)  # doctest: +NORMALIZE_WHITESPACE
+        array([nan, 2., 3., 3., 3.])      
     """
     return rolling_growing_window(data, window, np.max, min_periods)
 
@@ -159,5 +191,13 @@ def growing_min(
 
     Returns:
         np.ndarray: Array of rolling mins with growing window for initial periods
+
+    Examples:
+        >>> data = pd.Series([3, 2, 1, 2, 3])
+        >>> growing_min(data, window=3)  # doctest: +NORMALIZE_WHITESPACE
+        array([3., 2., 1., 1., 1.])
+
+        >>> growing_min(np.array([3, 2, 1, 2, 3]), window=2)  # doctest: +NORMALIZE_WHITESPACE
+        array([3., 2., 1., 1., 2.])       
     """
     return rolling_growing_window(data, window, np.min, min_periods)        
