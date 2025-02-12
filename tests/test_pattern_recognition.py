@@ -427,7 +427,7 @@ class TestPatternRecognition:
         for idx in highs:
             window_slice = slice(max(0, idx-5), min(len(pattern_recognition.prices), idx+6))
             local_max = pattern_recognition.prices.iloc[window_slice].max()
-            assert pattern_recognition.prices.iloc[idx] == local_max
+            assert pattern_recognition.prices.iloc[idx] == local_max          
     
     def test_head_and_shoulders_detection(self, pattern_recognition):
         """Test head and shoulders pattern detection."""
