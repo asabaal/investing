@@ -1,0 +1,902 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>market_analyzer.pattern_recognition &mdash; Market Analyzer 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Market Analyzer
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../base.html">Base Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../pattern_recognition.html">Pattern Recognition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../regime_analyzer.html">Regime Analyzer</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Market Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">market_analyzer.pattern_recognition</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for market_analyzer.pattern_recognition</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">pearsonr</span>
+<span class="kn">from</span> <span class="nn">statsmodels.tsa.stattools</span> <span class="kn">import</span> <span class="n">grangercausalitytests</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TechnicalPattern">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.TechnicalPattern">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">TechnicalPattern</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A data class for storing detected technical pattern information.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        pattern_type (str): Type of pattern detected (e.g., &quot;HEAD_AND_SHOULDERS&quot;)</span>
+<span class="sd">        start_idx (int): Starting index of the pattern in the price series</span>
+<span class="sd">        end_idx (int): Ending index of the pattern in the price series</span>
+<span class="sd">        price_range (Tuple[float, float]): Min and max prices within pattern (min_price, max_price)</span>
+<span class="sd">        failure_reasons (Optional[Dict[str, str]], optional): Reasons for imperfect pattern match.</span>
+<span class="sd">            Defaults to None.</span>
+<span class="sd">        specific_points (Optional[dict], optional): Pattern-specific point indices. Defaults to None.</span>
+<span class="sd">        volume_range (Optional[Tuple[float, float]], optional): Min and max volumes. Defaults to None.</span>
+<span class="sd">        sub_classification (Optional[Enum], optional): Further pattern classification. Defaults to None.</span>
+<span class="sd">        confidence (Optional[float], optional): Pattern confidence score (0-1). Defaults to np.nan.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; pattern = TechnicalPattern(</span>
+<span class="sd">        ...     pattern_type=&quot;DOUBLE_BOTTOM&quot;,</span>
+<span class="sd">        ...     start_idx=100,</span>
+<span class="sd">        ...     end_idx=150,</span>
+<span class="sd">        ...     price_range=(100.0, 110.0),</span>
+<span class="sd">        ...     confidence=0.85</span>
+<span class="sd">        ... )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pattern_type</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">start_idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">end_idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">price_range</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">failure_reasons</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">specific_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">volume_range</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">sub_classification</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Enum</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Convert numpy integers to Python integers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_idx</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">end_idx</span><span class="p">)</span>
+        <span class="c1"># Convert numpy numbers in price_range to Python numbers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">price_range</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">price_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">price_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="c1"># Convert confidence to float if needed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">confidence</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">confidence</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HeadAndShouldersPoints">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.HeadAndShouldersPoints">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">HeadAndShouldersPoints</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Points defining a head and shoulders pattern.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        left_shoulder_idx (int): Index of the left shoulder peak</span>
+<span class="sd">        head_idx (int): Index of the head peak</span>
+<span class="sd">        right_shoulder_idx (int): Index of the right shoulder peak</span>
+<span class="sd">        left_trough_idx (int): Index of the trough between left shoulder and head</span>
+<span class="sd">        right_trough_idx (int): Index of the trough between head and right shoulder</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="n">left_shoulder_idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">head_idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">right_shoulder_idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">left_trough_idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">right_trough_idx</span><span class="p">:</span> <span class="nb">int</span></div>
+
+    
+<div class="viewcode-block" id="PatternValidation">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.PatternValidation">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">PatternValidation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Results of pattern validation checks.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        is_valid (bool): Whether pattern meets all validation criteria</span>
+<span class="sd">        confidence (float): Confidence score for the pattern (0-1)</span>
+<span class="sd">        failure_reasons (Dict[str, str]): Reasons for any validation failures</span>
+<span class="sd">        price_range (Optional[Tuple[float, float]], optional): Price range if valid. </span>
+<span class="sd">            Defaults to None.</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="n">is_valid</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">failure_reasons</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>  <span class="c1"># Key is check name, value is failure description</span>
+    <span class="n">price_range</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="VolumePatternType">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.VolumePatternType">[docs]</a>
+<span class="k">class</span> <span class="nc">VolumePatternType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Types of volume patterns in relation to price movement.&quot;&quot;&quot;</span>    
+    
+    <span class="c1">#: Volume moving opposite to price</span>
+    <span class="n">DIVERGENCE</span> <span class="o">=</span> <span class="s2">&quot;DIVERGENCE&quot;</span>
+    
+    <span class="c1">#: Volume flat while price moves</span>
+    <span class="n">NON_CONFIRMATION</span> <span class="o">=</span> <span class="s2">&quot;NON_CONFIRMATION&quot;</span>
+    
+    <span class="c1">#: Volume moving while price is flat</span>
+    <span class="n">VOLUME_FORCE</span> <span class="o">=</span> <span class="s2">&quot;VOLUME_FORCE&quot;</span>
+    
+    <span class="c1">#: Both price and volume are flat</span>
+    <span class="n">NEUTRAL</span> <span class="o">=</span> <span class="s2">&quot;NEUTRAL&quot;</span>
+    
+    <span class="c1">#: Price and volume moving in same direction</span>
+    <span class="n">CONCORDANT</span> <span class="o">=</span> <span class="s2">&quot;CONCORDANT&quot;</span></div>
+
+
+<div class="viewcode-block" id="VolumePattern">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.VolumePattern">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">VolumePattern</span><span class="p">(</span><span class="n">TechnicalPattern</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Volume-based pattern information.</span>
+
+<span class="sd">    Inherits from TechnicalPattern and adds volume-specific attributes.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        pattern_type (VolumePatternType): Type of volume pattern</span>
+<span class="sd">        price_range (Tuple[float, float]): Min and max prices within pattern</span>
+<span class="sd">        volume_range (Tuple[float, float]): Min and max volumes within pattern</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="n">pattern_type</span><span class="p">:</span> <span class="n">VolumePatternType</span>
+    <span class="n">price_range</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">volume_range</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="validate_head_and_shoulders">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.validate_head_and_shoulders">[docs]</a>
+<span class="k">def</span> <span class="nf">validate_head_and_shoulders</span><span class="p">(</span>
+    <span class="n">prices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">HeadAndShouldersPoints</span><span class="p">,</span>
+    <span class="n">shoulder_height_tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">neckline_slope_tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PatternValidation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate a potential head and shoulders pattern.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        prices (np.ndarray): Array of price values</span>
+<span class="sd">        points (HeadAndShouldersPoints): Points forming the potential pattern</span>
+<span class="sd">        shoulder_height_tolerance (float, optional): Maximum allowed shoulder height difference.</span>
+<span class="sd">            Defaults to 0.02 (2%).</span>
+<span class="sd">        neckline_slope_tolerance (float, optional): Maximum allowed neckline slope.</span>
+<span class="sd">            Defaults to 0.02 (2%).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        PatternValidation: Validation results including confidence score and any failure reasons</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Extract prices at pattern points</span>
+    <span class="n">left_shoulder</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">points</span><span class="o">.</span><span class="n">left_shoulder_idx</span><span class="p">]</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">points</span><span class="o">.</span><span class="n">head_idx</span><span class="p">]</span>
+    <span class="n">right_shoulder</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">points</span><span class="o">.</span><span class="n">right_shoulder_idx</span><span class="p">]</span>
+    <span class="n">left_trough</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">points</span><span class="o">.</span><span class="n">left_trough_idx</span><span class="p">]</span>
+    <span class="n">right_trough</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">points</span><span class="o">.</span><span class="n">right_trough_idx</span><span class="p">]</span>
+    
+    <span class="n">failure_reasons</span> <span class="o">=</span> <span class="p">{}</span>
+    
+    <span class="c1"># Check 1: Head must be higher than both shoulders</span>
+    <span class="n">head_height_valid</span> <span class="o">=</span> <span class="n">head</span> <span class="o">&gt;</span> <span class="n">left_shoulder</span> <span class="ow">and</span> <span class="n">head</span> <span class="o">&gt;</span> <span class="n">right_shoulder</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">head_height_valid</span><span class="p">:</span>
+        <span class="n">failure_reasons</span><span class="p">[</span><span class="s1">&#39;head_height&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Head is not higher than both shoulders&#39;</span>
+    
+    <span class="c1"># Check 2: Shoulders should be at similar heights</span>
+    <span class="n">shoulder_diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">left_shoulder</span> <span class="o">-</span> <span class="n">right_shoulder</span><span class="p">)</span> <span class="o">/</span> <span class="n">left_shoulder</span>
+    <span class="n">shoulders_valid</span> <span class="o">=</span> <span class="n">shoulder_diff</span> <span class="o">&lt;=</span> <span class="n">shoulder_height_tolerance</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">shoulders_valid</span><span class="p">:</span>
+        <span class="n">failure_reasons</span><span class="p">[</span><span class="s1">&#39;shoulder_heights&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;Shoulder height difference (</span><span class="si">{</span><span class="n">shoulder_diff</span><span class="si">:</span><span class="s1">.1%</span><span class="si">}</span><span class="s1">) exceeds tolerance (</span><span class="si">{</span><span class="n">shoulder_height_tolerance</span><span class="si">:</span><span class="s1">.1%</span><span class="si">}</span><span class="s1">)&#39;</span>
+    
+    <span class="c1"># Check 3: Neckline should be roughly horizontal</span>
+    <span class="n">neckline_slope</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">right_trough</span> <span class="o">-</span> <span class="n">left_trough</span><span class="p">)</span> <span class="o">/</span> <span class="n">left_trough</span>
+    <span class="n">neckline_valid</span> <span class="o">=</span> <span class="n">neckline_slope</span> <span class="o">&lt;=</span> <span class="n">neckline_slope_tolerance</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">neckline_valid</span><span class="p">:</span>
+        <span class="n">failure_reasons</span><span class="p">[</span><span class="s1">&#39;neckline_slope&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;Neckline slope (</span><span class="si">{</span><span class="n">neckline_slope</span><span class="si">:</span><span class="s1">.1%</span><span class="si">}</span><span class="s1">) exceeds tolerance (</span><span class="si">{</span><span class="n">neckline_slope_tolerance</span><span class="si">:</span><span class="s1">.1%</span><span class="si">}</span><span class="s1">)&#39;</span>
+    
+    <span class="c1"># Check 4: Pattern sequence should be valid</span>
+    <span class="n">sequence_valid</span> <span class="o">=</span> <span class="p">(</span><span class="n">points</span><span class="o">.</span><span class="n">left_shoulder_idx</span> <span class="o">&lt;</span> <span class="n">points</span><span class="o">.</span><span class="n">left_trough_idx</span> <span class="o">&lt;</span> 
+                     <span class="n">points</span><span class="o">.</span><span class="n">head_idx</span> <span class="o">&lt;</span> <span class="n">points</span><span class="o">.</span><span class="n">right_trough_idx</span> <span class="o">&lt;</span> 
+                     <span class="n">points</span><span class="o">.</span><span class="n">right_shoulder_idx</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sequence_valid</span><span class="p">:</span>
+        <span class="n">failure_reasons</span><span class="p">[</span><span class="s1">&#39;sequence&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Points are not in correct chronological order&#39;</span>
+    
+    <span class="c1"># Calculate confidence based on how well the pattern matches ideal conditions</span>
+    <span class="n">confidence_factors</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;head_height&#39;</span><span class="p">:</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">head_height_valid</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;shoulder_symmetry&#39;</span><span class="p">:</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="p">(</span><span class="n">shoulder_diff</span> <span class="o">/</span> <span class="n">shoulder_height_tolerance</span><span class="p">)</span> <span class="k">if</span> <span class="n">shoulders_valid</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;neckline&#39;</span><span class="p">:</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="p">(</span><span class="n">neckline_slope</span> <span class="o">/</span> <span class="n">neckline_slope_tolerance</span><span class="p">)</span> <span class="k">if</span> <span class="n">neckline_valid</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;sequence&#39;</span><span class="p">:</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">sequence_valid</span> <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="p">}</span>
+    <span class="n">confidence</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">confidence_factors</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+    
+    <span class="n">is_valid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">failure_reasons</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+    <span class="n">price_range</span> <span class="o">=</span> <span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">left_trough</span><span class="p">,</span> <span class="n">right_trough</span><span class="p">),</span> <span class="n">head</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_valid</span> <span class="k">else</span> <span class="kc">None</span>
+    
+    <span class="k">return</span> <span class="n">PatternValidation</span><span class="p">(</span>
+        <span class="n">is_valid</span><span class="o">=</span><span class="n">is_valid</span><span class="p">,</span>
+        <span class="n">confidence</span><span class="o">=</span><span class="n">confidence</span><span class="p">,</span>
+        <span class="n">failure_reasons</span><span class="o">=</span><span class="n">failure_reasons</span><span class="p">,</span>
+        <span class="n">price_range</span><span class="o">=</span><span class="n">price_range</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LeadLagAnalyzer">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.LeadLagAnalyzer">[docs]</a>
+<span class="k">class</span> <span class="nc">LeadLagAnalyzer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Analyzes lead-lag relationships between securities.</span>
+
+<span class="sd">    Identifies which securities tend to lead or lag others in price movements</span>
+<span class="sd">    using various statistical methods including cross-correlation and Granger causality.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        returns_data (Dict[str, pd.DataFrame]): Dictionary mapping symbols to their returns data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="LeadLagAnalyzer.__init__">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.LeadLagAnalyzer.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">returns_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span> <span class="o">=</span> <span class="n">returns_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">relationships</span> <span class="o">=</span> <span class="p">{}</span></div>
+
+        
+<div class="viewcode-block" id="LeadLagAnalyzer.calculate_cross_correlations">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.LeadLagAnalyzer.calculate_cross_correlations">[docs]</a>
+    <span class="k">def</span> <span class="nf">calculate_cross_correlations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                                   <span class="n">symbols</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> 
+                                   <span class="n">max_lags</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate cross-correlations between multiple symbols at different lags.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbols (List[str]): List of symbols to analyze</span>
+<span class="sd">            max_lags (int, optional): Maximum number of lags to consider. Defaults to 5.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame containing correlations with columns:</span>
+<span class="sd">                - symbol1: First symbol in pair</span>
+<span class="sd">                - symbol2: Second symbol in pair</span>
+<span class="sd">                - lag: Time lag in periods</span>
+<span class="sd">                - correlation: Correlation coefficient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">symbol1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">symbols</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">symbol2</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">symbols</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="n">j</span><span class="p">:</span>  <span class="c1"># Only calculate upper triangle</span>
+                    <span class="k">continue</span>
+                    
+                <span class="n">returns1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol1</span><span class="p">][</span><span class="s1">&#39;daily_return&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                <span class="n">returns2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol2</span><span class="p">][</span><span class="s1">&#39;daily_return&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                
+                <span class="c1"># Align the time series</span>
+                <span class="n">common_idx</span> <span class="o">=</span> <span class="n">returns1</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">returns2</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+                <span class="n">returns1</span> <span class="o">=</span> <span class="n">returns1</span><span class="p">[</span><span class="n">common_idx</span><span class="p">]</span>
+                <span class="n">returns2</span> <span class="o">=</span> <span class="n">returns2</span><span class="p">[</span><span class="n">common_idx</span><span class="p">]</span>
+                
+                <span class="c1"># Calculate correlations at different lags</span>
+                <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">max_lags</span><span class="p">,</span> <span class="n">max_lags</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">lag</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">corr</span> <span class="o">=</span> <span class="n">pearsonr</span><span class="p">(</span><span class="n">returns1</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="n">lag</span><span class="p">:],</span> <span class="n">returns2</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="n">lag</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">elif</span> <span class="n">lag</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">corr</span> <span class="o">=</span> <span class="n">pearsonr</span><span class="p">(</span><span class="n">returns1</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="o">-</span><span class="n">lag</span><span class="p">],</span> <span class="n">returns2</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">lag</span><span class="p">:])[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">corr</span> <span class="o">=</span> <span class="n">pearsonr</span><span class="p">(</span><span class="n">returns1</span><span class="p">,</span> <span class="n">returns2</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                        
+                    <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                        <span class="s1">&#39;symbol1&#39;</span><span class="p">:</span> <span class="n">symbol1</span><span class="p">,</span>
+                        <span class="s1">&#39;symbol2&#39;</span><span class="p">:</span> <span class="n">symbol2</span><span class="p">,</span>
+                        <span class="s1">&#39;lag&#39;</span><span class="p">:</span> <span class="n">lag</span><span class="p">,</span>
+                        <span class="s1">&#39;correlation&#39;</span><span class="p">:</span> <span class="n">corr</span>
+                    <span class="p">})</span>
+        
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="LeadLagAnalyzer.test_granger_causality">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.LeadLagAnalyzer.test_granger_causality">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_granger_causality</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                              <span class="n">symbols</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+                              <span class="n">max_lag</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+                              <span class="n">significance_level</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test for Granger causality between pairs of symbols.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbols (List[str]): List of symbols to test</span>
+<span class="sd">            max_lag (int, optional): Maximum number of lags to test. Defaults to 5.</span>
+<span class="sd">            significance_level (float, optional): P-value threshold. Defaults to 0.05.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame containing test results with columns:</span>
+<span class="sd">                - cause: Potential causing symbol</span>
+<span class="sd">                - effect: Potential effect symbol</span>
+<span class="sd">                - lag: Number of lags tested</span>
+<span class="sd">                - p_value: Test p-value</span>
+<span class="sd">                - r2: R-squared value</span>
+<span class="sd">                - significant_coefficients: String of significant lag coefficients</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="c1"># Test each possible pair of symbols</span>
+        <span class="k">for</span> <span class="n">cause_symbol</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">effect_symbol</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">:</span>
+                <span class="c1"># Skip self-causation tests</span>
+                <span class="k">if</span> <span class="n">cause_symbol</span> <span class="o">==</span> <span class="n">effect_symbol</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                    
+                <span class="c1"># Get the return series</span>
+                <span class="n">returns1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">cause_symbol</span><span class="p">][</span><span class="s1">&#39;daily_return&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                <span class="n">returns2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">effect_symbol</span><span class="p">][</span><span class="s1">&#39;daily_return&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                
+                <span class="c1"># Align the time series</span>
+                <span class="n">common_idx</span> <span class="o">=</span> <span class="n">returns1</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">returns2</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+                <span class="n">returns1</span> <span class="o">=</span> <span class="n">returns1</span><span class="p">[</span><span class="n">common_idx</span><span class="p">]</span>
+                <span class="n">returns2</span> <span class="o">=</span> <span class="n">returns2</span><span class="p">[</span><span class="n">common_idx</span><span class="p">]</span>
+                
+                <span class="c1"># Create DataFrame for testing</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+                    <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="n">returns2</span><span class="p">,</span>  <span class="c1"># effect</span>
+                    <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="n">returns1</span>   <span class="c1"># cause</span>
+                <span class="p">})</span>
+                
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">test_results</span> <span class="o">=</span> <span class="n">grangercausalitytests</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">maxlag</span><span class="o">=</span><span class="n">max_lag</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                    
+                    <span class="c1"># Extract results for each lag</span>
+                    <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_lag</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                        <span class="c1"># Get test statistics and coefficients</span>
+                        <span class="n">model_results</span> <span class="o">=</span> <span class="n">test_results</span><span class="p">[</span><span class="n">lag</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># unrestricted model</span>
+                        
+                        <span class="c1"># Get coefficient names and values</span>
+                        <span class="n">coef_names</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;y_lag_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">lag</span><span class="p">)]</span>
+                        <span class="n">coef_names</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;x_lag_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">lag</span><span class="p">)])</span>
+                        <span class="k">if</span> <span class="n">model_results</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">k_constant</span><span class="p">:</span>
+                            <span class="n">coef_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;const&#39;</span><span class="p">)</span>
+                        
+                        <span class="n">coeffs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">model_results</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">coef_names</span><span class="p">)</span>
+                        <span class="n">pvalues</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">model_results</span><span class="o">.</span><span class="n">pvalues</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">coef_names</span><span class="p">)</span>
+                        
+                        <span class="c1"># Store results</span>
+                        <span class="n">row</span> <span class="o">=</span> <span class="p">{</span>
+                            <span class="s1">&#39;cause&#39;</span><span class="p">:</span> <span class="n">cause_symbol</span><span class="p">,</span>
+                            <span class="s1">&#39;effect&#39;</span><span class="p">:</span> <span class="n">effect_symbol</span><span class="p">,</span>
+                            <span class="s1">&#39;lag&#39;</span><span class="p">:</span> <span class="n">lag</span><span class="p">,</span>
+                            <span class="s1">&#39;ssr_chi2_pvalue&#39;</span><span class="p">:</span> <span class="n">test_results</span><span class="p">[</span><span class="n">lag</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;ssr_chi2test&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
+                            <span class="s1">&#39;ssr_f_pvalue&#39;</span><span class="p">:</span> <span class="n">test_results</span><span class="p">[</span><span class="n">lag</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;ssr_ftest&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
+                            <span class="s1">&#39;r2&#39;</span><span class="p">:</span> <span class="n">model_results</span><span class="o">.</span><span class="n">rsquared</span><span class="p">,</span>
+                            <span class="s1">&#39;adj_r2&#39;</span><span class="p">:</span> <span class="n">model_results</span><span class="o">.</span><span class="n">rsquared_adj</span>
+                        <span class="p">}</span>
+                        
+                        <span class="c1"># Add coefficients and their p-values</span>
+                        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">coef_names</span><span class="p">:</span>
+                            <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;coef_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">coeffs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                            <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;pval_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pvalues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                        
+                        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+                        
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error testing </span><span class="si">{</span><span class="n">cause_symbol</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">effect_symbol</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+        
+        <span class="c1"># Convert to DataFrame</span>
+        <span class="n">results_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+        
+        <span class="c1"># Sort by p-value to highlight most significant relationships</span>
+        <span class="n">results_df</span> <span class="o">=</span> <span class="n">results_df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;ssr_f_pvalue&#39;</span><span class="p">)</span>
+
+        <span class="c1">#significant_results = results_df[results_df[&#39;ssr_f_pvalue&#39;] &lt; significance_level].copy()</span>
+        
+        <span class="c1"># Add effect size (using R-squared as a simple measure)</span>
+        <span class="n">results_df</span><span class="p">[</span><span class="s1">&#39;effect_size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">results_df</span><span class="p">[</span><span class="s1">&#39;r2&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># Create summary with relevant coefficients</span>
+        <span class="n">summaries</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">results_df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="n">coef_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">index</span> <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;coef_x_lag_&#39;</span><span class="p">)]</span>
+            <span class="n">pval_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">index</span> <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;pval_x_lag_&#39;</span><span class="p">)]</span>
+            
+            <span class="c1"># Get significant coefficients</span>
+            <span class="n">sig_coeffs</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">coef_col</span><span class="p">,</span> <span class="n">pval_col</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">coef_cols</span><span class="p">,</span> <span class="n">pval_cols</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="n">pval_col</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">significance_level</span><span class="p">:</span>
+                    <span class="n">lag_num</span> <span class="o">=</span> <span class="n">coef_col</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">sig_coeffs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lag </span><span class="si">{</span><span class="n">lag_num</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="n">coef_col</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="n">summaries</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s1">&#39;cause&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;cause&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;effect&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;effect&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;lag&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;lag&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;p_value&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;ssr_f_pvalue&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;r2&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;r2&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;significant_coefficients&#39;</span><span class="p">:</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sig_coeffs</span><span class="p">)</span>
+            <span class="p">})</span>
+        
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">summaries</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="LeadLagAnalyzer.build_relationship_network">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.LeadLagAnalyzer.build_relationship_network">[docs]</a>
+    <span class="k">def</span> <span class="nf">build_relationship_network</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                                 <span class="n">symbols</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> 
+                                 <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a network graph of relationships between symbols.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbols (List[str]): List of symbols to include</span>
+<span class="sd">            threshold (float, optional): Minimum correlation for edge inclusion.</span>
+<span class="sd">                Defaults to 0.5.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            nx.Graph: NetworkX graph where:</span>
+<span class="sd">                - Nodes are symbols</span>
+<span class="sd">                - Edges represent correlations above threshold</span>
+<span class="sd">                - Edge weights are correlation values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        
+        <span class="c1"># Add nodes</span>
+        <span class="n">G</span><span class="o">.</span><span class="n">add_nodes_from</span><span class="p">(</span><span class="n">symbols</span><span class="p">)</span>
+        
+        <span class="c1"># Calculate correlations and add edges</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">symbol1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">symbols</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">symbol2</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">symbols</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:],</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">returns1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol1</span><span class="p">][</span><span class="s1">&#39;daily_return&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                <span class="n">returns2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol2</span><span class="p">][</span><span class="s1">&#39;daily_return&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                
+                <span class="c1"># Align the time series</span>
+                <span class="n">common_idx</span> <span class="o">=</span> <span class="n">returns1</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">returns2</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">common_idx</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">252</span><span class="p">:</span>  <span class="c1"># Require at least 1 year of common data</span>
+                    <span class="k">continue</span>
+                    
+                <span class="n">returns1</span> <span class="o">=</span> <span class="n">returns1</span><span class="p">[</span><span class="n">common_idx</span><span class="p">]</span>
+                <span class="n">returns2</span> <span class="o">=</span> <span class="n">returns2</span><span class="p">[</span><span class="n">common_idx</span><span class="p">]</span>
+                
+                <span class="n">corr</span> <span class="o">=</span> <span class="n">pearsonr</span><span class="p">(</span><span class="n">returns1</span><span class="p">,</span> <span class="n">returns2</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">corr</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">threshold</span><span class="p">:</span>
+                    <span class="n">G</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">symbol1</span><span class="p">,</span> <span class="n">symbol2</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">corr</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">G</span></div>
+
+    
+<div class="viewcode-block" id="LeadLagAnalyzer.find_market_leaders">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.LeadLagAnalyzer.find_market_leaders">[docs]</a>
+    <span class="k">def</span> <span class="nf">find_market_leaders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                            <span class="n">symbols</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+                            <span class="n">max_lag</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+                            <span class="n">significance_level</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+                            <span class="n">use_effect_size</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Identify market leaders based on Granger causality relationships.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbols (List[str]): List of symbols to analyze</span>
+<span class="sd">            max_lag (int, optional): Maximum number of lags to test. Defaults to 5.</span>
+<span class="sd">            significance_level (float, optional): P-value threshold. Defaults to 0.05.</span>
+<span class="sd">            use_effect_size (bool, optional): Whether to weight by R². Defaults to True.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, float]: Dictionary mapping symbols to normalized leadership scores (0-1)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get Granger causality test results for all pairs</span>
+        <span class="n">results_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_granger_causality</span><span class="p">(</span><span class="n">symbols</span><span class="p">,</span> <span class="n">max_lag</span><span class="p">,</span> <span class="n">significance_level</span><span class="p">)</span>
+        
+        <span class="c1"># Initialize leadership scores</span>
+        <span class="n">leadership_scores</span> <span class="o">=</span> <span class="p">{</span><span class="n">symbol</span><span class="p">:</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">symbol</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">}</span>
+        
+        <span class="c1"># Group by cause-effect pairs and get the minimum p-value for each relationship</span>
+        <span class="n">pair_results</span> <span class="o">=</span> <span class="p">(</span><span class="n">results_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;cause&#39;</span><span class="p">,</span> <span class="s1">&#39;effect&#39;</span><span class="p">])</span>
+                                <span class="o">.</span><span class="n">agg</span><span class="p">({</span><span class="s1">&#39;p_value&#39;</span><span class="p">:</span> <span class="s1">&#39;min&#39;</span><span class="p">,</span>
+                                    <span class="s1">&#39;r2&#39;</span><span class="p">:</span> <span class="s1">&#39;max&#39;</span><span class="p">})</span>
+                                <span class="o">.</span><span class="n">reset_index</span><span class="p">())</span>
+        
+        <span class="c1"># Calculate leadership scores</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">pair_results</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;p_value&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">significance_level</span><span class="p">:</span>
+                <span class="c1"># Base score using -log(p-value) to reflect strength of significance</span>
+                <span class="c1"># Add small epsilon to prevent log(0) for extremely small p-values</span>
+                <span class="n">score_increment</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;p_value&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-300</span><span class="p">)</span>
+                
+                <span class="c1"># Optionally weight by effect size (R²)</span>
+                <span class="k">if</span> <span class="n">use_effect_size</span><span class="p">:</span>
+                    <span class="n">score_increment</span> <span class="o">*=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;r2&#39;</span><span class="p">]</span>
+                
+                <span class="n">leadership_scores</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;cause&#39;</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">score_increment</span>
+        
+        <span class="c1"># Normalize scores</span>
+        <span class="n">max_score</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">leadership_scores</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">max_score</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">leadership_scores</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="o">/</span><span class="n">max_score</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">leadership_scores</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
+        
+        <span class="c1"># Sort by score in descending order</span>
+        <span class="n">leadership_scores</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">leadership_scores</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span>
+                                    <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                    <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        
+        <span class="k">return</span> <span class="n">leadership_scores</span></div>
+</div>
+
+
+<div class="viewcode-block" id="PatternRecognition">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.PatternRecognition">[docs]</a>
+<span class="k">class</span> <span class="nc">PatternRecognition</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A framework for detecting technical patterns in financial price data.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        prices (pd.Series): Time series of price data</span>
+<span class="sd">        volumes (pd.Series): Time series of trading volume data</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        prices (pd.Series): Price data</span>
+<span class="sd">        volumes (pd.Series): Volume data</span>
+<span class="sd">        patterns (list): List of detected patterns</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="PatternRecognition.__init__">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.PatternRecognition.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">volumes</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prices</span> <span class="o">=</span> <span class="n">prices</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">volumes</span> <span class="o">=</span> <span class="n">volumes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+    
+<div class="viewcode-block" id="PatternRecognition.find_swing_points">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.PatternRecognition.find_swing_points">[docs]</a>
+    <span class="k">def</span> <span class="nf">find_swing_points</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Identify swing high and low points in the price series.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[np.ndarray, np.ndarray]: Two arrays containing:</span>
+<span class="sd">                - First array: Indices of swing highs</span>
+<span class="sd">                - Second array: Indices of swing lows</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="p">)</span>
+        <span class="n">maxima</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">minima</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">diff</span><span class="p">):</span>
+            <span class="c1"># Found increasing then decreasing (potential maximum)</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">diff</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">diff</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">maxima</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                
+            <span class="c1"># Found decreasing then increasing (potential minimum)</span>
+            <span class="k">elif</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">diff</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">diff</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">minima</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                
+            <span class="c1"># Handle plateau</span>
+            <span class="k">elif</span> <span class="n">diff</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">plateau_start</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="c1"># Find end of plateau</span>
+                <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="ow">and</span> <span class="n">diff</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+                    
+                <span class="n">plateau_end</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="n">plateau_center</span> <span class="o">=</span> <span class="n">plateau_start</span> <span class="o">+</span> <span class="p">(</span><span class="n">plateau_end</span> <span class="o">-</span> <span class="n">plateau_start</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+                
+                <span class="c1"># Check if it&#39;s a maximum or minimum plateau</span>
+                <span class="k">if</span> <span class="n">plateau_start</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">diff</span><span class="p">[</span><span class="n">plateau_start</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="ow">and</span> <span class="n">diff</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+                        <span class="n">maxima</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">plateau_center</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">diff</span><span class="p">[</span><span class="n">plateau_start</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="ow">and</span> <span class="n">diff</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+                        <span class="n">minima</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">plateau_center</span><span class="p">)</span>
+                
+                <span class="k">continue</span>
+                
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">maxima</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">minima</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="PatternRecognition.detect_head_and_shoulders">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.PatternRecognition.detect_head_and_shoulders">[docs]</a>
+    <span class="k">def</span> <span class="nf">detect_head_and_shoulders</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">TechnicalPattern</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Detect head and shoulders patterns in the price data.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[TechnicalPattern]: List of detected head and shoulders patterns</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">highs</span><span class="p">,</span> <span class="n">lows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_swing_points</span><span class="p">()</span>
+        <span class="n">patterns</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">highs</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">patterns</span>
+        
+        <span class="k">if</span> <span class="n">lows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">highs</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">lows</span> <span class="o">=</span> <span class="n">lows</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">highs</span><span class="p">)</span> <span class="o">-</span> <span class="mi">3</span><span class="p">):</span>
+            <span class="n">points</span> <span class="o">=</span> <span class="n">HeadAndShouldersPoints</span><span class="p">(</span>
+                <span class="n">left_shoulder_idx</span><span class="o">=</span><span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">head_idx</span><span class="o">=</span><span class="n">highs</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span>
+                <span class="n">right_shoulder_idx</span><span class="o">=</span><span class="n">highs</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">],</span>
+                <span class="n">left_trough_idx</span><span class="o">=</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">right_trough_idx</span><span class="o">=</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="p">)</span>
+            
+            <span class="n">validation</span> <span class="o">=</span> <span class="n">validate_head_and_shoulders</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">validation</span><span class="o">.</span><span class="n">is_valid</span><span class="p">:</span>
+                <span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">TechnicalPattern</span><span class="p">(</span><span class="s2">&quot;HEAD_AND_SHOULDERS&quot;</span><span class="p">,</span> <span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">],</span> <span class="n">price_range</span><span class="o">=</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">lows</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]),</span> <span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])))</span>
+
+        <span class="k">return</span> <span class="n">patterns</span></div>
+
+    
+<div class="viewcode-block" id="PatternRecognition.detect_double_bottom">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.PatternRecognition.detect_double_bottom">[docs]</a>
+    <span class="k">def</span> <span class="nf">detect_double_bottom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">TechnicalPattern</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Detect double bottom patterns in the price data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            window (int, optional): Window size for finding swing points. Defaults to 20.</span>
+<span class="sd">            tolerance (float, optional): Maximum difference between bottoms. Defaults to 0.02.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[TechnicalPattern]: List of detected double bottom patterns</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">patterns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">lows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_swing_points</span><span class="p">()</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lows</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">bottom1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+            <span class="n">bottom2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]]</span>
+            
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">bottom1</span> <span class="o">-</span> <span class="n">bottom2</span><span class="p">)</span> <span class="o">/</span> <span class="n">bottom1</span> <span class="o">&lt;</span> <span class="n">tolerance</span><span class="p">:</span>
+                <span class="n">middle_idx</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">lows</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+                <span class="n">middle_high</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">middle_idx</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                
+                <span class="n">pattern</span> <span class="o">=</span> <span class="n">TechnicalPattern</span><span class="p">(</span>
+                    <span class="n">pattern_type</span><span class="o">=</span><span class="s2">&quot;DOUBLE_BOTTOM&quot;</span><span class="p">,</span>
+                    <span class="n">start_idx</span><span class="o">=</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                    <span class="n">end_idx</span><span class="o">=</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span>
+                    <span class="n">confidence</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+                    <span class="n">price_range</span><span class="o">=</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">bottom1</span><span class="p">,</span> <span class="n">bottom2</span><span class="p">),</span> <span class="n">middle_high</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">patterns</span></div>
+
+        
+<div class="viewcode-block" id="PatternRecognition.detect_volume_price_patterns">
+<a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.PatternRecognition.detect_volume_price_patterns">[docs]</a>
+    <span class="k">def</span> <span class="nf">detect_volume_price_patterns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                <span class="n">min_price_change</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.002</span><span class="p">,</span>
+                                <span class="n">min_volume_change</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+                                <span class="n">window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+                                <span class="n">target_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+                                <span class="n">min_pattern_weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.6</span>
+                                <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Detect volume-price patterns using weighted pattern detection.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            min_price_change (float, optional): Minimum price change threshold. </span>
+<span class="sd">                Defaults to 0.002.</span>
+<span class="sd">            min_volume_change (float, optional): Minimum volume change threshold. </span>
+<span class="sd">                Defaults to 0.01.</span>
+<span class="sd">            window_size (int, optional): Size of rolling window. Defaults to 20.</span>
+<span class="sd">            target_length (int, optional): Target points for pattern confirmation. </span>
+<span class="sd">                Defaults to 4.</span>
+<span class="sd">            min_pattern_weight (float, optional): Minimum pattern score threshold. </span>
+<span class="sd">                Defaults to 0.6.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame containing detected patterns with columns:</span>
+<span class="sd">                - timestamp_idx: Time point index</span>
+<span class="sd">                - primary_pattern: Dominant pattern type</span>
+<span class="sd">                - pattern_weight: Pattern confidence score</span>
+<span class="sd">                - pattern: Classification if above threshold</span>
+<span class="sd">                - Plus columns for each pattern type&#39;s score</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">classify_points</span><span class="p">(</span><span class="n">prices</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">volumes</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> 
+                        <span class="n">min_price_change</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.002</span><span class="p">,</span>
+                        <span class="n">min_volume_change</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>
+                        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">VolumePatternType</span><span class="p">]:</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Classify individual points based on price and volume movement patterns.</span>
+
+<span class="sd">            Args:</span>
+<span class="sd">                prices (pd.Series): Series of price values</span>
+<span class="sd">                volumes (pd.Series): Series of volume values</span>
+<span class="sd">                min_price_change (float, optional): Minimum change to consider price moving. </span>
+<span class="sd">                    Defaults to 0.002.</span>
+<span class="sd">                min_volume_change (float, optional): Minimum change to consider volume moving. </span>
+<span class="sd">                    Defaults to 0.01.</span>
+
+<span class="sd">            Returns:</span>
+<span class="sd">                List[VolumePatternType]: Pattern classification for each point:</span>
+<span class="sd">                    - NEUTRAL: Neither price nor volume moving</span>
+<span class="sd">                    - NON_CONFIRMATION: Only price moving</span>
+<span class="sd">                    - VOLUME_FORCE: Only volume moving</span>
+<span class="sd">                    - DIVERGENCE: Both moving in opposite directions</span>
+<span class="sd">                    - CONCORDANT: Both moving in same direction</span>
+<span class="sd">            &quot;&quot;&quot;</span>            
+            <span class="c1"># First classify all points</span>
+            <span class="n">price_changes</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+            <span class="n">volume_changes</span> <span class="o">=</span> <span class="n">volumes</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+            
+            <span class="n">point_patterns</span> <span class="o">=</span> <span class="p">[</span><span class="n">VolumePatternType</span><span class="o">.</span><span class="n">NEUTRAL</span><span class="p">]</span>  <span class="c1"># First point has no change</span>
+            
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)):</span>
+                <span class="n">price_moving</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">price_changes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&gt;=</span> <span class="n">min_price_change</span>
+                <span class="n">volume_moving</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">volume_changes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&gt;=</span> <span class="n">min_volume_change</span>
+                
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">price_moving</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">volume_moving</span><span class="p">:</span>
+                    <span class="n">pattern</span> <span class="o">=</span> <span class="n">VolumePatternType</span><span class="o">.</span><span class="n">NEUTRAL</span>
+                <span class="k">elif</span> <span class="n">price_moving</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">volume_moving</span><span class="p">:</span>
+                    <span class="n">pattern</span> <span class="o">=</span> <span class="n">VolumePatternType</span><span class="o">.</span><span class="n">NON_CONFIRMATION</span>
+                <span class="k">elif</span> <span class="ow">not</span> <span class="n">price_moving</span> <span class="ow">and</span> <span class="n">volume_moving</span><span class="p">:</span>
+                    <span class="n">pattern</span> <span class="o">=</span> <span class="n">VolumePatternType</span><span class="o">.</span><span class="n">VOLUME_FORCE</span>
+                <span class="k">else</span><span class="p">:</span>  <span class="c1"># Both moving</span>
+                    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">price_changes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">volume_changes</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span>
+                        <span class="n">pattern</span> <span class="o">=</span> <span class="n">VolumePatternType</span><span class="o">.</span><span class="n">DIVERGENCE</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">pattern</span> <span class="o">=</span> <span class="n">VolumePatternType</span><span class="o">.</span><span class="n">CONCORDANT</span>
+                
+                <span class="n">point_patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+            
+            <span class="k">return</span> <span class="n">point_patterns</span>
+        
+        <span class="c1"># Calculate decay rate based on target length</span>
+        <span class="n">decay_rate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">target_length</span>  <span class="c1"># Half-life at target length</span>
+        
+        <span class="c1"># Generate weights for the window</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">decay_rate</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">window_size</span><span class="p">))</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">weights</span> <span class="o">/</span> <span class="n">weights</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>  <span class="c1"># Normalize weights</span>
+        
+        <span class="c1"># First classify all points</span>
+        <span class="n">point_patterns</span> <span class="o">=</span> <span class="n">classify_points</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">volumes</span><span class="p">,</span> 
+                                    <span class="n">min_price_change</span><span class="o">=</span><span class="n">min_price_change</span><span class="p">,</span>
+                                    <span class="n">min_volume_change</span><span class="o">=</span><span class="n">min_volume_change</span><span class="p">)</span>
+        
+        <span class="c1"># Initialize results storage</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Process points with growing/sliding window</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">point_patterns</span><span class="p">)):</span>
+            <span class="c1"># For early points, use growing window with adjusted weights</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">window_size</span><span class="p">:</span>
+                <span class="n">window</span> <span class="o">=</span> <span class="n">point_patterns</span><span class="p">[:</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">current_weights</span> <span class="o">=</span> <span class="n">weights</span><span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">):]</span>
+                <span class="n">current_weights</span> <span class="o">=</span> <span class="n">current_weights</span> <span class="o">/</span> <span class="n">current_weights</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># For later points, use sliding window</span>
+                <span class="n">window</span> <span class="o">=</span> <span class="n">point_patterns</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="n">window_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+                <span class="n">current_weights</span> <span class="o">=</span> <span class="n">weights</span>
+            
+            <span class="c1"># Calculate weighted pattern distribution</span>
+            <span class="n">distribution</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">pattern_type</span> <span class="ow">in</span> <span class="n">VolumePatternType</span><span class="p">:</span>
+                <span class="c1"># Create mask for this pattern type</span>
+                <span class="n">pattern_mask</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span> <span class="k">if</span> <span class="n">p</span> <span class="o">==</span> <span class="n">pattern_type</span> <span class="k">else</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">window</span><span class="p">]</span>
+                <span class="c1"># Calculate weighted sum</span>
+                <span class="n">weighted_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pattern_mask</span> <span class="o">*</span> <span class="n">current_weights</span><span class="p">)</span>
+                <span class="n">distribution</span><span class="p">[</span><span class="n">pattern_type</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="n">weighted_sum</span>
+            
+            <span class="c1"># Find primary pattern</span>
+            <span class="n">primary_pattern</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">distribution</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            
+            <span class="c1"># Create result entry</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;timestamp_idx&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span>
+                <span class="s1">&#39;primary_pattern&#39;</span><span class="p">:</span> <span class="n">primary_pattern</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="s1">&#39;pattern_weight&#39;</span><span class="p">:</span> <span class="n">primary_pattern</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="s1">&#39;pattern&#39;</span><span class="p">:</span> <span class="n">primary_pattern</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">primary_pattern</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">min_pattern_weight</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">}</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">distribution</span><span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        
+        <span class="c1"># Convert to DataFrame</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">df</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Asabaal Horan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

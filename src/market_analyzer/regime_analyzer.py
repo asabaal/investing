@@ -14,33 +14,30 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
     """
     Market regime detection using multiple methods including HMM, structural breaks,
     and trend analysis.
-    
-    Parameters
-    ----------
-    n_states : int, default=3
-        Number of distinct market states to identify
-    window : int, default=252
-        Window size for structural break and trend detection
-    regime_labels : dict, optional
-        Dictionary mapping state indices to labels. If not provided,
-        will use default labeling based on mean values
-    standardize : bool, default=True
-        Whether to standardize features before fitting HMM
-    hmm_params : dict, optional
-        Additional parameters to pass to GaussianHMM
-    detection_methods : list of str, default=['hmm', 'breaks', 'trend']
-        Which detection methods to use
-        
-    Attributes
-    ----------
-    model_ : GaussianHMM
-        The fitted Hidden Markov Model (only if 'hmm' in detection_methods)
-    scaler_ : StandardScaler
-        The fitted scaler if standardize=True
-    feature_names_ : list
-        Names of features used in fitting
-    converged_ : bool
-        Whether the HMM model converged
+
+    Args:
+        n_states (int, optional): Number of distinct market states to identify. 
+            Defaults to 3.
+        window (int, optional): Window size for structural break and trend detection. 
+            Defaults to 252.
+        regime_labels (Optional[Dict[int, str]], optional): Dictionary mapping state indices 
+            to labels. If not provided, will use default labeling based on mean values.
+        standardize (bool, optional): Whether to standardize features before fitting HMM. 
+            Defaults to True.
+        hmm_params (Optional[dict], optional): Additional parameters to pass to GaussianHMM. 
+            Defaults to None.
+        detection_methods (List[str], optional): Which detection methods to use. 
+            Defaults to ['hmm', 'breaks', 'trend'].
+
+    Attributes:
+        model_: GaussianHMM
+            The fitted Hidden Markov Model (only if 'hmm' in detection_methods)
+        scaler_: StandardScaler
+            The fitted scaler if standardize=True
+        feature_names_: list
+            Names of features used in fitting
+        converged_: bool
+            Whether the HMM model converged
     """
     
     def __init__(
@@ -62,22 +59,20 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
     def fit(self, X: pd.DataFrame, y=None) -> 'RegimeAnalyzer':
         """
         Fit the regime detection models.
-        
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Features to use for regime detection. Must include required columns
-            depending on detection_methods:
-            - 'hmm': any features
-            - 'breaks': must include 'returns' and 'volume'
-            - 'trend': must include 'price'
-        y : None
-            Ignored, present for sklearn API compatibility
-            
-        Returns
-        -------
-        self : MarketRegimeDetector
-            The fitted detector
+
+        Args:
+            X (pd.DataFrame): Features to use for regime detection. Must include required columns
+                depending on detection_methods:
+                - 'hmm': any features
+                - 'breaks': must include 'returns' and 'volume'
+                - 'trend': must include 'price'
+            y (None): Ignored, present for sklearn API compatibility
+
+        Returns:
+            RegimeAnalyzer: The fitted detector
+
+        Raises:
+            ValueError: If X is not a DataFrame, is empty, or missing required columns
         """
         if not isinstance(X, pd.DataFrame):
             raise ValueError("X must be a pandas DataFrame")
@@ -106,17 +101,22 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """
         Transform data to detect regimes using all configured methods.
-        
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Features to detect regimes for. Must include same columns as
-            used in fit()
-            
-        Returns
-        -------
-        pd.DataFrame
-            DataFrame with regime indicators from all methods
+
+        Args:
+            X (pd.DataFrame): Features to detect regimes for. Must include same columns as
+                used in fit()
+
+        Returns:
+            pd.DataFrame: DataFrame with regime indicators from all methods, including:
+                - regime: State number from HMM
+                - regime_X_prob: Probability of each regime state
+                - regime_type: Labeled regime type (if converged)
+                - break_chow: Chow test statistic
+                - break_volatility: Volatility break indicator
+                - break_volume: Volume break indicator
+                - significant_break: Boolean indicating major regime break
+                - trend: Price trend direction
+                - composite_regime: Combined regime indicator (if multiple methods used)
         """
         results = pd.DataFrame(index=X.index)
         
@@ -138,7 +138,12 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
         return results
     
     def _fit_hmm(self, X: pd.DataFrame):
-        """Fit the HMM model to the data."""
+        """
+        Fit the HMM model to the data.
+
+        Args:
+            X (pd.DataFrame): Feature data to fit the HMM model
+        """
         # Store feature names
         self.feature_names_ = X.columns.tolist()
         
@@ -168,7 +173,18 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
         self.converged_ = self.model_.monitor_.converged
     
     def _transform_hmm(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Apply HMM to detect regimes."""
+        """
+        Apply HMM to detect regimes.
+
+        Args:
+            X (pd.DataFrame): Feature data to transform
+
+        Returns:
+            pd.DataFrame: DataFrame containing regime states and probabilities
+
+        Raises:
+            ValueError: If HMM has not been fit
+        """
         if not hasattr(self, 'model_'):
             raise ValueError("Must fit HMM before transform")
         
@@ -224,7 +240,15 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
         return results
     
     def _detect_breaks(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Detect structural breaks using rolling statistical tests with proper initialization."""
+        """
+        Detect structural breaks using rolling statistical tests.
+
+        Args:
+            X (pd.DataFrame): Data containing 'returns' and 'volume' columns
+
+        Returns:
+            pd.DataFrame: DataFrame containing break detection statistics and indicators
+        """
         results = pd.DataFrame(index=X.index)
         results['break_chow'] = np.nan
         results['break_volatility'] = np.nan
@@ -288,7 +312,15 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
         return results
     
     def _detect_trend(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Detect price trends using moving averages."""
+        """
+        Detect price trends using moving averages.
+
+        Args:
+            X (pd.DataFrame): Data containing 'price' column
+
+        Returns:
+            pd.DataFrame: DataFrame containing trend indicators
+        """
         results = pd.DataFrame(index=X.index)
         prices = X['price']
         
@@ -317,7 +349,15 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
         return results
     
     def _compute_composite_regime(self, results: pd.DataFrame) -> pd.Series:
-        """Compute composite regime by combining all indicators."""
+        """
+        Compute composite regime by combining all indicators.
+
+        Args:
+            results (pd.DataFrame): DataFrame containing individual regime indicators
+
+        Returns:
+            pd.Series: Combined regime indicator for each time point
+        """
         def get_composite_regime(row):
             components = []
             
@@ -335,5 +375,14 @@ class RegimeAnalyzer(BaseEstimator, TransformerMixin):
         return results.apply(get_composite_regime, axis=1)
     
     def fit_transform(self, X: pd.DataFrame, y=None) -> pd.DataFrame:
-        """Fit to data, then transform it."""
+        """
+        Fit to data, then transform it.
+
+        Args:
+            X (pd.DataFrame): Feature data to fit and transform
+            y (None): Ignored, present for sklearn API compatibility
+
+        Returns:
+            pd.DataFrame: Transformed data with regime indicators
+        """
         return self.fit(X, y).transform(X)

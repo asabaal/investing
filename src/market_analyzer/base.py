@@ -16,51 +16,39 @@ warnings.filterwarnings('ignore')
 
 class MarketAnalyzer:
     """
-    A comprehensive framework for market analysis that processes financial market data
-    and calculates various metrics useful for investment decision-making.
+    A comprehensive framework for market analysis and investment decision-making.
 
-    Key Concepts:
-    -------------
-    1. Market Data:
-       - OHLCV: Open, High, Low, Close prices and Volume
-       - Open: First trading price of the day
-       - Close: Last trading price of the day
-       - High/Low: Highest/lowest prices during the day
-       - Volume: Number of shares traded
+    This class processes financial market data to calculate various metrics and identify 
+    patterns useful for trading and investment decisions.
 
-    2. Returns:
-       - Daily Returns: Percentage change in price (e.g., +2% means price increased by 2%)
-       - Log Returns: Natural logarithm of price ratios, useful for statistical analysis
-       Example:
-           If a stock goes from $100 to $102:
-           Daily return = ($102 - $100)/$100 = 2%
-           Log return = ln($102/$100) ≈ 1.98%
+    Args:
+        data (Dict[str, pd.DataFrame]): Dictionary containing market data for each symbol.
+            Each DataFrame should have columns: ['open', 'high', 'low', 'close', 'volume'].
+        market_indices (List[str], optional): List of market index symbols to use as benchmarks.
+            Defaults to ['^GSPC'] (S&P 500).
 
-    3. Market Indices:
-       - Benchmark indices like S&P 500 (^GSPC) or Dow Jones (^DJI)
-       - Used to compare individual stock performance against overall market
-       Example:
-           If S&P 500 is up 1% and a stock is up 2%, the stock outperformed by 1%
+    Attributes:
+        data (Dict[str, pd.DataFrame]): Market data for each symbol.
+        market_indices (List[str]): List of market indices used as benchmarks.
+        returns_data (Dict[str, pd.DataFrame]): Calculated returns for each symbol.
 
-    Parameters:
-    -----------
-    data : Dict[str, pd.DataFrame]
-        Dictionary containing market data for each symbol
-        Each DataFrame should have columns: ['open', 'high', 'low', 'close', 'volume']
-    market_indices : List[str]
-        List of market index symbols (e.g., ['^GSPC', '^DJI'])
-    benchmark_index : str, optional
-        Primary market index for comparison (default: '^GSPC' - S&P 500)
+    Note:
+        Market data terminology:
+        - OHLCV: Open, High, Low, Close prices and Volume
+        - Open: First trading price of the day
+        - Close: Last trading price of the day
+        - High/Low: Highest/lowest prices during the day
+        - Volume: Number of shares traded
 
     Example:
-    --------
-    >>> data = {
-    ...     'AAPL': apple_data_df,  # DataFrame with OHLCV data
-    ...     '^GSPC': sp500_data_df  # S&P 500 index data
-    ... }
-    >>> analyzer = MarketAnalyzer(data=data, market_indices=['^GSPC'])
-    >>> features = analyzer.calculate_rolling_features('AAPL')
+        >>> data = {
+        ...     'AAPL': apple_data_df,  # DataFrame with OHLCV data
+        ...     '^GSPC': sp500_data_df  # S&P 500 index data
+        ... }
+        >>> analyzer = MarketAnalyzer(data=data, market_indices=['^GSPC'])
+        >>> features = analyzer.calculate_rolling_features('AAPL')
     """
+
     def __init__(self, 
                  data: Dict[str, pd.DataFrame],
                  market_indices: List[str] = ['^GSPC']):
@@ -73,21 +61,20 @@ class MarketAnalyzer:
         """
         Calculate and store various types of returns for all symbols.
 
-        This method computes:
-        1. Daily Returns: Simple percentage change
-           Formula: (P₁ - P₀)/P₀ where P₁ is current price and P₀ is previous price
-           
-        2. Log Returns: Natural logarithm of price ratio
-           Formula: ln(P₁/P₀)
-           Why? Log returns are:
-           - More likely to be normally distributed (good for statistics)
-           - Additive across time (useful for multi-period analysis)
+        Calculates and stores the following returns metrics:
+        - Daily Returns: Simple percentage change (P₁ - P₀)/P₀
+        - Log Returns: Natural logarithm of price ratio ln(P₁/P₀)
+        - Volume: Trading volume
+
+        Note:
+            Log returns are used because they are:
+            - More likely to be normally distributed
+            - Additive across time periods
 
         Example:
-        --------
-        If stock price moves: $100 → $102 → $100
-        Daily returns: +2%, -1.96%
-        Log returns: +1.98%, -1.98% (notice they sum to ~0)
+            For a stock price movement $100 → $102 → $100:
+            - Daily returns: +2%, -1.96%
+            - Log returns: +1.98%, -1.98% (sum to ~0)
         """
         for symbol, df in self.data.items():
             returns = pd.DataFrame({
@@ -101,39 +88,30 @@ class MarketAnalyzer:
     def calculate_rolling_features(self, 
                                  symbol: str,
                                  windows: List[int] = [5, 21, 63, 252]) -> pd.DataFrame:
-        """
-        Calculate rolling window features for market analysis.
+        """Calculate rolling window features for market analysis.
 
-        Windows Explanation:
-        - 5 days: One trading week
-        - 21 days: One trading month
-        - 63 days: One trading quarter
-        - 252 days: One trading year
+        Args:
+            symbol (str): The stock symbol to analyze.
+            windows (List[int], optional): List of rolling window sizes in days.
+                Defaults to [5, 21, 63, 252] representing week, month, quarter, year.
 
-        Features Calculated:
-        1. Return Statistics:
-           - Mean: Average return (trend direction)
-           - Std: Standard deviation (volatility)
-           - Skew: Return distribution asymmetry
-           - Kurt: "Fatness" of return tails (extreme event frequency)
-
-        2. Price Statistics:
-           - Mean: Average price level
-           - Std: Price volatility
-
-        3. Volume Statistics:
-           - Mean: Average trading activity
-           - Std: Trading activity volatility
-
-        4. Technical Indicators:
-           - RSI: Relative Strength Index (momentum indicator)
+        Returns:
+            pd.DataFrame: DataFrame containing calculated features with columns:
+                - return_mean_{window}d: Average return
+                - return_std_{window}d: Return standard deviation
+                - return_skew_{window}d: Return skewness
+                - return_kurt_{window}d: Return kurtosis
+                - price_mean_{window}d: Average price
+                - price_std_{window}d: Price standard deviation
+                - volume_mean_{window}d: Average volume
+                - volume_std_{window}d: Volume standard deviation
+                - RSI_{window}d: Relative Strength Index
 
         Example:
-        --------
-        >>> features = analyzer.calculate_rolling_features('AAPL', windows=[5, 21])
-        >>> # Check if stock is trending up over last month
-        >>> if features['return_mean_21d'].iloc[-1] > 0:
-        ...     print("Stock has positive momentum")
+            >>> features = analyzer.calculate_rolling_features('AAPL', windows=[5, 21])
+            >>> # Check if stock is trending up over last month
+            >>> if features['return_mean_21d'].iloc[-1] > 0:
+            ...     print("Stock has positive momentum")
         """
         df = self.returns_data[symbol].copy()
         price_data = self.data[symbol]['close']
@@ -166,36 +144,24 @@ class MarketAnalyzer:
     def detect_volatility_regime(self, 
                                symbol: str,
                                lookback: int = 252) -> pd.DataFrame:
-        """
-        Detect market volatility regimes using GARCH (Generalized AutoRegressive 
-        Conditional Heteroskedasticity) models.
+        """Detect market volatility regimes using GARCH models.
 
-        What is GARCH?
-        - A statistical model that describes how volatility changes over time
-        - Captures "volatility clustering" (volatile periods tend to persist)
-        - Helps predict future volatility levels
+        Uses GARCH (Generalized AutoRegressive Conditional Heteroskedasticity) models 
+        to classify market volatility into different regimes.
 
-        Regime Classifications:
-        0: Low Volatility
-           - Market is calm
-           - Price changes are small
-           - Good for steady growth strategies
+        Args:
+            symbol (str): The stock symbol to analyze.
+            lookback (int, optional): Number of days to look back. Defaults to 252 (1 trading year).
 
-        1: Normal Volatility
-           - Typical market conditions
-           - Price changes are moderate
-           - Standard trading conditions
-
-        2: High Volatility
-           - Market is turbulent
-           - Large price swings
-           - May need risk management
+        Returns:
+            pd.DataFrame: DataFrame with columns:
+                - volatility: Conditional volatility from GARCH model
+                - regime: Volatility regime classification (0=Low, 1=Normal, 2=High)
 
         Example:
-        --------
-        >>> regimes = analyzer.detect_volatility_regime('AAPL')
-        >>> if regimes['regime'].iloc[-1] == 2:
-        ...     print("Market is highly volatile - consider reducing position sizes")
+            >>> regimes = analyzer.detect_volatility_regime('AAPL')
+            >>> if regimes['regime'].iloc[-1] == 2:
+            ...     print("Market is highly volatile")
         """
         returns = self.returns_data[symbol]['daily_return'].dropna()
         
@@ -228,28 +194,21 @@ class MarketAnalyzer:
 
     def _calculate_rsi(self, prices: pd.Series, window: int = 14) -> pd.Series:
         """
-        Calculate the Relative Strength Index (RSI), a momentum indicator.
+        Calculate the Relative Strength Index (RSI).
 
-        What is RSI?
-        - Measures the speed and magnitude of recent price changes
-        - Ranges from 0 to 100
-        - Used to identify overbought/oversold conditions
+        Args:
+            prices (pd.Series): Price series to calculate RSI for.
+            window (int, optional): Calculation window. Defaults to 14.
 
-        Interpretation:
-        - RSI > 70: Potentially overbought (price might fall)
-        - RSI < 30: Potentially oversold (price might rise)
-        - RSI = 50: Neutral momentum
+        Returns:
+            pd.Series: RSI values ranging from 0 to 100.
+            - RSI > 70: Potentially overbought
+            - RSI < 30: Potentially oversold
+            - RSI = 50: Neutral momentum
 
-        Example:
-        --------
-        If a stock has had more up days than down days recently:
-        - RSI will be high (>70)
-        - This might indicate the stock is overbought
-        - Traders might consider taking profits
-
-        Formula:
-        RSI = 100 - (100 / (1 + RS))
-        where RS = (Average Gain / Average Loss)
+        Note:
+            RSI = 100 - (100 / (1 + RS))
+            where RS = (Average Gain / Average Loss)
         """
         delta = prices.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
@@ -263,91 +222,28 @@ class MarketAnalyzer:
                      start_date: Optional[str] = None,
                      end_date: Optional[str] = None) -> Dict[str, List[TechnicalPattern]]:
         """
-        Analyze price data to detect technical trading patterns over a specified time period.
-        This comprehensive analysis looks for multiple pattern types that traders use to
-        make predictions about future price movements.
+        Analyze price data to detect technical trading patterns.
 
-        What are Technical Patterns?
-        --------------------------
-        Technical patterns are specific price formations that traders believe can indicate
-        future market movements. This method detects three key pattern types:
-
-        1. Head and Shoulders
-        - Represents potential trend reversal from up to down
-        - Three peaks with middle peak (head) highest
-        Example: Stock rises to $50 (left shoulder), $55 (head), then $50 (right shoulder)
-
-        2. Double Bottom
-        - Represents potential trend reversal from down to up
-        - Two similar price lows with higher price between
-        Example: Stock drops to $40 twice with rise to $45 between drops
-
-        3. Volume-Price Divergence
-        - When price and volume trends differ
-        - May signal trend weakness
-        Example: Price rising but volume declining suggests weak buying interest
-
-        Parameters:
-        -----------
-        symbol : str
-            The stock symbol to analyze
-            Example: 'AAPL' for Apple Inc.
-
-        start_date : str, optional
-            Start date for analysis in 'YYYY-MM-DD' format
-            Example: '2023-01-01' for January 1st, 2023
-            If None, starts from earliest available date
-
-        end_date : str, optional
-            End date for analysis in 'YYYY-MM-DD' format
-            Example: '2023-12-31' for December 31st, 2023
-            If None, continues to latest available date
+        Args:
+            symbol (str): The stock symbol to analyze.
+            start_date (str, optional): Start date in 'YYYY-MM-DD' format.
+            end_date (str, optional): End date in 'YYYY-MM-DD' format.
 
         Returns:
-        --------
-        Dict[str, List[TechnicalPattern]]
-            Dictionary where:
-            - Keys: Pattern types ('head_and_shoulders', 'double_bottom', 'volume_price')
-            - Values: Lists of TechnicalPattern objects for each type found
+            Dict[str, List[TechnicalPattern]]: Dictionary of detected patterns:
+                - head_and_shoulders: Head and shoulders reversal patterns
+                - double_bottom: Double bottom reversal patterns
+                - volume_price: Volume-price divergence patterns
 
-        Example Usage:
-        -------------
-        >>> # Analyze patterns for Apple stock in 2023
-        >>> patterns = analyzer.analyze_patterns(
-        ...     symbol='AAPL',
-        ...     start_date='2023-01-01',
-        ...     end_date='2023-12-31'
-        ... )
-        >>> 
-        >>> # Check for head and shoulders patterns
-        >>> hs_patterns = patterns['head_and_shoulders']
-        >>> if hs_patterns:
-        ...     pattern = hs_patterns[0]
-        ...     print(f"Found H&S pattern with {pattern.confidence:.1%} confidence")
-        ...     print(f"Price range: ${pattern.price_range[0]:.2f} to ${pattern.price_range[1]:.2f}")
-        >>> 
-        >>> # Look for recent double bottoms
-        >>> db_patterns = patterns['double_bottom']
-        >>> recent_patterns = [p for p in db_patterns if p.end_idx > len(prices) - 20]
-        >>> if recent_patterns:
-        ...     print("Found recent double bottom - potential upward reversal")
-
-        Tips for Pattern Analysis:
-        ------------------------
-        1. Pattern Reliability
-        - Higher confidence patterns (>0.8) are more reliable
-        - Look for patterns with clear price levels
-        - Volume confirmation strengthens pattern signals
-
-        2. Time Horizons
-        - Longer patterns (more days between start_idx and end_idx) often more significant
-        - Recent patterns more relevant for current trading decisions
-        - Compare patterns across different time windows
-
-        3. Pattern Combinations
-        - Multiple pattern types confirming same direction = stronger signal
-        - Example: Double bottom + positive volume divergence suggests stronger upward move
-        - Check for conflicting patterns before making decisions
+        Example:
+            >>> patterns = analyzer.analyze_patterns(
+            ...     symbol='AAPL',
+            ...     start_date='2023-01-01',
+            ...     end_date='2023-12-31'
+            ... )
+            >>> hs_patterns = patterns['head_and_shoulders']
+            >>> if hs_patterns:
+            ...     print(f"Found pattern with {hs_patterns[0].confidence:.1%} confidence")
         """
 
         # Get symbol data
@@ -373,90 +269,24 @@ class MarketAnalyzer:
                             start_date: Optional[str] = None,
                             end_date: Optional[str] = None) -> Dict[str, pd.DataFrame]:
         """
-        Analyze overall market conditions using index data to identify market trends,
-        volatility levels, and momentum. This analysis helps understand the broader
-        market environment for making informed investment decisions.
+        Analyze overall market conditions using index data.
 
-        Market State Components:
-        -----------------------
-        1. Trend Analysis (20-day vs 50-day moving average)
-        - Compares short-term (20-day) to longer-term (50-day) price averages
-        - Trend = 1 (Uptrend): Short-term average > Long-term average
-        - Trend = 0 (Downtrend): Short-term average < Long-term average
-        
-        Example:
-            If 20-day avg = $105 and 50-day avg = $100
-            → Trend = 1 (uptrend)
-            This suggests recent prices are higher than historical prices
-
-        2. Volatility Analysis (20-day standard deviation)
-        - Measures how much prices are moving/varying
-        - Higher values = More market uncertainty/risk
-        - Lower values = More stable/predictable market
-        
-        Example:
-            If 20-day std dev = 2%
-            → Daily price typically varies by ±2%
-            During calm markets: might be 0.5-1%
-            During turbulent markets: might be 2-4%
-
-        3. Momentum Analysis (20-day average return)
-        - Measures the recent "strength" of price movements
-        - Positive value = Upward momentum (prices trending up)
-        - Negative value = Downward momentum (prices trending down)
-        
-        Example:
-            If 20-day avg return = +0.1%
-            → Market has been moving up on average
-            Strong momentum: > ±0.2% per day
-            Weak momentum: < ±0.05% per day
-
-        Parameters:
-        -----------
-        start_date : str, optional
-            Starting date for analysis in 'YYYY-MM-DD' format
-            Example: '2023-01-01'
-            If None, starts from earliest available date
-        
-        end_date : str, optional
-            Ending date for analysis in 'YYYY-MM-DD' format
-            Example: '2023-12-31'
-            If None, continues to latest available date
+        Args:
+            start_date (str, optional): Start date in 'YYYY-MM-DD' format.
+            end_date (str, optional): End date in 'YYYY-MM-DD' format.
 
         Returns:
-        --------
-        Dict[str, pd.DataFrame]
-            Dictionary where:
-            - Keys: Market index symbols (e.g., '^GSPC' for S&P 500)
-            - Values: DataFrames containing:
+            Dict[str, pd.DataFrame]: Dictionary mapping index symbols to DataFrames with:
                 - trend_20d: Binary indicator (1=uptrend, 0=downtrend)
                 - volatility_20d: Rolling 20-day standard deviation
                 - momentum_20d: Rolling 20-day average return
 
-        Example Usage:
-        -------------
-        >>> # Get market state for last quarter of 2023
-        >>> market_state = analyzer.analyze_market_state(
-        ...     start_date='2023-10-01',
-        ...     end_date='2023-12-31'
-        ... )
-        >>> 
-        >>> # Check S&P 500 conditions
-        >>> sp500_state = market_state['^GSPC']
-        >>> 
-        >>> # Get latest readings
-        >>> latest = sp500_state.iloc[-1]
-        >>> 
-        >>> # Example analysis
-        >>> if (latest['trend_20d'] == 1 and      # In uptrend
-        ...     latest['volatility_20d'] < 0.01 and   # Low volatility
-        ...     latest['momentum_20d'] > 0):      # Positive momentum
-        ...     print("Market showing healthy uptrend with low risk")
-        >>> 
-        >>> # Or analyze changing conditions
-        >>> if (sp500_state['volatility_20d'].mean() > 0.02 and  # High average volatility
-        ...     sp500_state['trend_20d'].sum() < len(sp500_state) * 0.3):  # Mostly downtrend
-        ...     print("Market has been unstable and weak")
+        Example:
+            >>> market_state = analyzer.analyze_market_state('2023-01-01', '2023-12-31')
+            >>> sp500_state = market_state['^GSPC']
+            >>> latest = sp500_state.iloc[-1]
+            >>> if latest['trend_20d'] == 1 and latest['momentum_20d'] > 0:
+            ...     print("Market in positive trend")
         """
         market_state = {}
         
@@ -499,15 +329,20 @@ class MarketAnalyzer:
                               max_lags: int = 5,
                               correlation_threshold: float = 0.5) -> Dict[str, Union[pd.DataFrame, nx.Graph, Dict]]:
         """
-        Comprehensive analysis of relationships between symbols.
-        
+        Analyze relationships between multiple symbols.
+
         Args:
-            symbols: List of symbols to analyze
-            max_lags: Maximum number of lags for analysis
-            correlation_threshold: Minimum correlation for network relationships
-            
+            symbols (List[str]): List of symbols to analyze.
+            max_lags (int, optional): Maximum number of lags for analysis. Defaults to 5.
+            correlation_threshold (float, optional): Minimum correlation threshold. 
+                Defaults to 0.5.
+
         Returns:
-            Dictionary containing various relationship analyses
+            Dict[str, Union[pd.DataFrame, nx.Graph, Dict]]: Dictionary containing:
+                - cross_correlations: Cross-correlation analysis
+                - relationship_network: NetworkX graph of relationships
+                - market_leaders: Dictionary of market leader scores
+                - granger_causality: Granger causality test results
         """
         lead_lag = LeadLagAnalyzer(self.returns_data)
         
@@ -538,17 +373,22 @@ class MarketAnalyzer:
                          hmm_states: int = 3,
                          window: int = 252) -> Dict[str, pd.DataFrame]:
         """
-        Comprehensive regime analysis for a given symbol.
-        
+        Analyze market regimes using multiple methods.
+
         Args:
-            symbol: Stock symbol to analyze
-            start_date: Start date for analysis
-            end_date: End date for analysis
-            hmm_states: Number of HMM states to detect
-            window: Window size for structural break detection
-            
+            symbol (str): Stock symbol to analyze.
+            start_date (str, optional): Start date in 'YYYY-MM-DD' format.
+            end_date (str, optional): End date in 'YYYY-MM-DD' format.
+            hmm_states (int, optional): Number of HMM states to detect. Defaults to 3.
+            window (int, optional): Window size for structural break detection. 
+                Defaults to 252.
+
         Returns:
-            Dictionary containing various regime analyses
+            Dict[str, pd.DataFrame]: Dictionary containing:
+                - hmm_regimes: Hidden Markov Model regime classification
+                - structural_breaks: Structural break points
+                - combined_regimes: Combined regime analysis
+                - volatility_regimes: Volatility regime classification
         """
         # Get symbol data
         returns = self.returns_data[symbol]['daily_return']
@@ -589,15 +429,20 @@ class MarketAnalyzer:
                               start_date: Optional[str] = None,
                               end_date: Optional[str] = None) -> Dict[str, go.Figure]:
         """
-        Create comprehensive set of visualizations for analysis results.
-        
+        Create a comprehensive set of analysis visualizations.
+
         Args:
-            symbol: Stock symbol to visualize
-            start_date: Start date for visualization
-            end_date: End date for visualization
-            
+            symbol (str): Stock symbol to visualize.
+            start_date (str, optional): Start date in 'YYYY-MM-DD' format.
+            end_date (str, optional): End date in 'YYYY-MM-DD' format.
+
         Returns:
-            Dictionary of Plotly figure objects
+            Dict[str, go.Figure]: Dictionary of Plotly figures:
+                - price_patterns: Price chart with pattern annotations
+                - combined_regimes: Combined regime analysis visualization
+                - volatility_regimes: Volatility regime visualization
+                - relationship_network: Network graph of relationships
+                - lead_lag_heatmap: Lead-lag relationship heatmap
         """
         visualizer = MarketVisualizer(self.data, self.results)
         
@@ -614,7 +459,17 @@ class MarketAnalyzer:
 class MarketVisualizer:
     """
     Creates interactive visualizations for market analysis results.
+
+    Args:
+        data (Dict[str, pd.DataFrame]): Market data dictionary.
+        results (Dict[str, Any]): Analysis results dictionary.
+
+    Attributes:
+        data (Dict[str, pd.DataFrame]): Market data for visualization.
+        results (Dict[str, Any]): Analysis results for visualization.
+        returns (pd.DataFrame): Calculated returns for all assets.
     """
+
     def __init__(self, data: Dict[str, pd.DataFrame], results: Dict[str, Any]):
         self.data = data
         self.results = results
@@ -629,14 +484,14 @@ class MarketVisualizer:
     def plot_price_patterns(self, symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> go.Figure:
         """
         Create candlestick chart with pattern annotations.
-        
+
         Args:
-            symbol: Stock symbol to plot
-            start_date: Start date for plotting
-            end_date: End date for plotting
-            
+            symbol (str): Stock symbol to plot.
+            start_date (str, optional): Start date in 'YYYY-MM-DD' format.
+            end_date (str, optional): End date in 'YYYY-MM-DD' format.
+
         Returns:
-            Plotly figure object
+            go.Figure: Plotly figure with price and volume subplots.
         """
         df = self.data[symbol].copy()
         if start_date:
@@ -704,13 +559,17 @@ class MarketVisualizer:
     def plot_regimes(self, symbol: str, regime_type: str = 'combined') -> go.Figure:
         """
         Visualize regime analysis results.
-        
+
         Args:
-            symbol: Stock symbol to plot
-            regime_type: Type of regime analysis to visualize
-            
+            symbol (str): Stock symbol to plot.
+            regime_type (str, optional): Type of regime analysis to visualize. 
+                Defaults to 'combined'.
+
         Returns:
-            Plotly figure object
+            go.Figure: Plotly figure with price and regime indicators.
+
+        Raises:
+            ValueError: If specified regime type not found in results.
         """
         if regime_type not in self.results.get('regimes', {}):
             raise ValueError(f"Regime type {regime_type} not found in results")
@@ -758,12 +617,16 @@ class MarketVisualizer:
     def plot_network(self, min_correlation: float = 0.5) -> go.Figure:
         """
         Create network visualization of stock relationships.
-        
+
         Args:
-            min_correlation: Minimum correlation to show relationship
-            
+            min_correlation (float, optional): Minimum correlation threshold. 
+                Defaults to 0.5.
+
         Returns:
-            Plotly figure object
+            go.Figure: Plotly figure with network graph.
+
+        Raises:
+            ValueError: If relationship network not found in results.
         """
         if 'relationship_network' not in self.results:
             raise ValueError("Relationship network not found in results")
@@ -841,9 +704,12 @@ class MarketVisualizer:
     def plot_lead_lag_heatmap(self) -> go.Figure:
         """
         Create heatmap of lead-lag relationships.
-        
+
         Returns:
-            Plotly figure object
+            go.Figure: Plotly figure with correlation heatmap.
+
+        Raises:
+            ValueError: If cross-correlation results not found.
         """
         if 'cross_correlations' not in self.results:
             raise ValueError("Cross-correlation results not found")
@@ -880,9 +746,9 @@ class MarketVisualizer:
     def plot_volatility_surface(self) -> go.Figure:
         """
         Create 3D visualization of volatility surface.
-        
+
         Returns:
-            Plotly figure object
+            go.Figure: Plotly figure with 3D surface plot.
         """
         surface_data = self.results['volatility_surface']
         
@@ -913,10 +779,14 @@ class MarketVisualizer:
     
     def plot_risk_metrics(self) -> go.Figure:
         """
-        Create visualization of risk metrics including VaR and stress tests.
-        
+        Create visualization of risk metrics.
+
         Returns:
-            Plotly figure object
+            go.Figure: Plotly figure with risk analysis dashboard including:
+                - VaR comparison
+                - Expected shortfall
+                - Stress test scenarios
+                - Return distribution
         """
         risk_data = self.results.get('risk_metrics', {})
         stress_data = self.results.get('stress_test', pd.DataFrame())
@@ -976,12 +846,12 @@ class MarketVisualizer:
     def plot_efficient_frontier(self, ef_data: pd.DataFrame) -> go.Figure:
         """
         Plot the efficient frontier.
-        
+
         Args:
-            ef_data: DataFrame with efficient frontier data
-            
+            ef_data (pd.DataFrame): DataFrame with efficient frontier data.
+
         Returns:
-            Plotly figure object
+            go.Figure: Plotly figure with efficient frontier plot.
         """
         # Create scatter plot of efficient frontier
         fig = go.Figure()

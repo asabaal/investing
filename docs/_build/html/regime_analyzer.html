@@ -1,0 +1,359 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Regime Analyzer &mdash; Market Analyzer 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Growing Window Functions" href="utils.html" />
+    <link rel="prev" title="Pattern Recognition" href="pattern_recognition.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Market Analyzer
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="base.html">Base Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pattern_recognition.html">Pattern Recognition</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Regime Analyzer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#classes">Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer"><code class="docutils literal notranslate"><span class="pre">RegimeAnalyzer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.model_"><code class="docutils literal notranslate"><span class="pre">RegimeAnalyzer.model_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.scaler_"><code class="docutils literal notranslate"><span class="pre">RegimeAnalyzer.scaler_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.feature_names_"><code class="docutils literal notranslate"><span class="pre">RegimeAnalyzer.feature_names_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.converged_"><code class="docutils literal notranslate"><span class="pre">RegimeAnalyzer.converged_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.__init__"><code class="docutils literal notranslate"><span class="pre">RegimeAnalyzer.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.fit"><code class="docutils literal notranslate"><span class="pre">RegimeAnalyzer.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.transform"><code class="docutils literal notranslate"><span class="pre">RegimeAnalyzer.transform()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.fit_transform"><code class="docutils literal notranslate"><span class="pre">RegimeAnalyzer.fit_transform()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notes">Notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Growing Window Functions</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Market Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Regime Analyzer</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/regime_analyzer.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-market_analyzer.regime_analyzer">
+<span id="regime-analyzer"></span><h1>Regime Analyzer<a class="headerlink" href="#module-market_analyzer.regime_analyzer" title="Link to this heading"></a></h1>
+<p>This module provides tools for detecting and analyzing market regimes using various statistical methods.</p>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">market_analyzer.regime_analyzer.</span></span><span class="sig-name descname"><span class="pre">RegimeAnalyzer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">252</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regime_labels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hmm_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detection_methods</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['hmm',</span> <span class="pre">'breaks',</span> <span class="pre">'trend']</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/regime_analyzer.html#RegimeAnalyzer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.regime_analyzer.RegimeAnalyzer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseEstimator</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformerMixin</span></code></p>
+<p>Market regime detection using multiple methods including HMM, structural breaks,
+and trend analysis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_states</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of distinct market states to identify.
+Defaults to 3.</p></li>
+<li><p><strong>window</strong> (<em>int</em><em>, </em><em>optional</em>) – Window size for structural break and trend detection.
+Defaults to 252.</p></li>
+<li><p><strong>regime_labels</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>int</em><em>, </em><em>str</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – Dictionary mapping state indices
+to labels. If not provided, will use default labeling based on mean values.</p></li>
+<li><p><strong>standardize</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to standardize features before fitting HMM.
+Defaults to True.</p></li>
+<li><p><strong>hmm_params</strong> (<em>Optional</em><em>[</em><em>dict</em><em>]</em><em>, </em><em>optional</em>) – Additional parameters to pass to GaussianHMM.
+Defaults to None.</p></li>
+<li><p><strong>detection_methods</strong> (<em>List</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – Which detection methods to use.
+Defaults to [‘hmm’, ‘breaks’, ‘trend’].</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer.model_">
+<span class="sig-name descname"><span class="pre">model_</span></span><a class="headerlink" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.model_" title="Link to this definition"></a></dt>
+<dd><p>GaussianHMM
+The fitted Hidden Markov Model (only if ‘hmm’ in detection_methods)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer.scaler_">
+<span class="sig-name descname"><span class="pre">scaler_</span></span><a class="headerlink" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.scaler_" title="Link to this definition"></a></dt>
+<dd><p>StandardScaler
+The fitted scaler if standardize=True</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer.feature_names_">
+<span class="sig-name descname"><span class="pre">feature_names_</span></span><a class="headerlink" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.feature_names_" title="Link to this definition"></a></dt>
+<dd><p>list
+Names of features used in fitting</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer.converged_">
+<span class="sig-name descname"><span class="pre">converged_</span></span><a class="headerlink" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.converged_" title="Link to this definition"></a></dt>
+<dd><p>bool
+Whether the HMM model converged</p>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.fit" title="market_analyzer.regime_analyzer.RegimeAnalyzer.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a></p></td>
+<td><p>Fit the regime detection models.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.transform" title="market_analyzer.regime_analyzer.RegimeAnalyzer.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a></p></td>
+<td><p>Transform data to detect regimes using all configured methods.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.fit_transform" title="market_analyzer.regime_analyzer.RegimeAnalyzer.fit_transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_transform</span></code></a></p></td>
+<td><p>Fit to data, then transform it.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Private Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">_fit_hmm</span></code></p></td>
+<td><p>Fit the HMM model to the data.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">_transform_hmm</span></code></p></td>
+<td><p>Apply HMM to detect regimes.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">_detect_breaks</span></code></p></td>
+<td><p>Detect structural breaks using rolling statistical tests.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">_detect_trend</span></code></p></td>
+<td><p>Detect price trends using moving averages.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">_compute_composite_regime</span></code></p></td>
+<td><p>Compute composite regime by combining all indicators.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">252</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regime_labels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hmm_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detection_methods</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['hmm',</span> <span class="pre">'breaks',</span> <span class="pre">'trend']</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/regime_analyzer.html#RegimeAnalyzer.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer" title="market_analyzer.regime_analyzer.RegimeAnalyzer"><span class="pre">RegimeAnalyzer</span></a></span></span><a class="reference internal" href="_modules/market_analyzer/regime_analyzer.html#RegimeAnalyzer.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.fit" title="Link to this definition"></a></dt>
+<dd><p>Fit the regime detection models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>X</strong> (<em>pd.DataFrame</em>) – Features to use for regime detection. Must include required columns
+depending on detection_methods:
+- ‘hmm’: any features
+- ‘breaks’: must include ‘returns’ and ‘volume’
+- ‘trend’: must include ‘price’</p></li>
+<li><p><strong>y</strong> (<em>None</em>) – Ignored, present for sklearn API compatibility</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The fitted detector</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#market_analyzer.regime_analyzer.RegimeAnalyzer" title="market_analyzer.regime_analyzer.RegimeAnalyzer">RegimeAnalyzer</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If X is not a DataFrame, is empty, or missing required columns</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/market_analyzer/regime_analyzer.html#RegimeAnalyzer.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.transform" title="Link to this definition"></a></dt>
+<dd><p>Transform data to detect regimes using all configured methods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>X</strong> (<em>pd.DataFrame</em>) – Features to detect regimes for. Must include same columns as
+used in fit()</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>DataFrame with regime indicators from all methods, including:</dt><dd><ul class="simple">
+<li><p>regime: State number from HMM</p></li>
+<li><p>regime_X_prob: Probability of each regime state</p></li>
+<li><p>regime_type: Labeled regime type (if converged)</p></li>
+<li><p>break_chow: Chow test statistic</p></li>
+<li><p>break_volatility: Volatility break indicator</p></li>
+<li><p>break_volume: Volume break indicator</p></li>
+<li><p>significant_break: Boolean indicating major regime break</p></li>
+<li><p>trend: Price trend direction</p></li>
+<li><p>composite_regime: Combined regime indicator (if multiple methods used)</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer.fit_transform">
+<span class="sig-name descname"><span class="pre">fit_transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/market_analyzer/regime_analyzer.html#RegimeAnalyzer.fit_transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.fit_transform" title="Link to this definition"></a></dt>
+<dd><p>Fit to data, then transform it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>X</strong> (<em>pd.DataFrame</em>) – Feature data to fit and transform</p></li>
+<li><p><strong>y</strong> (<em>None</em>) – Ignored, present for sklearn API compatibility</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Transformed data with regime indicators</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h2>
+<p>Here’s a basic example of how to use the RegimeAnalyzer class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">market_analyzer.regime_analyzer</span> <span class="kn">import</span> <span class="n">RegimeAnalyzer</span>
+
+<span class="c1"># Prepare your data</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s1">&#39;returns&#39;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">],</span>
+    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">],</span>
+    <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
+<span class="p">})</span>
+
+<span class="c1"># Initialize the analyzer</span>
+<span class="n">analyzer</span> <span class="o">=</span> <span class="n">RegimeAnalyzer</span><span class="p">(</span>
+    <span class="n">n_states</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">window</span><span class="o">=</span><span class="mi">252</span><span class="p">,</span>
+    <span class="n">detection_methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;hmm&#39;</span><span class="p">,</span> <span class="s1">&#39;breaks&#39;</span><span class="p">,</span> <span class="s1">&#39;trend&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># Fit and transform the data</span>
+<span class="n">regimes</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<span class="c1"># Print the detected regimes</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">regimes</span><span class="p">[</span><span class="s1">&#39;composite_regime&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+<section id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Link to this heading"></a></h2>
+<p>The RegimeAnalyzer combines multiple methods for regime detection:</p>
+<ol class="arabic simple">
+<li><p>Hidden Markov Models (HMM)
+- Uses GaussianHMM to identify distinct market states
+- Provides state probabilities and regime classifications</p></li>
+<li><p>Structural Breaks
+- Detects significant changes in returns, volatility, and volume
+- Uses rolling window analysis with statistical tests</p></li>
+<li><p>Trend Analysis
+- Identifies price trends using moving averages
+- Classifies markets into uptrend/downtrend regimes</p></li>
+</ol>
+</section>
+<section id="see-also">
+<h2>See Also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.BaseEstimator</span></code></p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.TransformerMixin</span></code></p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">hmmlearn.hmm.GaussianHMM</span></code></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="pattern_recognition.html" class="btn btn-neutral float-left" title="Pattern Recognition" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="utils.html" class="btn btn-neutral float-right" title="Growing Window Functions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Asabaal Horan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
