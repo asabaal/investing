@@ -301,8 +301,12 @@ class LeadLagAnalyzer:
         returns_data (Dict[str, pd.DataFrame]): Dictionary mapping symbols to their returns data
     """
     def __init__(self, returns_data: Dict[str, pd.DataFrame]):
-        self.returns_data = returns_data
+        self.returns_data = {}
         self.relationships = {}
+
+        for symbol in returns_data:
+            if not returns_data[symbol].empty:
+                self.returns_data[symbol] = returns_data[symbol]
         
     def calculate_cross_correlations(self, 
                                    symbols: List[str], 
@@ -343,8 +347,16 @@ class LeadLagAnalyzer:
         """
         results = []
         
-        for i, symbol1 in enumerate(symbols):
-            for j, symbol2 in enumerate(symbols):
+        non_empty_symbols = []
+        for symbol in symbols:
+            if not self.returns_data[symbol].empty:
+                non_empty_symbols.append(symbol)
+
+        if len(non_empty_symbols) < 2:
+            return pd.DataFrame()
+
+        for i, symbol1 in enumerate(non_empty_symbols):
+            for j, symbol2 in enumerate(non_empty_symbols):
                 if i >= j:  # Only calculate upper triangle
                     continue
                     
@@ -408,11 +420,23 @@ class LeadLagAnalyzer:
             >>> isinstance(results, pd.DataFrame)
             True
         """
+
+        if len(symbols) == 0:
+            return pd.DataFrame()
+
         results = []
-        
+
+        non_empty_symbols = []
+        for symbol in symbols:
+            if not self.returns_data[symbol].empty:
+                non_empty_symbols.append(symbol)
+
+        if len(non_empty_symbols) < 2:
+            return pd.DataFrame()
+
         # Test each possible pair of symbols
-        for cause_symbol in symbols:
-            for effect_symbol in symbols:
+        for cause_symbol in non_empty_symbols:
+            for effect_symbol in non_empty_symbols:
                 # Skip self-causation tests
                 if cause_symbol == effect_symbol:
                     continue
@@ -473,7 +497,7 @@ class LeadLagAnalyzer:
         
         # Convert to DataFrame
         results_df = pd.DataFrame(results)
-        breakpoint()
+
         # Sort by p-value to highlight most significant relationships
         results_df = results_df.sort_values('ssr_f_pvalue')
 

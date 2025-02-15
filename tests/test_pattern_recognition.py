@@ -325,7 +325,8 @@ class TestEdgeCases:
         })
         analyzer_with_missing = LeadLagAnalyzer(lead_lag_sample_returns_data)
         results = analyzer_with_missing.test_granger_causality('A', 'D')
-        assert all(np.isnan(v) for v in results.values())
+        assert isinstance(results, pd.DataFrame)
+        assert results.empty
 
     def test_data_alignment(self, lead_lag_sample_returns_data):
         """Test handling of differently aligned time series."""
