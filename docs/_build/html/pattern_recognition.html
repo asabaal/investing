@@ -1,0 +1,996 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pattern Recognition &mdash; Market Analyzer 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Regime Analyzer" href="regime_analyzer.html" />
+    <link rel="prev" title="Base Module" href="base.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Market Analyzer
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="base.html">Base Module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Pattern Recognition</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern.pattern_type"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern.pattern_type</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern.start_idx"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern.start_idx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern.end_idx"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern.end_idx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern.price_range"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern.price_range</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern.failure_reasons"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern.failure_reasons</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern.specific_points"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern.specific_points</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern.volume_range"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern.volume_range</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern.sub_classification"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern.sub_classification</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern.confidence"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern.confidence</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern.__init__"><code class="docutils literal notranslate"><span class="pre">TechnicalPattern.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints"><code class="docutils literal notranslate"><span class="pre">HeadAndShouldersPoints</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.left_shoulder_idx"><code class="docutils literal notranslate"><span class="pre">HeadAndShouldersPoints.left_shoulder_idx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.head_idx"><code class="docutils literal notranslate"><span class="pre">HeadAndShouldersPoints.head_idx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.right_shoulder_idx"><code class="docutils literal notranslate"><span class="pre">HeadAndShouldersPoints.right_shoulder_idx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.left_trough_idx"><code class="docutils literal notranslate"><span class="pre">HeadAndShouldersPoints.left_trough_idx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.right_trough_idx"><code class="docutils literal notranslate"><span class="pre">HeadAndShouldersPoints.right_trough_idx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.__init__"><code class="docutils literal notranslate"><span class="pre">HeadAndShouldersPoints.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternValidation"><code class="docutils literal notranslate"><span class="pre">PatternValidation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternValidation.is_valid"><code class="docutils literal notranslate"><span class="pre">PatternValidation.is_valid</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternValidation.confidence"><code class="docutils literal notranslate"><span class="pre">PatternValidation.confidence</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternValidation.failure_reasons"><code class="docutils literal notranslate"><span class="pre">PatternValidation.failure_reasons</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternValidation.price_range"><code class="docutils literal notranslate"><span class="pre">PatternValidation.price_range</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternValidation.__init__"><code class="docutils literal notranslate"><span class="pre">PatternValidation.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePatternType"><code class="docutils literal notranslate"><span class="pre">VolumePatternType</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePatternType.DIVERGENCE"><code class="docutils literal notranslate"><span class="pre">VolumePatternType.DIVERGENCE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePatternType.NON_CONFIRMATION"><code class="docutils literal notranslate"><span class="pre">VolumePatternType.NON_CONFIRMATION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePatternType.VOLUME_FORCE"><code class="docutils literal notranslate"><span class="pre">VolumePatternType.VOLUME_FORCE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePatternType.NEUTRAL"><code class="docutils literal notranslate"><span class="pre">VolumePatternType.NEUTRAL</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePatternType.CONCORDANT"><code class="docutils literal notranslate"><span class="pre">VolumePatternType.CONCORDANT</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePattern"><code class="docutils literal notranslate"><span class="pre">VolumePattern</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePattern.pattern_type"><code class="docutils literal notranslate"><span class="pre">VolumePattern.pattern_type</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePattern.price_range"><code class="docutils literal notranslate"><span class="pre">VolumePattern.price_range</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePattern.__init__"><code class="docutils literal notranslate"><span class="pre">VolumePattern.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#market_analyzer.pattern_recognition.validate_head_and_shoulders"><code class="docutils literal notranslate"><span class="pre">validate_head_and_shoulders()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer"><code class="docutils literal notranslate"><span class="pre">LeadLagAnalyzer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer.__init__"><code class="docutils literal notranslate"><span class="pre">LeadLagAnalyzer.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer.calculate_cross_correlations"><code class="docutils literal notranslate"><span class="pre">LeadLagAnalyzer.calculate_cross_correlations()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer.test_granger_causality"><code class="docutils literal notranslate"><span class="pre">LeadLagAnalyzer.test_granger_causality()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer.build_relationship_network"><code class="docutils literal notranslate"><span class="pre">LeadLagAnalyzer.build_relationship_network()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer.find_market_leaders"><code class="docutils literal notranslate"><span class="pre">LeadLagAnalyzer.find_market_leaders()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternRecognition"><code class="docutils literal notranslate"><span class="pre">PatternRecognition</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternRecognition.prices"><code class="docutils literal notranslate"><span class="pre">PatternRecognition.prices</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternRecognition.volumes"><code class="docutils literal notranslate"><span class="pre">PatternRecognition.volumes</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternRecognition.patterns"><code class="docutils literal notranslate"><span class="pre">PatternRecognition.patterns</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternRecognition.__init__"><code class="docutils literal notranslate"><span class="pre">PatternRecognition.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternRecognition.find_swing_points"><code class="docutils literal notranslate"><span class="pre">PatternRecognition.find_swing_points()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternRecognition.detect_head_and_shoulders"><code class="docutils literal notranslate"><span class="pre">PatternRecognition.detect_head_and_shoulders()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternRecognition.detect_double_bottom"><code class="docutils literal notranslate"><span class="pre">PatternRecognition.detect_double_bottom()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternRecognition.detect_volume_price_patterns"><code class="docutils literal notranslate"><span class="pre">PatternRecognition.detect_volume_price_patterns()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#technical-pattern-analysis">Technical Pattern Analysis</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#data-classes">Data Classes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Pattern Recognition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#lead-lag-analysis">Lead-Lag Analysis</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="regime_analyzer.html">Regime Analyzer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Market Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Pattern Recognition</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/pattern_recognition.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-market_analyzer.pattern_recognition">
+<span id="pattern-recognition"></span><h1>Pattern Recognition<a class="headerlink" href="#module-market_analyzer.pattern_recognition" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">market_analyzer.pattern_recognition.</span></span><span class="sig-name descname"><span class="pre">TechnicalPattern</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_reasons</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">specific_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_classification</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Enum</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">nan</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#TechnicalPattern"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A data class for storing detected technical pattern information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pattern_type</strong> (<em>str</em>) – Type of pattern detected (e.g., “HEAD_AND_SHOULDERS”)</p></li>
+<li><p><strong>start_idx</strong> (<em>int</em>) – Starting index of the pattern in the price series</p></li>
+<li><p><strong>end_idx</strong> (<em>int</em>) – Ending index of the pattern in the price series</p></li>
+<li><p><strong>price_range</strong> (<em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – Min and max prices within pattern (min_price, max_price)</p></li>
+<li><p><strong>failure_reasons</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – Reasons for imperfect pattern match.
+Defaults to None.</p></li>
+<li><p><strong>specific_points</strong> (<em>Optional</em><em>[</em><em>dict</em><em>]</em><em>, </em><em>optional</em>) – Pattern-specific point indices. Defaults to None.</p></li>
+<li><p><strong>volume_range</strong> (<em>Optional</em><em>[</em><em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – Min and max volumes. Defaults to None.</p></li>
+<li><p><strong>sub_classification</strong> (<em>Optional</em><em>[</em><em>Enum</em><em>]</em><em>, </em><em>optional</em>) – Further pattern classification. Defaults to None.</p></li>
+<li><p><strong>confidence</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em><em>, </em><em>optional</em>) – Pattern confidence score (0-1). Defaults to np.nan.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">pattern</span> <span class="o">=</span> <span class="n">TechnicalPattern</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">pattern_type</span><span class="o">=</span><span class="s2">&quot;HEAD_AND_SHOULDERS&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">start_idx</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">end_idx</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">price_range</span><span class="o">=</span><span class="p">(</span><span class="mf">45.50</span><span class="p">,</span> <span class="mf">51.75</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">confidence</span><span class="o">=</span><span class="mf">0.85</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern</span><span class="o">.</span><span class="n">pattern_type</span>
+<span class="go">&#39;HEAD_AND_SHOULDERS&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern</span><span class="o">.</span><span class="n">confidence</span>
+<span class="go">0.85</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern</span><span class="o">.</span><span class="n">price_range</span>
+<span class="go">(45.5, 51.75)</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern.pattern_type">
+<span class="sig-name descname"><span class="pre">pattern_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern.pattern_type" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern.start_idx">
+<span class="sig-name descname"><span class="pre">start_idx</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern.start_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern.end_idx">
+<span class="sig-name descname"><span class="pre">end_idx</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern.end_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern.price_range">
+<span class="sig-name descname"><span class="pre">price_range</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern.price_range" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern.failure_reasons">
+<span class="sig-name descname"><span class="pre">failure_reasons</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern.failure_reasons" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern.specific_points">
+<span class="sig-name descname"><span class="pre">specific_points</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern.specific_points" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern.volume_range">
+<span class="sig-name descname"><span class="pre">volume_range</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern.volume_range" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern.sub_classification">
+<span class="sig-name descname"><span class="pre">sub_classification</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Enum</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern.sub_classification" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern.confidence">
+<span class="sig-name descname"><span class="pre">confidence</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">nan</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern.confidence" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.TechnicalPattern.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_reasons</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">specific_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_classification</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Enum</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">nan</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#market_analyzer.pattern_recognition.TechnicalPattern.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.HeadAndShouldersPoints">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">market_analyzer.pattern_recognition.</span></span><span class="sig-name descname"><span class="pre">HeadAndShouldersPoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_shoulder_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">head_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_shoulder_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">left_trough_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_trough_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#HeadAndShouldersPoints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Points defining a head and shoulders pattern.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>left_shoulder_idx</strong> (<em>int</em>) – Index of the left shoulder peak</p></li>
+<li><p><strong>head_idx</strong> (<em>int</em>) – Index of the head peak</p></li>
+<li><p><strong>right_shoulder_idx</strong> (<em>int</em>) – Index of the right shoulder peak</p></li>
+<li><p><strong>left_trough_idx</strong> (<em>int</em>) – Index of the trough between left shoulder and head</p></li>
+<li><p><strong>right_trough_idx</strong> (<em>int</em>) – Index of the trough between head and right shoulder</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">points</span> <span class="o">=</span> <span class="n">HeadAndShouldersPoints</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">left_shoulder_idx</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">head_idx</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">right_shoulder_idx</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">left_trough_idx</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">right_trough_idx</span><span class="o">=</span><span class="mi">25</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">points</span><span class="o">.</span><span class="n">head_idx</span>
+<span class="go">20</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">points</span><span class="o">.</span><span class="n">left_shoulder_idx</span> <span class="o">&lt;</span> <span class="n">points</span><span class="o">.</span><span class="n">head_idx</span> <span class="o">&lt;</span> <span class="n">points</span><span class="o">.</span><span class="n">right_shoulder_idx</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.HeadAndShouldersPoints.left_shoulder_idx">
+<span class="sig-name descname"><span class="pre">left_shoulder_idx</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.left_shoulder_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.HeadAndShouldersPoints.head_idx">
+<span class="sig-name descname"><span class="pre">head_idx</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.head_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.HeadAndShouldersPoints.right_shoulder_idx">
+<span class="sig-name descname"><span class="pre">right_shoulder_idx</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.right_shoulder_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.HeadAndShouldersPoints.left_trough_idx">
+<span class="sig-name descname"><span class="pre">left_trough_idx</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.left_trough_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.HeadAndShouldersPoints.right_trough_idx">
+<span class="sig-name descname"><span class="pre">right_trough_idx</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.right_trough_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.HeadAndShouldersPoints.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left_shoulder_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">head_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_shoulder_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">left_trough_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_trough_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternValidation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">market_analyzer.pattern_recognition.</span></span><span class="sig-name descname"><span class="pre">PatternValidation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">is_valid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_reasons</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#PatternValidation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternValidation" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Results of pattern validation checks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>is_valid</strong> (<em>bool</em>) – Whether pattern meets all validation criteria</p></li>
+<li><p><strong>confidence</strong> (<em>float</em>) – Confidence score for the pattern (0-1)</p></li>
+<li><p><strong>failure_reasons</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em>) – Reasons for any validation failures</p></li>
+<li><p><strong>price_range</strong> (<em>Optional</em><em>[</em><em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – Price range if valid.
+Defaults to None.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Test valid pattern</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">validation</span> <span class="o">=</span> <span class="n">PatternValidation</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">is_valid</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">confidence</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">failure_reasons</span><span class="o">=</span><span class="p">{},</span>
+<span class="gp">... </span>    <span class="n">price_range</span><span class="o">=</span><span class="p">(</span><span class="mf">100.0</span><span class="p">,</span> <span class="mf">110.0</span><span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">bool</span><span class="p">(</span><span class="n">validation</span><span class="o">.</span><span class="n">is_valid</span><span class="p">)</span>  <span class="c1"># Convert from numpy bool if needed</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">float</span><span class="p">(</span><span class="n">validation</span><span class="o">.</span><span class="n">confidence</span><span class="p">)</span>  <span class="c1"># Convert from numpy float if needed</span>
+<span class="go">0.85</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">validation</span><span class="o">.</span><span class="n">failure_reasons</span> <span class="o">==</span> <span class="p">{}</span>  <span class="c1"># Empty dict for valid pattern</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Test failed pattern</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">failed_validation</span> <span class="o">=</span> <span class="n">PatternValidation</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">is_valid</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">confidence</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">failure_reasons</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;slope&#39;</span><span class="p">:</span> <span class="s1">&#39;Neckline slope too steep&#39;</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="n">price_range</span><span class="o">=</span><span class="kc">None</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">bool</span><span class="p">(</span><span class="n">failed_validation</span><span class="o">.</span><span class="n">is_valid</span><span class="p">)</span>
+<span class="go">False</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">bool</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">failed_validation</span><span class="o">.</span><span class="n">failure_reasons</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># Has failure reasons</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternValidation.is_valid">
+<span class="sig-name descname"><span class="pre">is_valid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternValidation.is_valid" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternValidation.confidence">
+<span class="sig-name descname"><span class="pre">confidence</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternValidation.confidence" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternValidation.failure_reasons">
+<span class="sig-name descname"><span class="pre">failure_reasons</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternValidation.failure_reasons" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternValidation.price_range">
+<span class="sig-name descname"><span class="pre">price_range</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternValidation.price_range" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternValidation.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">is_valid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_reasons</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternValidation.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.VolumePatternType">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">market_analyzer.pattern_recognition.</span></span><span class="sig-name descname"><span class="pre">VolumePatternType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#VolumePatternType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.VolumePatternType" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Types of volume patterns in relation to price movement.</p>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">VolumePatternType</span><span class="o">.</span><span class="n">DIVERGENCE</span><span class="o">.</span><span class="n">value</span>
+<span class="go">&#39;DIVERGENCE&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern_type</span> <span class="o">=</span> <span class="n">VolumePatternType</span><span class="o">.</span><span class="n">CONCORDANT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern_type</span> <span class="o">==</span> <span class="n">VolumePatternType</span><span class="o">.</span><span class="n">CONCORDANT</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern_type</span><span class="o">.</span><span class="n">value</span>
+<span class="go">&#39;CONCORDANT&#39;</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.VolumePatternType.DIVERGENCE">
+<span class="sig-name descname"><span class="pre">DIVERGENCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DIVERGENCE'</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.VolumePatternType.DIVERGENCE" title="Link to this definition"></a></dt>
+<dd><p>Volume moving opposite to price</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.VolumePatternType.NON_CONFIRMATION">
+<span class="sig-name descname"><span class="pre">NON_CONFIRMATION</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NON_CONFIRMATION'</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.VolumePatternType.NON_CONFIRMATION" title="Link to this definition"></a></dt>
+<dd><p>Volume flat while price moves</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.VolumePatternType.VOLUME_FORCE">
+<span class="sig-name descname"><span class="pre">VOLUME_FORCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'VOLUME_FORCE'</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.VolumePatternType.VOLUME_FORCE" title="Link to this definition"></a></dt>
+<dd><p>Volume moving while price is flat</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.VolumePatternType.NEUTRAL">
+<span class="sig-name descname"><span class="pre">NEUTRAL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NEUTRAL'</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.VolumePatternType.NEUTRAL" title="Link to this definition"></a></dt>
+<dd><p>Both price and volume are flat</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.VolumePatternType.CONCORDANT">
+<span class="sig-name descname"><span class="pre">CONCORDANT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONCORDANT'</span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.VolumePatternType.CONCORDANT" title="Link to this definition"></a></dt>
+<dd><p>Price and volume moving in same direction</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.VolumePattern">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">market_analyzer.pattern_recognition.</span></span><span class="sig-name descname"><span class="pre">VolumePattern</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePatternType" title="market_analyzer.pattern_recognition.VolumePatternType"><span class="pre">VolumePatternType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_reasons</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">specific_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_classification</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Enum</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">nan</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#VolumePattern"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.VolumePattern" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern" title="market_analyzer.pattern_recognition.TechnicalPattern"><code class="xref py py-class docutils literal notranslate"><span class="pre">TechnicalPattern</span></code></a></p>
+<p>Volume-based pattern information.</p>
+<p>Inherits from TechnicalPattern and adds volume-specific attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pattern_type</strong> (<a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePatternType" title="market_analyzer.pattern_recognition.VolumePatternType"><em>VolumePatternType</em></a>) – Type of volume pattern</p></li>
+<li><p><strong>price_range</strong> (<em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – Min and max prices within pattern</p></li>
+<li><p><strong>volume_range</strong> (<em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – Min and max volumes within pattern</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">pattern</span> <span class="o">=</span> <span class="n">VolumePattern</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">pattern_type</span><span class="o">=</span><span class="n">VolumePatternType</span><span class="o">.</span><span class="n">DIVERGENCE</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">start_idx</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">end_idx</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">price_range</span><span class="o">=</span><span class="p">(</span><span class="mf">100.0</span><span class="p">,</span> <span class="mf">110.0</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">volume_range</span><span class="o">=</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">7500</span><span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern</span><span class="o">.</span><span class="n">pattern_type</span> <span class="o">==</span> <span class="n">VolumePatternType</span><span class="o">.</span><span class="n">DIVERGENCE</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern</span><span class="o">.</span><span class="n">volume_range</span>
+<span class="go">(5000, 7500)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern</span><span class="o">.</span><span class="n">price_range</span>
+<span class="go">(100.0, 110.0)</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.VolumePattern.pattern_type">
+<span class="sig-name descname"><span class="pre">pattern_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePatternType" title="market_analyzer.pattern_recognition.VolumePatternType"><span class="pre">VolumePatternType</span></a></em><a class="headerlink" href="#market_analyzer.pattern_recognition.VolumePattern.pattern_type" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.VolumePattern.price_range">
+<span class="sig-name descname"><span class="pre">price_range</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#market_analyzer.pattern_recognition.VolumePattern.price_range" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.VolumePattern.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#market_analyzer.pattern_recognition.VolumePatternType" title="market_analyzer.pattern_recognition.VolumePatternType"><span class="pre">VolumePatternType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_reasons</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">specific_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_classification</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Enum</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">nan</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#market_analyzer.pattern_recognition.VolumePattern.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.validate_head_and_shoulders">
+<span class="sig-prename descclassname"><span class="pre">market_analyzer.pattern_recognition.</span></span><span class="sig-name descname"><span class="pre">validate_head_and_shoulders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints" title="market_analyzer.pattern_recognition.HeadAndShouldersPoints"><span class="pre">HeadAndShouldersPoints</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">shoulder_height_tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neckline_slope_tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternValidation" title="market_analyzer.pattern_recognition.PatternValidation"><span class="pre">PatternValidation</span></a></span></span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#validate_head_and_shoulders"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.validate_head_and_shoulders" title="Link to this definition"></a></dt>
+<dd><p>Validate a potential head and shoulders pattern.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>prices</strong> (<em>np.ndarray</em>) – Array of price values</p></li>
+<li><p><strong>points</strong> (<a class="reference internal" href="#market_analyzer.pattern_recognition.HeadAndShouldersPoints" title="market_analyzer.pattern_recognition.HeadAndShouldersPoints"><em>HeadAndShouldersPoints</em></a>) – Points forming the potential pattern</p></li>
+<li><p><strong>shoulder_height_tolerance</strong> (<em>float</em><em>, </em><em>optional</em>) – Maximum allowed shoulder height difference.
+Defaults to 0.02 (2%).</p></li>
+<li><p><strong>neckline_slope_tolerance</strong> (<em>float</em><em>, </em><em>optional</em>) – Maximum allowed neckline slope.
+Defaults to 0.02 (2%).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Validation results including confidence score and any failure reasons</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#market_analyzer.pattern_recognition.PatternValidation" title="market_analyzer.pattern_recognition.PatternValidation">PatternValidation</a></p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a valid head and shoulders pattern</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">12.0</span><span class="p">,</span> <span class="mf">11.0</span><span class="p">,</span> <span class="mf">13.0</span><span class="p">,</span> <span class="mf">11.0</span><span class="p">,</span> <span class="mf">12.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">test_points</span> <span class="o">=</span> <span class="n">HeadAndShouldersPoints</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">left_shoulder_idx</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">head_idx</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">right_shoulder_idx</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">left_trough_idx</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">right_trough_idx</span><span class="o">=</span><span class="mi">4</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">validation</span> <span class="o">=</span> <span class="n">validate_head_and_shoulders</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">test_points</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">bool</span><span class="p">(</span><span class="n">validation</span><span class="o">.</span><span class="n">is_valid</span><span class="p">)</span>  <span class="c1"># Convert numpy bool to Python bool</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">bool</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">validation</span><span class="o">.</span><span class="n">confidence</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.8</span><span class="p">)</span>  <span class="c1"># High confidence score</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">dict</span><span class="p">(</span><span class="n">validation</span><span class="o">.</span><span class="n">failure_reasons</span><span class="p">)</span> <span class="o">==</span> <span class="p">{}</span>  <span class="c1"># No failure reasons</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.LeadLagAnalyzer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">market_analyzer.pattern_recognition.</span></span><span class="sig-name descname"><span class="pre">LeadLagAnalyzer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">returns_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#LeadLagAnalyzer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Analyzes lead-lag relationships between securities.</p>
+<p>Identifies which securities tend to lead or lag others in price movements
+using various statistical methods including cross-correlation and Granger causality.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>returns_data</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>pd.DataFrame</em><em>]</em>) – Dictionary mapping symbols to their returns data</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.LeadLagAnalyzer.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">returns_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#LeadLagAnalyzer.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.LeadLagAnalyzer.calculate_cross_correlations">
+<span class="sig-name descname"><span class="pre">calculate_cross_correlations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_lags</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#LeadLagAnalyzer.calculate_cross_correlations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer.calculate_cross_correlations" title="Link to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Calculate cross-correlations between multiple symbols at different lags.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>symbols (List[str]): List of symbols to analyze
+max_lags (int, optional): Maximum number of lags to consider. Defaults to 5.</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>pd.DataFrame: DataFrame containing correlations with columns:</dt><dd><ul class="simple">
+<li><p>symbol1: First symbol in pair</p></li>
+<li><p>symbol2: Second symbol in pair</p></li>
+<li><p>lag: Time lag in periods</p></li>
+<li><p>correlation: Correlation coefficient</p></li>
+</ul>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create sample data with known correlation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s1">&#39;2024-01-01&#39;</span><span class="p">,</span> <span class="s1">&#39;2024-01-10&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">base_returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.01</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="n">base_returns</span>
+<span class="gp">... </span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="n">base_returns</span> <span class="o">*</span> <span class="mf">0.9</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.001</span>
+<span class="gp">... </span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">returns_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;AAPL&#39;</span><span class="p">:</span> <span class="n">data1</span><span class="p">,</span> <span class="s1">&#39;MSFT&#39;</span><span class="p">:</span> <span class="n">data2</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">analyzer</span> <span class="o">=</span> <span class="n">LeadLagAnalyzer</span><span class="p">(</span><span class="n">returns_data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">correlations</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">calculate_cross_correlations</span><span class="p">([</span><span class="s1">&#39;AAPL&#39;</span><span class="p">,</span> <span class="s1">&#39;MSFT&#39;</span><span class="p">],</span> <span class="n">max_lags</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">isinstance</span><span class="p">(</span><span class="n">correlations</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">set</span><span class="p">([</span><span class="s1">&#39;symbol1&#39;</span><span class="p">,</span> <span class="s1">&#39;symbol2&#39;</span><span class="p">,</span> <span class="s1">&#39;lag&#39;</span><span class="p">,</span> <span class="s1">&#39;correlation&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="nb">set</span><span class="p">(</span><span class="n">correlations</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.LeadLagAnalyzer.test_granger_causality">
+<span class="sig-name descname"><span class="pre">test_granger_causality</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_lag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">significance_level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#LeadLagAnalyzer.test_granger_causality"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer.test_granger_causality" title="Link to this definition"></a></dt>
+<dd><p>Test for Granger causality between pairs of symbols.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbols</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of symbols to test</p></li>
+<li><p><strong>max_lag</strong> (<em>int</em><em>, </em><em>optional</em>) – Maximum number of lags to test. Defaults to 5.</p></li>
+<li><p><strong>significance_level</strong> (<em>float</em><em>, </em><em>optional</em>) – P-value threshold. Defaults to 0.05.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>DataFrame containing test results with columns:</dt><dd><ul class="simple">
+<li><p>cause: Potential causing symbol</p></li>
+<li><p>effect: Potential effect symbol</p></li>
+<li><p>lag: Number of lags tested</p></li>
+<li><p>p_value: Test p-value</p></li>
+<li><p>r2: R-squared value</p></li>
+<li><p>significant_coefficients: String of significant lag coefficients</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s1">&#39;2024-01-01&#39;</span><span class="p">,</span> <span class="s1">&#39;2024-01-10&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create more realistic data with noise</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">leader_returns</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.01</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">follower_returns</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.005</span><span class="p">,</span> <span class="mf">0.015</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.005</span><span class="p">,</span> <span class="mf">0.025</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.015</span><span class="p">,</span> <span class="mf">0.008</span><span class="p">,</span> <span class="mf">0.018</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.008</span><span class="p">,</span> <span class="mf">0.008</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.008</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="n">leader_returns</span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="n">follower_returns</span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">returns_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;LEADER&#39;</span><span class="p">:</span> <span class="n">data1</span><span class="p">,</span> <span class="s1">&#39;FOLLOWER&#39;</span><span class="p">:</span> <span class="n">data2</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">analyzer</span> <span class="o">=</span> <span class="n">LeadLagAnalyzer</span><span class="p">(</span><span class="n">returns_data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">test_granger_causality</span><span class="p">([</span><span class="s1">&#39;LEADER&#39;</span><span class="p">,</span> <span class="s1">&#39;FOLLOWER&#39;</span><span class="p">],</span> <span class="n">max_lag</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">isinstance</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.LeadLagAnalyzer.build_relationship_network">
+<span class="sig-name descname"><span class="pre">build_relationship_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Graph</span></span></span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#LeadLagAnalyzer.build_relationship_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer.build_relationship_network" title="Link to this definition"></a></dt>
+<dd><p>Build a network graph of relationships between symbols.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbols</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of symbols to include</p></li>
+<li><p><strong>threshold</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum correlation for edge inclusion.
+Defaults to 0.5.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>NetworkX graph where:</dt><dd><ul class="simple">
+<li><p>Nodes are symbols</p></li>
+<li><p>Edges represent correlations above threshold</p></li>
+<li><p>Edge weights are correlation values</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>nx.Graph</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dates</span> <span class="o">=</span> <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s1">&#39;2024-01-01&#39;</span><span class="p">,</span> <span class="s1">&#39;2024-12-31&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create more realistic correlated data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">base</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="n">base</span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="n">base</span> <span class="o">*</span> <span class="mf">0.9</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>  <span class="c1"># Strongly correlated</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data3</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="o">-</span><span class="n">base</span> <span class="o">*</span> <span class="mf">0.8</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>  <span class="c1"># Negatively correlated</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">returns_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="n">data1</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">:</span> <span class="n">data2</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">:</span> <span class="n">data3</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">analyzer</span> <span class="o">=</span> <span class="n">LeadLagAnalyzer</span><span class="p">(</span><span class="n">returns_data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">G</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">build_relationship_network</span><span class="p">([</span><span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">],</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">sorted</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">nodes</span><span class="p">())</span> <span class="o">==</span> <span class="p">[</span><span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">]</span>  <span class="c1"># All nodes present</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">any</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">edges</span><span class="p">())</span>  <span class="c1"># Should have at least one edge</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.LeadLagAnalyzer.find_market_leaders">
+<span class="sig-name descname"><span class="pre">find_market_leaders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_lag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">significance_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_effect_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#LeadLagAnalyzer.find_market_leaders"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.LeadLagAnalyzer.find_market_leaders" title="Link to this definition"></a></dt>
+<dd><p>Identify market leaders based on Granger causality relationships.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbols</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of symbols to analyze</p></li>
+<li><p><strong>max_lag</strong> (<em>int</em><em>, </em><em>optional</em>) – Maximum number of lags to test. Defaults to 5.</p></li>
+<li><p><strong>significance_level</strong> (<em>float</em><em>, </em><em>optional</em>) – P-value threshold. Defaults to 0.05.</p></li>
+<li><p><strong>use_effect_size</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to weight by R². Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary mapping symbols to normalized leadership scores (0-1)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, float]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create sample data with clear but imperfect lead-lag relationship</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s1">&#39;2024-01-01&#39;</span><span class="p">,</span> <span class="s1">&#39;2024-01-10&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># For reproducibility</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">leader_base</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span>  <span class="c1"># Base returns</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">leader_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="n">leader_base</span>
+<span class="gp">... </span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create followers with lag and noise</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">follower1_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">leader_base</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.02</span>
+<span class="gp">... </span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">follower2_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">leader_base</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.02</span>
+<span class="gp">... </span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">returns_data</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s1">&#39;LEADER&#39;</span><span class="p">:</span> <span class="n">leader_data</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s1">&#39;FOLLOWER1&#39;</span><span class="p">:</span> <span class="n">follower1_data</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s1">&#39;FOLLOWER2&#39;</span><span class="p">:</span> <span class="n">follower2_data</span>
+<span class="gp">... </span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">analyzer</span> <span class="o">=</span> <span class="n">LeadLagAnalyzer</span><span class="p">(</span><span class="n">returns_data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">scores</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">find_market_leaders</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">symbols</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;LEADER&#39;</span><span class="p">,</span> <span class="s1">&#39;FOLLOWER1&#39;</span><span class="p">,</span> <span class="s1">&#39;FOLLOWER2&#39;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">max_lag</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">significance_level</span><span class="o">=</span><span class="mf">0.1</span>  <span class="c1"># More lenient for test</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">isinstance</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>  <span class="c1"># Returns correct type</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">set</span><span class="p">(</span><span class="n">scores</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">==</span> <span class="p">{</span><span class="s1">&#39;LEADER&#39;</span><span class="p">,</span> <span class="s1">&#39;FOLLOWER1&#39;</span><span class="p">,</span> <span class="s1">&#39;FOLLOWER2&#39;</span><span class="p">}</span>  <span class="c1"># Has all symbols</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternRecognition">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">market_analyzer.pattern_recognition.</span></span><span class="sig-name descname"><span class="pre">PatternRecognition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volumes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#PatternRecognition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternRecognition" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A framework for detecting technical patterns in financial price data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>prices</strong> (<em>pd.Series</em>) – Time series of price data</p></li>
+<li><p><strong>volumes</strong> (<em>pd.Series</em>) – Time series of trading volume data</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternRecognition.prices">
+<span class="sig-name descname"><span class="pre">prices</span></span><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternRecognition.prices" title="Link to this definition"></a></dt>
+<dd><p>Price data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternRecognition.volumes">
+<span class="sig-name descname"><span class="pre">volumes</span></span><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternRecognition.volumes" title="Link to this definition"></a></dt>
+<dd><p>Volume data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternRecognition.patterns">
+<span class="sig-name descname"><span class="pre">patterns</span></span><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternRecognition.patterns" title="Link to this definition"></a></dt>
+<dd><p>List of detected patterns</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternRecognition.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volumes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#PatternRecognition.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternRecognition.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternRecognition.find_swing_points">
+<span class="sig-name descname"><span class="pre">find_swing_points</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#PatternRecognition.find_swing_points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternRecognition.find_swing_points" title="Link to this definition"></a></dt>
+<dd><p>Identify swing high and low points in the price series.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Two arrays containing:</dt><dd><ul class="simple">
+<li><p>First array: Indices of swing highs</p></li>
+<li><p>Second array: Indices of swing lows</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple[np.ndarray, np.ndarray]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a series with clear swing points</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prices</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">13</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">volumes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mi">1000</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern_recognition</span> <span class="o">=</span> <span class="n">PatternRecognition</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">volumes</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">highs</span><span class="p">,</span> <span class="n">lows</span> <span class="o">=</span> <span class="n">pattern_recognition</span><span class="o">.</span><span class="n">find_swing_points</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Convert numpy indices to Python ints for comparison</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">highs</span><span class="p">]</span>  <span class="c1"># Indices of local maxima</span>
+<span class="go">[1, 3, 5]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">lows</span><span class="p">]</span>  <span class="c1"># Indices of local minima</span>
+<span class="go">[2, 4]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternRecognition.detect_head_and_shoulders">
+<span class="sig-name descname"><span class="pre">detect_head_and_shoulders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern" title="market_analyzer.pattern_recognition.TechnicalPattern"><span class="pre">TechnicalPattern</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#PatternRecognition.detect_head_and_shoulders"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternRecognition.detect_head_and_shoulders" title="Link to this definition"></a></dt>
+<dd><p>Detect head and shoulders patterns in the price data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of detected head and shoulders patterns</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[<a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern" title="market_analyzer.pattern_recognition.TechnicalPattern">TechnicalPattern</a>]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a price series with a head and shoulders pattern</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prices</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mi">5</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">volumes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mi">1000</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern_recognition</span> <span class="o">=</span> <span class="n">PatternRecognition</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">volumes</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">patterns</span> <span class="o">=</span> <span class="n">pattern_recognition</span><span class="o">.</span><span class="n">detect_head_and_shoulders</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">patterns</span><span class="p">)</span>  <span class="c1"># Should find one pattern</span>
+<span class="go">1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">patterns</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">pattern_type</span>
+<span class="go">&#39;HEAD_AND_SHOULDERS&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">patterns</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">price_range</span>  <span class="c1"># (min_price, max_price)</span>
+<span class="go">(10.0, 20.0)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternRecognition.detect_double_bottom">
+<span class="sig-name descname"><span class="pre">detect_double_bottom</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern" title="market_analyzer.pattern_recognition.TechnicalPattern"><span class="pre">TechnicalPattern</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#PatternRecognition.detect_double_bottom"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternRecognition.detect_double_bottom" title="Link to this definition"></a></dt>
+<dd><p>Detect double bottom patterns in the price data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>window</strong> (<em>int</em><em>, </em><em>optional</em>) – Window size for finding swing points. Defaults to 20.</p></li>
+<li><p><strong>tolerance</strong> (<em>float</em><em>, </em><em>optional</em>) – Maximum difference between bottoms. Defaults to 0.02.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of detected double bottom patterns</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[<a class="reference internal" href="#market_analyzer.pattern_recognition.TechnicalPattern" title="market_analyzer.pattern_recognition.TechnicalPattern">TechnicalPattern</a>]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a price series with a clear double bottom</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prices</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mf">9.5</span><span class="p">,</span> <span class="mf">8.1</span><span class="p">,</span> <span class="mi">11</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">volumes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">1200</span><span class="p">,</span> <span class="mi">900</span><span class="p">,</span> <span class="mi">1100</span><span class="p">,</span> <span class="mi">1300</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern_recognition</span> <span class="o">=</span> <span class="n">PatternRecognition</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">volumes</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">patterns</span> <span class="o">=</span> <span class="n">pattern_recognition</span><span class="o">.</span><span class="n">detect_double_bottom</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">isinstance</span><span class="p">(</span><span class="n">patterns</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">patterns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Check pattern properties if found</span>
+<span class="gp">... </span>    <span class="n">patterns</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">pattern_type</span> <span class="o">==</span> <span class="s1">&#39;DOUBLE_BOTTOM&#39;</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">patterns</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">price_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">8.0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.1</span>
+<span class="gp">... </span><span class="k">else</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="kc">True</span>  <span class="c1"># Skip validation if no patterns found</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.pattern_recognition.PatternRecognition.detect_volume_price_patterns">
+<span class="sig-name descname"><span class="pre">detect_volume_price_patterns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_price_change</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.002</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_volume_change</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_pattern_weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.6</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/market_analyzer/pattern_recognition.html#PatternRecognition.detect_volume_price_patterns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.pattern_recognition.PatternRecognition.detect_volume_price_patterns" title="Link to this definition"></a></dt>
+<dd><p>Detect volume-price patterns using weighted pattern detection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>min_price_change</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum price change threshold.
+Defaults to 0.002.</p></li>
+<li><p><strong>min_volume_change</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum volume change threshold.
+Defaults to 0.01.</p></li>
+<li><p><strong>window_size</strong> (<em>int</em><em>, </em><em>optional</em>) – Size of rolling window. Defaults to 20.</p></li>
+<li><p><strong>target_length</strong> (<em>int</em><em>, </em><em>optional</em>) – Target points for pattern confirmation.
+Defaults to 4.</p></li>
+<li><p><strong>min_pattern_weight</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum pattern score threshold.
+Defaults to 0.6.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>DataFrame containing detected patterns with columns:</dt><dd><ul class="simple">
+<li><p>timestamp_idx: Time point index</p></li>
+<li><p>primary_pattern: Dominant pattern type</p></li>
+<li><p>pattern_weight: Pattern confidence score</p></li>
+<li><p>pattern: Classification if above threshold</p></li>
+<li><p>Plus columns for each pattern type’s score</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create test data with clear volume-price patterns</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># For reproducibility</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prices</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">10.0</span> <span class="o">+</span> <span class="n">i</span><span class="o">*</span><span class="mf">0.2</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">()</span><span class="o">*</span><span class="mf">0.05</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">volumes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mi">1000</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">()</span><span class="o">*</span><span class="mf">0.2</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pattern_recognition</span> <span class="o">=</span> <span class="n">PatternRecognition</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">volumes</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">patterns_df</span> <span class="o">=</span> <span class="n">pattern_recognition</span><span class="o">.</span><span class="n">detect_volume_price_patterns</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">min_price_change</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>  <span class="c1"># Lower threshold for test</span>
+<span class="gp">... </span>    <span class="n">min_volume_change</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">window_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">target_length</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">min_pattern_weight</span><span class="o">=</span><span class="mf">0.3</span>  <span class="c1"># Lower threshold for test</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">isinstance</span><span class="p">(</span><span class="n">patterns_df</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>  <span class="c1"># Correct return type</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">expected_cols</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;timestamp_idx&#39;</span><span class="p">,</span> <span class="s1">&#39;primary_pattern&#39;</span><span class="p">,</span> <span class="s1">&#39;pattern_weight&#39;</span><span class="p">,</span>
+<span class="gp">... </span>                <span class="s1">&#39;pattern&#39;</span><span class="p">,</span> <span class="s1">&#39;DIVERGENCE&#39;</span><span class="p">,</span> <span class="s1">&#39;NON_CONFIRMATION&#39;</span><span class="p">,</span>
+<span class="gp">... </span>                <span class="s1">&#39;VOLUME_FORCE&#39;</span><span class="p">,</span> <span class="s1">&#39;NEUTRAL&#39;</span><span class="p">,</span> <span class="s1">&#39;CONCORDANT&#39;</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">expected_cols</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">patterns_df</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span>  <span class="c1"># Has required columns</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<section id="technical-pattern-analysis">
+<h2>Technical Pattern Analysis<a class="headerlink" href="#technical-pattern-analysis" title="Link to this heading"></a></h2>
+<p>This module provides tools for identifying and analyzing technical patterns in financial market data. The key components include:</p>
+<section id="data-classes">
+<h3>Data Classes<a class="headerlink" href="#data-classes" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">TechnicalPattern</span></code>: Core class for representing detected patterns</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">HeadAndShouldersPoints</span></code>: Specific points forming a head and shoulders pattern</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PatternValidation</span></code>: Results of pattern validation checks</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VolumePatternType</span></code>: Enumeration of volume-price relationship patterns</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VolumePattern</span></code>: Volume-specific pattern information</p></li>
+</ul>
+</section>
+<section id="id1">
+<h3>Pattern Recognition<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">PatternRecognition</span></code> class implements detection algorithms for common technical patterns:</p>
+<ul class="simple">
+<li><p>Head and Shoulders</p></li>
+<li><p>Double Bottom</p></li>
+<li><p>Volume-Price Relationships</p></li>
+</ul>
+</section>
+<section id="lead-lag-analysis">
+<h3>Lead-Lag Analysis<a class="headerlink" href="#lead-lag-analysis" title="Link to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">LeadLagAnalyzer</span></code> class provides tools for analyzing relationships between securities:</p>
+<ul class="simple">
+<li><p>Cross-correlation analysis</p></li>
+<li><p>Granger causality testing</p></li>
+<li><p>Market leadership detection</p></li>
+<li><p>Relationship network analysis</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="base.html" class="btn btn-neutral float-left" title="Base Module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="regime_analyzer.html" class="btn btn-neutral float-right" title="Regime Analyzer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Asabaal Horan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

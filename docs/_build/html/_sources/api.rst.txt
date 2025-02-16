@@ -1,0 +1,37 @@
+API Documentation
+===============
+
+Base
+----
+.. automodule:: market_analyzer.base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Pattern Recognition
+-----------------
+.. automodule:: market_analyzer.pattern_recognition
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Regime Analyzer
+-------------
+.. automodule:: market_analyzer.regime_analyzer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Risk Analyzer
+-----------
+.. automodule:: market_analyzer.risk_analyzer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Utilities
+--------
+.. automodule:: market_analyzer.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:

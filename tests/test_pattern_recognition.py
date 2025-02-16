@@ -325,7 +325,8 @@ class TestEdgeCases:
         })
         analyzer_with_missing = LeadLagAnalyzer(lead_lag_sample_returns_data)
         results = analyzer_with_missing.test_granger_causality('A', 'D')
-        assert all(np.isnan(v) for v in results.values())
+        assert isinstance(results, pd.DataFrame)
+        assert results.empty
 
     def test_data_alignment(self, lead_lag_sample_returns_data):
         """Test handling of differently aligned time series."""
@@ -427,7 +428,7 @@ class TestPatternRecognition:
         for idx in highs:
             window_slice = slice(max(0, idx-5), min(len(pattern_recognition.prices), idx+6))
             local_max = pattern_recognition.prices.iloc[window_slice].max()
-            assert pattern_recognition.prices.iloc[idx] == local_max
+            assert pattern_recognition.prices.iloc[idx] == local_max          
     
     def test_head_and_shoulders_detection(self, pattern_recognition):
         """Test head and shoulders pattern detection."""

@@ -1,0 +1,768 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>market_analyzer.regime_analyzer &mdash; Market Analyzer 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Market Analyzer
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../base.html">Base Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../pattern_recognition.html">Pattern Recognition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../regime_analyzer.html">Regime Analyzer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../utils.html">Utils</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Market Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">market_analyzer.regime_analyzer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for market_analyzer.regime_analyzer</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">hmmlearn</span> <span class="kn">import</span> <span class="n">hmm</span>
+<span class="kn">from</span> <span class="nn">sklearn.base</span> <span class="kn">import</span> <span class="n">BaseEstimator</span><span class="p">,</span> <span class="n">TransformerMixin</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RegimeAnalyzer">
+<a class="viewcode-back" href="../../regime_analyzer.html#market_analyzer.regime_analyzer.RegimeAnalyzer">[docs]</a>
+<span class="k">class</span> <span class="nc">RegimeAnalyzer</span><span class="p">(</span><span class="n">BaseEstimator</span><span class="p">,</span> <span class="n">TransformerMixin</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Market regime detection using multiple methods including HMM, structural breaks,</span>
+<span class="sd">    and trend analysis.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n_states (int, optional): Number of distinct market states to identify. </span>
+<span class="sd">            Defaults to 3.</span>
+<span class="sd">        window (int, optional): Window size for structural break and trend detection. </span>
+<span class="sd">            Defaults to 252.</span>
+<span class="sd">        regime_labels (Optional[Dict[int, str]], optional): Dictionary mapping state indices </span>
+<span class="sd">            to labels. If not provided, will use default labeling based on mean values.</span>
+<span class="sd">        standardize (bool, optional): Whether to standardize features before fitting HMM. </span>
+<span class="sd">            Defaults to True.</span>
+<span class="sd">        hmm_params (Optional[dict], optional): Additional parameters to pass to GaussianHMM. </span>
+<span class="sd">            Defaults to None.</span>
+<span class="sd">        detection_methods (List[str], optional): Which detection methods to use. </span>
+<span class="sd">            Defaults to [&#39;hmm&#39;, &#39;breaks&#39;, &#39;trend&#39;].</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        model_: GaussianHMM</span>
+<span class="sd">            The fitted Hidden Markov Model (only if &#39;hmm&#39; in detection_methods)</span>
+<span class="sd">        scaler_: StandardScaler</span>
+<span class="sd">            The fitted scaler if standardize=True</span>
+<span class="sd">        feature_names_: list</span>
+<span class="sd">            Names of features used in fitting</span>
+<span class="sd">        converged_: bool</span>
+<span class="sd">            Whether the HMM model converged</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; np.random.seed(42)  # For reproducibility</span>
+<span class="sd">        &gt;&gt;&gt; dates = pd.date_range(&#39;2020-01-01&#39;, &#39;2020-12-31&#39;, freq=&#39;B&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">        ...     &#39;returns&#39;: np.random.normal(0, 1, len(dates)),</span>
+<span class="sd">        ...     &#39;volume&#39;: np.random.lognormal(0, 1, len(dates)),</span>
+<span class="sd">        ...     &#39;price&#39;: 100 * (1 + np.random.normal(0, 0.01, len(dates))).cumprod()</span>
+<span class="sd">        ... }, index=dates)</span>
+<span class="sd">        &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)</span>
+<span class="sd">        &gt;&gt;&gt; results = detector.fit_transform(data)</span>
+<span class="sd">        &gt;&gt;&gt; &#39;regime&#39; in results.columns</span>
+<span class="sd">        True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="RegimeAnalyzer.__init__">
+<a class="viewcode-back" href="../../regime_analyzer.html#market_analyzer.regime_analyzer.RegimeAnalyzer.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">n_states</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="n">window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
+        <span class="n">regime_labels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">standardize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">hmm_params</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">detection_methods</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;hmm&#39;</span><span class="p">,</span> <span class="s1">&#39;breaks&#39;</span><span class="p">,</span> <span class="s1">&#39;trend&#39;</span><span class="p">]</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the RegimeAnalyzer.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; analyzer = RegimeAnalyzer(n_states=2, window=50)</span>
+<span class="sd">            &gt;&gt;&gt; analyzer.n_states</span>
+<span class="sd">            2</span>
+<span class="sd">            &gt;&gt;&gt; analyzer.window</span>
+<span class="sd">            50</span>
+<span class="sd">            </span>
+<span class="sd">            Custom regime labels:</span>
+<span class="sd">            &gt;&gt;&gt; labels = {0: &#39;low_vol&#39;, 1: &#39;high_vol&#39;}</span>
+<span class="sd">            &gt;&gt;&gt; analyzer = RegimeAnalyzer(n_states=2, regime_labels=labels)</span>
+<span class="sd">            &gt;&gt;&gt; analyzer.regime_labels == labels</span>
+<span class="sd">            True</span>
+<span class="sd">            </span>
+<span class="sd">            Invalid parameters:</span>
+<span class="sd">            &gt;&gt;&gt; try:</span>
+<span class="sd">            ...     RegimeAnalyzer(n_states=0)</span>
+<span class="sd">            ... except ValueError as e:</span>
+<span class="sd">            ...     print(str(e))</span>
+<span class="sd">            n_states must be positive</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">n_states</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_states must be positive&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_states</span> <span class="o">=</span> <span class="n">n_states</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">window</span> <span class="o">=</span> <span class="n">window</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">regime_labels</span> <span class="o">=</span> <span class="n">regime_labels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standardize</span> <span class="o">=</span> <span class="n">standardize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hmm_params</span> <span class="o">=</span> <span class="n">hmm_params</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detection_methods</span> <span class="o">=</span> <span class="n">detection_methods</span></div>
+
+    
+<div class="viewcode-block" id="RegimeAnalyzer.fit">
+<a class="viewcode-back" href="../../regime_analyzer.html#market_analyzer.regime_analyzer.RegimeAnalyzer.fit">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;RegimeAnalyzer&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fit the regime detection models.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X (pd.DataFrame): Features to use for regime detection. Must include required columns</span>
+<span class="sd">                depending on detection_methods:</span>
+<span class="sd">                - &#39;hmm&#39;: any features</span>
+<span class="sd">                - &#39;breaks&#39;: must include &#39;returns&#39; and &#39;volume&#39;</span>
+<span class="sd">                - &#39;trend&#39;: must include &#39;price&#39;</span>
+<span class="sd">            y (None): Ignored, present for sklearn API compatibility</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            RegimeAnalyzer: The fitted detector</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If X is not a DataFrame, is empty, or missing required columns</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volume&#39;: np.random.lognormal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;price&#39;: np.random.random(100) * 100</span>
+<span class="sd">            ... })</span>
+<span class="sd">            </span>
+<span class="sd">            Basic fitting:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer()</span>
+<span class="sd">            &gt;&gt;&gt; detector.fit(data)  # doctest: +ELLIPSIS</span>
+<span class="sd">            RegimeAnalyzer(...)</span>
+<span class="sd">            </span>
+<span class="sd">            Error on missing columns:</span>
+<span class="sd">            &gt;&gt;&gt; bad_data = pd.DataFrame({&#39;wrong_col&#39;: [1, 2, 3]})</span>
+<span class="sd">            &gt;&gt;&gt; try:</span>
+<span class="sd">            ...     detector.fit(bad_data)</span>
+<span class="sd">            ... except ValueError as e:</span>
+<span class="sd">            ...     print(str(e))</span>
+<span class="sd">            X must contain &#39;returns&#39; and &#39;volume&#39; columns for break detection</span>
+<span class="sd">            </span>
+<span class="sd">            Error on empty data:</span>
+<span class="sd">            &gt;&gt;&gt; try:  # doctest: +NORMALIZE_WHITESPACE</span>
+<span class="sd">            ...     detector.fit(pd.DataFrame())</span>
+<span class="sd">            ... except ValueError as e:</span>
+<span class="sd">            ...     print(str(e))</span>
+<span class="sd">            X cannot be empty            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;X must be a pandas DataFrame&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">X</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;X cannot be empty&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Validate columns for each method</span>
+        <span class="k">if</span> <span class="s1">&#39;breaks&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detection_methods</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">{</span><span class="s1">&#39;returns&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">}</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;X must contain &#39;returns&#39; and &#39;volume&#39; columns for break detection&quot;</span>
+                <span class="p">)</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;trend&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detection_methods</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;price&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">X</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;X must contain &#39;price&#39; column for trend detection&quot;</span>
+                <span class="p">)</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;hmm&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detection_methods</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fit_hmm</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+    
+<div class="viewcode-block" id="RegimeAnalyzer.transform">
+<a class="viewcode-back" href="../../regime_analyzer.html#market_analyzer.regime_analyzer.RegimeAnalyzer.transform">[docs]</a>
+    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transform data to detect regimes using all configured methods.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X (pd.DataFrame): Features to detect regimes for. Must include same columns as</span>
+<span class="sd">                used in fit()</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame with regime indicators from all methods, including:</span>
+<span class="sd">                - regime: State number from HMM</span>
+<span class="sd">                - regime_X_prob: Probability of each regime state</span>
+<span class="sd">                - regime_type: Labeled regime type (if converged)</span>
+<span class="sd">                - break_chow: Chow test statistic</span>
+<span class="sd">                - break_volatility: Volatility break indicator</span>
+<span class="sd">                - break_volume: Volume break indicator</span>
+<span class="sd">                - significant_break: Boolean indicating major regime break</span>
+<span class="sd">                - trend: Price trend direction</span>
+<span class="sd">                - composite_regime: Combined regime indicator (if multiple methods used)</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volume&#39;: np.random.lognormal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;price&#39;: np.random.random(100) * 100</span>
+<span class="sd">            ... })</span>
+<span class="sd">            </span>
+<span class="sd">            Basic transformation:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)</span>
+<span class="sd">            &gt;&gt;&gt; detector.fit(data)  # doctest: +ELLIPSIS</span>
+<span class="sd">            RegimeAnalyzer(...)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector.transform(data)</span>
+<span class="sd">            &gt;&gt;&gt; sorted(results.columns)  # doctest: +NORMALIZE_WHITESPACE</span>
+<span class="sd">            [&#39;break_chow&#39;, &#39;break_volatility&#39;, &#39;break_volume&#39;, &#39;composite_regime&#39;,</span>
+<span class="sd">            &#39;regime&#39;, &#39;regime_0_prob&#39;, &#39;regime_1_prob&#39;, &#39;regime_type&#39;,</span>
+<span class="sd">            &#39;significant_break&#39;, &#39;trend&#39;]</span>
+<span class="sd">            </span>
+<span class="sd">            HMM-only detection:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(detection_methods=[&#39;hmm&#39;])</span>
+<span class="sd">            &gt;&gt;&gt; results = detector.fit_transform(data)</span>
+<span class="sd">            &gt;&gt;&gt; all(col in results.columns for col in [&#39;regime&#39;, &#39;regime_type&#39;])</span>
+<span class="sd">            True</span>
+<span class="sd">            </span>
+<span class="sd">            Error on untrained model:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer()</span>
+<span class="sd">            &gt;&gt;&gt; try:  # doctest: +NORMALIZE_WHITESPACE</span>
+<span class="sd">            ...     detector.transform(data)</span>
+<span class="sd">            ... except ValueError as e:</span>
+<span class="sd">            ...     print(str(e))</span>
+<span class="sd">            Must fit HMM before transform                </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;hmm&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detection_methods</span><span class="p">:</span>
+            <span class="n">hmm_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform_hmm</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">results</span><span class="p">,</span> <span class="n">hmm_results</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="s1">&#39;breaks&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detection_methods</span><span class="p">:</span>
+            <span class="n">break_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_breaks</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">results</span><span class="p">,</span> <span class="n">break_results</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="s1">&#39;trend&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detection_methods</span><span class="p">:</span>
+            <span class="n">trend_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_trend</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">results</span><span class="p">,</span> <span class="n">trend_results</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">detection_methods</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">results</span><span class="p">[</span><span class="s1">&#39;composite_regime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_composite_regime</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="s2">&quot;significant_breaks&quot;</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">results</span><span class="p">[</span><span class="s2">&quot;significant_breaks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;significant_breaks&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">results</span></div>
+
+    
+    <span class="k">def</span> <span class="nf">_fit_hmm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fit the HMM model to the data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X (pd.DataFrame): Feature data to fit the HMM model</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volatility&#39;: np.abs(np.random.normal(0, 1, 100))</span>
+<span class="sd">            ... })</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)</span>
+<span class="sd">            &gt;&gt;&gt; detector._fit_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; hasattr(detector, &#39;model_&#39;)</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; hasattr(detector, &#39;converged_&#39;)</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; detector.feature_names_ == [&#39;returns&#39;, &#39;volatility&#39;]</span>
+<span class="sd">            True</span>
+
+<span class="sd">            With standardization:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2, standardize=True)</span>
+<span class="sd">            &gt;&gt;&gt; detector._fit_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; hasattr(detector, &#39;scaler_&#39;)</span>
+<span class="sd">            True</span>
+
+<span class="sd">            With custom HMM parameters:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(</span>
+<span class="sd">            ...     n_states=2,</span>
+<span class="sd">            ...     hmm_params={&#39;covariance_type&#39;: &#39;diag&#39;}</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; detector._fit_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; detector.model_.covariance_type == &#39;diag&#39;</span>
+<span class="sd">            True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Store feature names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_names_</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        
+        <span class="c1"># Prepare data</span>
+        <span class="n">X_prep</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">X_prep</span> <span class="o">=</span> <span class="n">X_prep</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;ffill&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;bfill&#39;</span><span class="p">)</span>
+        
+        <span class="c1"># Standardize if requested</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">standardize</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scaler_</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+            <span class="n">X_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scaler_</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X_prep</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">X_values</span> <span class="o">=</span> <span class="n">X_prep</span><span class="o">.</span><span class="n">values</span>
+            
+        <span class="c1"># Initialize and fit HMM</span>
+        <span class="n">hmm_defaults</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;n_components&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_states</span><span class="p">,</span>
+            <span class="s1">&#39;covariance_type&#39;</span><span class="p">:</span> <span class="s1">&#39;full&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;n_iter&#39;</span><span class="p">:</span> <span class="mi">100</span>
+        <span class="p">}</span>
+        <span class="n">hmm_params</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">hmm_defaults</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">hmm_params</span><span class="p">}</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_</span> <span class="o">=</span> <span class="n">hmm</span><span class="o">.</span><span class="n">GaussianHMM</span><span class="p">(</span><span class="o">**</span><span class="n">hmm_params</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_values</span><span class="p">)</span>
+        
+        <span class="c1"># Store convergence status</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">converged_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_</span><span class="o">.</span><span class="n">monitor_</span><span class="o">.</span><span class="n">converged</span>
+    
+    <span class="k">def</span> <span class="nf">_transform_hmm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply HMM to detect regimes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X (pd.DataFrame): Feature data to transform</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame containing regime states and probabilities</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If HMM has not been fit</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volatility&#39;: np.abs(np.random.normal(0, 1, 100))</span>
+<span class="sd">            ... })</span>
+<span class="sd">            </span>
+<span class="sd">            Basic transformation:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)</span>
+<span class="sd">            &gt;&gt;&gt; detector._fit_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector._transform_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; sorted(results.columns)  # doctest: +NORMALIZE_WHITESPACE</span>
+<span class="sd">            [&#39;regime&#39;, &#39;regime_0_prob&#39;, &#39;regime_1_prob&#39;, &#39;regime_type&#39;]</span>
+<span class="sd">            </span>
+<span class="sd">            Verify probability columns:</span>
+<span class="sd">            &gt;&gt;&gt; all((results[&#39;regime_0_prob&#39;] &gt;= 0) &amp; (results[&#39;regime_0_prob&#39;] &lt;= 1)) </span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; all((results[&#39;regime_1_prob&#39;] &gt;= 0) &amp; (results[&#39;regime_1_prob&#39;] &lt;= 1))</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; all(abs(results[&#39;regime_0_prob&#39;] + results[&#39;regime_1_prob&#39;] - 1) &lt; 1e-6)</span>
+<span class="sd">            True</span>
+
+<span class="sd">            With custom regime labels:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(</span>
+<span class="sd">            ...     n_states=2,</span>
+<span class="sd">            ...     regime_labels={0: &#39;low_vol&#39;, 1: &#39;high_vol&#39;}</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; detector._fit_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector._transform_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; set(results[&#39;regime_type&#39;].unique()).issubset({&#39;low_vol&#39;, &#39;high_vol&#39;, &#39;unknown&#39;})</span>
+<span class="sd">            True</span>
+
+<span class="sd">            Error on untrained model:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer()</span>
+<span class="sd">            &gt;&gt;&gt; try:  # doctest: +NORMALIZE_WHITESPACE</span>
+<span class="sd">            ...     detector._transform_hmm(data)</span>
+<span class="sd">            ... except ValueError as e:</span>
+<span class="sd">            ...     print(str(e))</span>
+<span class="sd">            Must fit HMM before transform</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;model_&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Must fit HMM before transform&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Prepare data</span>
+        <span class="n">X_prep</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">X_prep</span> <span class="o">=</span> <span class="n">X_prep</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;ffill&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;bfill&#39;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">standardize</span><span class="p">:</span>
+            <span class="n">X_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scaler_</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X_prep</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">X_values</span> <span class="o">=</span> <span class="n">X_prep</span><span class="o">.</span><span class="n">values</span>
+        
+        <span class="c1"># Get state sequence and probabilities</span>
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_values</span><span class="p">)</span>
+        <span class="n">state_probs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X_values</span><span class="p">)</span>
+        
+        <span class="c1"># Create results DataFrame</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;regime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hidden_states</span>
+        
+        <span class="c1"># Add probability for each regime</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_states</span><span class="p">):</span>
+            <span class="n">results</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;regime_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">_prob&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state_probs</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span>
+        
+        <span class="c1"># Add regime labels</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">converged_</span><span class="p">:</span>
+            <span class="n">results</span><span class="p">[</span><span class="s1">&#39;regime_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">regime_labels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Default labeling based on mean values</span>
+                <span class="n">means</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model_</span><span class="o">.</span><span class="n">means_</span><span class="p">,</span>
+                    <span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names_</span>
+                <span class="p">)</span>
+                <span class="n">state_chars</span> <span class="o">=</span> <span class="p">{}</span>
+                
+                <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_states</span><span class="p">):</span>
+                    <span class="n">features_above_mean</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">means</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">state</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">means</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                    
+                    <span class="k">if</span> <span class="n">features_above_mean</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names_</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="n">state_chars</span><span class="p">[</span><span class="n">state</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;bullish&#39;</span>
+                    <span class="k">elif</span> <span class="n">features_above_mean</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names_</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="n">state_chars</span><span class="p">[</span><span class="n">state</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;bearish&#39;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">state_chars</span><span class="p">[</span><span class="n">state</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;neutral&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">state_chars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">regime_labels</span>
+            
+            <span class="n">results</span><span class="p">[</span><span class="s1">&#39;regime_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;regime&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">state_chars</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">results</span>
+    
+    <span class="k">def</span> <span class="nf">_detect_breaks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Detect structural breaks using rolling statistical tests.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X (pd.DataFrame): Data containing &#39;returns&#39; and &#39;volume&#39; columns</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame containing break detection statistics and indicators</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volume&#39;: np.random.lognormal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;price&#39;: 100 * (1 + np.random.normal(0, 0.01, 100)).cumprod()</span>
+<span class="sd">            ... })</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(window=20)</span>
+<span class="sd">            &gt;&gt;&gt; detector.fit(data)  # doctest: +ELLIPSIS</span>
+<span class="sd">            RegimeAnalyzer(...)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector._detect_breaks(data)</span>
+<span class="sd">            &gt;&gt;&gt; all(col in results.columns for col in [</span>
+<span class="sd">            ...     &#39;break_chow&#39;, &#39;break_volatility&#39;, &#39;break_volume&#39;,</span>
+<span class="sd">            ...     &#39;significant_break&#39;</span>
+<span class="sd">            ... ])</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; results[&#39;significant_break&#39;].dtype == bool</span>
+<span class="sd">            True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;break_chow&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;break_volatility&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;break_volume&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="s1">&#39;returns&#39;</span><span class="p">]</span>
+        <span class="n">volumes</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span>
+        
+        <span class="n">min_required</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># Minimum periods needed for each half (pre/post) to calculate mean and std</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">returns</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">min_required</span><span class="p">:</span>
+                <span class="c1"># Not enough data for even a minimal comparison</span>
+                <span class="k">continue</span>
+                
+            <span class="c1"># Use expanding window for initial periods</span>
+            <span class="n">window_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">window</span><span class="p">)</span>
+            <span class="n">start_idx</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span> <span class="o">-</span> <span class="n">window_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">mid_point</span> <span class="o">=</span> <span class="n">start_idx</span> <span class="o">+</span> <span class="n">window_size</span> <span class="o">//</span> <span class="mi">2</span>
+            
+            <span class="n">window_returns</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">window_volumes</span> <span class="o">=</span> <span class="n">volumes</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+            
+            <span class="c1"># Divide window into pre and post periods</span>
+            <span class="n">pre_returns</span> <span class="o">=</span> <span class="n">window_returns</span><span class="p">[:</span><span class="n">mid_point</span><span class="o">-</span><span class="n">start_idx</span><span class="p">]</span>
+            <span class="n">post_returns</span> <span class="o">=</span> <span class="n">window_returns</span><span class="p">[</span><span class="n">mid_point</span><span class="o">-</span><span class="n">start_idx</span><span class="p">:]</span>
+            <span class="n">pre_volumes</span> <span class="o">=</span> <span class="n">window_volumes</span><span class="p">[:</span><span class="n">mid_point</span><span class="o">-</span><span class="n">start_idx</span><span class="p">]</span>
+            <span class="n">post_volumes</span> <span class="o">=</span> <span class="n">window_volumes</span><span class="p">[</span><span class="n">mid_point</span><span class="o">-</span><span class="n">start_idx</span><span class="p">:]</span>
+            
+            <span class="c1"># Calculate break statistics using available data</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pre_returns</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">min_required</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">post_returns</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">min_required</span><span class="p">:</span>
+                <span class="c1"># Test for breaks in mean using Chow test-like approach</span>
+                <span class="n">pre_mean</span> <span class="o">=</span> <span class="n">pre_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="n">post_mean</span> <span class="o">=</span> <span class="n">post_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="n">mean_diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pre_mean</span> <span class="o">-</span> <span class="n">post_mean</span><span class="p">)</span>
+                <span class="n">mean_std</span> <span class="o">=</span> <span class="n">window_returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">mean_std</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Avoid division by zero</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">mean_diff</span> <span class="o">/</span> <span class="n">mean_std</span>
+                
+                <span class="c1"># Test for breaks in volatility</span>
+                <span class="n">pre_vol</span> <span class="o">=</span> <span class="n">pre_returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+                <span class="n">post_vol</span> <span class="o">=</span> <span class="n">post_returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">pre_vol</span><span class="p">,</span> <span class="n">post_vol</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Avoid division by zero</span>
+                    <span class="n">vol_ratio</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">pre_vol</span><span class="p">,</span> <span class="n">post_vol</span><span class="p">)</span> <span class="o">/</span> <span class="nb">min</span><span class="p">(</span><span class="n">pre_vol</span><span class="p">,</span> <span class="n">post_vol</span><span class="p">)</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol_ratio</span>
+                
+                <span class="c1"># Test for breaks in volume</span>
+                <span class="n">pre_vol_mean</span> <span class="o">=</span> <span class="n">pre_volumes</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="n">post_vol_mean</span> <span class="o">=</span> <span class="n">post_volumes</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">pre_vol_mean</span><span class="p">,</span> <span class="n">post_vol_mean</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Avoid division by zero</span>
+                    <span class="n">vol_mean_ratio</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">pre_vol_mean</span><span class="p">,</span> <span class="n">post_vol_mean</span><span class="p">)</span> <span class="o">/</span> <span class="nb">min</span><span class="p">(</span><span class="n">pre_vol_mean</span><span class="p">,</span> <span class="n">post_vol_mean</span><span class="p">)</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol_mean_ratio</span>
+        
+        <span class="c1"># Identify significant breaks</span>
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;significant_break&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;break_chow&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">|</span>  <span class="c1"># 2 std dev threshold</span>
+            <span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;break_volatility&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">|</span>  <span class="c1"># Double volatility</span>
+            <span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;break_volume&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># Double volume</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>  <span class="c1"># Handle NaN values explicitly</span>
+        
+        <span class="k">return</span> <span class="n">results</span>
+    
+    <span class="k">def</span> <span class="nf">_detect_trend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Detect price trends using moving averages.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X (pd.DataFrame): Data containing &#39;price&#39; column</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame containing trend indicators</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volume&#39;: np.random.lognormal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;price&#39;: 100 * (1 + np.random.normal(0, 0.01, 100)).cumprod()</span>
+<span class="sd">            ... })</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(window=20)</span>
+<span class="sd">            &gt;&gt;&gt; detector.fit(data)  # doctest: +ELLIPSIS</span>
+<span class="sd">            RegimeAnalyzer(...)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector._detect_trend(data)</span>
+<span class="sd">            &gt;&gt;&gt; set(results[&#39;trend&#39;].unique()) == {&#39;uptrend&#39;, &#39;downtrend&#39;}</span>
+<span class="sd">            True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">prices</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># Initialize arrays for our moving averages</span>
+        <span class="n">long_ma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">))</span>
+        <span class="n">short_ma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">))</span>
+        
+        <span class="c1"># Calculate moving averages with growing windows for initial periods</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">window</span><span class="p">:</span>
+                <span class="c1"># Use expanding window for periods less than window size</span>
+                <span class="n">long_ma</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[:</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="n">short_ma</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">window</span><span class="o">//</span><span class="mi">2</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Use fixed window once we have enough data</span>
+                <span class="n">long_ma</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">window</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="n">short_ma</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">window</span><span class="o">//</span><span class="mi">2</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        
+        <span class="c1"># Compare short-term MA to long-term MA</span>
+        <span class="c1"># Short MA &gt; Long MA indicates uptrend</span>
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;trend&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">short_ma</span> <span class="o">&gt;</span> <span class="n">long_ma</span><span class="p">,</span>
+            <span class="s1">&#39;uptrend&#39;</span><span class="p">,</span> <span class="s1">&#39;downtrend&#39;</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">results</span>
+    
+    <span class="k">def</span> <span class="nf">_compute_composite_regime</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute composite regime by combining all indicators.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            results (pd.DataFrame): DataFrame containing individual regime indicators</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.Series: Combined regime indicator for each time point</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; results = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;regime_type&#39;: [&#39;bullish&#39;, &#39;bearish&#39;, &#39;neutral&#39;],</span>
+<span class="sd">            ...     &#39;significant_break&#39;: [True, False, True],</span>
+<span class="sd">            ...     &#39;trend&#39;: [&#39;uptrend&#39;, &#39;downtrend&#39;, &#39;uptrend&#39;]</span>
+<span class="sd">            ... })</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer()</span>
+<span class="sd">            &gt;&gt;&gt; composite = detector._compute_composite_regime(results)</span>
+<span class="sd">            &gt;&gt;&gt; len(composite) == len(results)</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; composite.iloc[0] == &#39;bullish_transition_uptrend&#39;</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; composite.iloc[1] == &#39;bearish_downtrend&#39;</span>
+<span class="sd">            True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">get_composite_regime</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+            <span class="n">components</span> <span class="o">=</span> <span class="p">[]</span>
+            
+            <span class="k">if</span> <span class="s1">&#39;regime_type&#39;</span> <span class="ow">in</span> <span class="n">row</span><span class="p">:</span>
+                <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;regime_type&#39;</span><span class="p">])</span>
+            
+            <span class="k">if</span> <span class="s1">&#39;significant_break&#39;</span> <span class="ow">in</span> <span class="n">row</span> <span class="ow">and</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;significant_break&#39;</span><span class="p">]:</span>
+                <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;transition&#39;</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="s1">&#39;trend&#39;</span> <span class="ow">in</span> <span class="n">row</span><span class="p">:</span>
+                <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;trend&#39;</span><span class="p">])</span>
+            
+            <span class="k">return</span> <span class="s1">&#39;_&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">components</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">results</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">get_composite_regime</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="RegimeAnalyzer.fit_transform">
+<a class="viewcode-back" href="../../regime_analyzer.html#market_analyzer.regime_analyzer.RegimeAnalyzer.fit_transform">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fit to data, then transform it.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X (pd.DataFrame): Feature data to fit and transform</span>
+<span class="sd">            y (None): Ignored, present for sklearn API compatibility</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: Transformed data with regime indicators</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volume&#39;: np.random.lognormal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;price&#39;: np.random.random(100) * 100</span>
+<span class="sd">            ... })</span>
+<span class="sd">            </span>
+<span class="sd">            Basic usage:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector.fit_transform(data)</span>
+<span class="sd">            &gt;&gt;&gt; all(col in results.columns for col in [</span>
+<span class="sd">            ...     &#39;regime&#39;, &#39;regime_type&#39;, &#39;break_chow&#39;, &#39;trend&#39;</span>
+<span class="sd">            ... ])</span>
+<span class="sd">            True</span>
+<span class="sd">            </span>
+<span class="sd">            HMM-only detection:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(</span>
+<span class="sd">            ...     n_states=2,</span>
+<span class="sd">            ...     detection_methods=[&#39;hmm&#39;]</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; results = detector.fit_transform(data)</span>
+<span class="sd">            &gt;&gt;&gt; set(results.columns) == {</span>
+<span class="sd">            ...     &#39;regime&#39;, &#39;regime_0_prob&#39;, &#39;regime_1_prob&#39;, &#39;regime_type&#39;</span>
+<span class="sd">            ... }</span>
+<span class="sd">            True</span>
+<span class="sd">            </span>
+<span class="sd">            With custom regime labels:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(</span>
+<span class="sd">            ...     n_states=2,</span>
+<span class="sd">            ...     regime_labels={0: &#39;low_vol&#39;, 1: &#39;high_vol&#39;},</span>
+<span class="sd">            ...     detection_methods=[&#39;hmm&#39;]</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; results = detector.fit_transform(data)</span>
+<span class="sd">            &gt;&gt;&gt; set(results[&#39;regime_type&#39;].unique()).issubset({&#39;low_vol&#39;, &#39;high_vol&#39;, &#39;unknown&#39;})</span>
+<span class="sd">            True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Asabaal Horan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
