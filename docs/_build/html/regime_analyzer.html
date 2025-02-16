@@ -20,7 +20,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Growing Window Functions" href="utils.html" />
+    <link rel="next" title="Utils" href="utils.html" />
     <link rel="prev" title="Pattern Recognition" href="pattern_recognition.html" /> 
 </head>
 
@@ -67,7 +67,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#see-also">See Also</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="utils.html">Growing Window Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils</a></li>
 </ul>
 
         </div>
@@ -151,6 +151,22 @@ Names of features used in fitting</p>
 Whether the HMM model converged</p>
 </dd></dl>
 
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># For reproducibility</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s1">&#39;2020-01-01&#39;</span><span class="p">,</span> <span class="s1">&#39;2020-12-31&#39;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;B&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s1">&#39;returns&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)),</span>
+<span class="gp">... </span>    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)),</span>
+<span class="gp">... </span>    <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="mi">100</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)))</span><span class="o">.</span><span class="n">cumprod</span><span class="p">()</span>
+<span class="gp">... </span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">detector</span> <span class="o">=</span> <span class="n">RegimeAnalyzer</span><span class="p">(</span><span class="n">n_states</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="s1">&#39;regime&#39;</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">columns</span>
+<span class="go">True</span>
+</pre></div>
+</div>
 <p class="rubric">Methods</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -188,7 +204,27 @@ Whether the HMM model converged</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">252</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regime_labels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hmm_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detection_methods</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['hmm',</span> <span class="pre">'breaks',</span> <span class="pre">'trend']</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/regime_analyzer.html#RegimeAnalyzer.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.regime_analyzer.RegimeAnalyzer.__init__" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Initialize the RegimeAnalyzer.</p>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">analyzer</span> <span class="o">=</span> <span class="n">RegimeAnalyzer</span><span class="p">(</span><span class="n">n_states</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">analyzer</span><span class="o">.</span><span class="n">n_states</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">analyzer</span><span class="o">.</span><span class="n">window</span>
+<span class="go">50</span>
+</pre></div>
+</div>
+<p>Custom regime labels:
+&gt;&gt;&gt; labels = {0: ‘low_vol’, 1: ‘high_vol’}
+&gt;&gt;&gt; analyzer = RegimeAnalyzer(n_states=2, regime_labels=labels)
+&gt;&gt;&gt; analyzer.regime_labels == labels
+True</p>
+<p>Invalid parameters:
+&gt;&gt;&gt; try:
+…     RegimeAnalyzer(n_states=0)
+… except ValueError as e:
+…     print(str(e))
+n_states must be positive</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="market_analyzer.regime_analyzer.RegimeAnalyzer.fit">
@@ -215,6 +251,32 @@ depending on detection_methods:
 <dd class="field-even"><p><strong>ValueError</strong> – If X is not a DataFrame, is empty, or missing required columns</p>
 </dd>
 </dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s1">&#39;returns&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+<span class="gp">... </span><span class="p">})</span>
+</pre></div>
+</div>
+<p>Basic fitting:
+&gt;&gt;&gt; detector = RegimeAnalyzer()
+&gt;&gt;&gt; detector.fit(data)  # doctest: +ELLIPSIS
+RegimeAnalyzer(…)</p>
+<p>Error on missing columns:
+&gt;&gt;&gt; bad_data = pd.DataFrame({‘wrong_col’: [1, 2, 3]})
+&gt;&gt;&gt; try:
+…     detector.fit(bad_data)
+… except ValueError as e:
+…     print(str(e))
+X must contain ‘returns’ and ‘volume’ columns for break detection</p>
+<p>Error on empty data:
+&gt;&gt;&gt; try:  # doctest: +NORMALIZE_WHITESPACE
+…     detector.fit(pd.DataFrame())
+… except ValueError as e:
+…     print(str(e))
+X cannot be empty</p>
 </dd></dl>
 
 <dl class="py method">
@@ -247,6 +309,38 @@ used in fit()</p>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 </dl>
+<dl>
+<dt>Examples</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s1">&#39;returns&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+<span class="gp">... </span><span class="p">})</span>
+</pre></div>
+</div>
+<p>Basic transformation:
+&gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)
+&gt;&gt;&gt; detector.fit(data)  # doctest: +ELLIPSIS
+RegimeAnalyzer(…)
+&gt;&gt;&gt; results = detector.transform(data)
+&gt;&gt;&gt; sorted(results.columns)  # doctest: +NORMALIZE_WHITESPACE
+[‘break_chow’, ‘break_volatility’, ‘break_volume’, ‘composite_regime’,
+‘regime’, ‘regime_0_prob’, ‘regime_1_prob’, ‘regime_type’,
+‘significant_break’, ‘trend’]</p>
+<p>HMM-only detection:
+&gt;&gt;&gt; detector = RegimeAnalyzer(detection_methods=[‘hmm’])
+&gt;&gt;&gt; results = detector.fit_transform(data)
+&gt;&gt;&gt; all(col in results.columns for col in [‘regime’, ‘regime_type’])
+True</p>
+<p>Error on untrained model:
+&gt;&gt;&gt; detector = RegimeAnalyzer()
+&gt;&gt;&gt; try:  # doctest: +NORMALIZE_WHITESPACE
+…     detector.transform(data)
+… except ValueError as e:
+…     print(str(e))
+Must fit HMM before transform</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -267,6 +361,41 @@ used in fit()</p>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 </dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s1">&#39;returns&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+<span class="gp">... </span><span class="p">})</span>
+</pre></div>
+</div>
+<p>Basic usage:
+&gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)
+&gt;&gt;&gt; results = detector.fit_transform(data)
+&gt;&gt;&gt; all(col in results.columns for col in [
+…     ‘regime’, ‘regime_type’, ‘break_chow’, ‘trend’
+… ])
+True</p>
+<p>HMM-only detection:
+&gt;&gt;&gt; detector = RegimeAnalyzer(
+…     n_states=2,
+…     detection_methods=[‘hmm’]
+… )
+&gt;&gt;&gt; results = detector.fit_transform(data)
+&gt;&gt;&gt; set(results.columns) == {
+…     ‘regime’, ‘regime_0_prob’, ‘regime_1_prob’, ‘regime_type’
+… }
+True</p>
+<p>With custom regime labels:
+&gt;&gt;&gt; detector = RegimeAnalyzer(
+…     n_states=2,
+…     regime_labels={0: ‘low_vol’, 1: ‘high_vol’},
+…     detection_methods=[‘hmm’]
+… )
+&gt;&gt;&gt; results = detector.fit_transform(data)
+&gt;&gt;&gt; set(results[‘regime_type’].unique()).issubset({‘low_vol’, ‘high_vol’, ‘unknown’})
+True</p>
 </dd></dl>
 
 </dd></dl>
@@ -330,7 +459,7 @@ used in fit()</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="pattern_recognition.html" class="btn btn-neutral float-left" title="Pattern Recognition" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="utils.html" class="btn btn-neutral float-right" title="Growing Window Functions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="utils.html" class="btn btn-neutral float-right" title="Utils" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

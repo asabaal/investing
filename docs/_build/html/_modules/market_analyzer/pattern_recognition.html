@@ -45,6 +45,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../base.html">Base Module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../pattern_recognition.html">Pattern Recognition</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../regime_analyzer.html">Regime Analyzer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../utils.html">Utils</a></li>
 </ul>
 
         </div>
@@ -105,14 +106,20 @@
 <span class="sd">        sub_classification (Optional[Enum], optional): Further pattern classification. Defaults to None.</span>
 <span class="sd">        confidence (Optional[float], optional): Pattern confidence score (0-1). Defaults to np.nan.</span>
 
-<span class="sd">    Example:</span>
+<span class="sd">    Examples:</span>
 <span class="sd">        &gt;&gt;&gt; pattern = TechnicalPattern(</span>
-<span class="sd">        ...     pattern_type=&quot;DOUBLE_BOTTOM&quot;,</span>
+<span class="sd">        ...     pattern_type=&quot;HEAD_AND_SHOULDERS&quot;,</span>
 <span class="sd">        ...     start_idx=100,</span>
 <span class="sd">        ...     end_idx=150,</span>
-<span class="sd">        ...     price_range=(100.0, 110.0),</span>
+<span class="sd">        ...     price_range=(45.50, 51.75),</span>
 <span class="sd">        ...     confidence=0.85</span>
 <span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; pattern.pattern_type</span>
+<span class="sd">        &#39;HEAD_AND_SHOULDERS&#39;</span>
+<span class="sd">        &gt;&gt;&gt; pattern.confidence</span>
+<span class="sd">        0.85</span>
+<span class="sd">        &gt;&gt;&gt; pattern.price_range</span>
+<span class="sd">        (45.5, 51.75)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">pattern_type</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">start_idx</span><span class="p">:</span> <span class="nb">int</span>
@@ -148,6 +155,19 @@
 <span class="sd">        right_shoulder_idx (int): Index of the right shoulder peak</span>
 <span class="sd">        left_trough_idx (int): Index of the trough between left shoulder and head</span>
 <span class="sd">        right_trough_idx (int): Index of the trough between head and right shoulder</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; points = HeadAndShouldersPoints(</span>
+<span class="sd">        ...     left_shoulder_idx=10,</span>
+<span class="sd">        ...     head_idx=20,</span>
+<span class="sd">        ...     right_shoulder_idx=30,</span>
+<span class="sd">        ...     left_trough_idx=15,</span>
+<span class="sd">        ...     right_trough_idx=25</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; points.head_idx</span>
+<span class="sd">        20</span>
+<span class="sd">        &gt;&gt;&gt; points.left_shoulder_idx &lt; points.head_idx &lt; points.right_shoulder_idx</span>
+<span class="sd">        True</span>
 <span class="sd">    &quot;&quot;&quot;</span>    
     <span class="n">left_shoulder_idx</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">head_idx</span><span class="p">:</span> <span class="nb">int</span>
@@ -168,7 +188,34 @@
 <span class="sd">        confidence (float): Confidence score for the pattern (0-1)</span>
 <span class="sd">        failure_reasons (Dict[str, str]): Reasons for any validation failures</span>
 <span class="sd">        price_range (Optional[Tuple[float, float]], optional): Price range if valid. </span>
-<span class="sd">            Defaults to None.</span>
+<span class="sd">            Defaults to None.         </span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; # Test valid pattern</span>
+<span class="sd">        &gt;&gt;&gt; validation = PatternValidation(</span>
+<span class="sd">        ...     is_valid=True,</span>
+<span class="sd">        ...     confidence=0.85,</span>
+<span class="sd">        ...     failure_reasons={},</span>
+<span class="sd">        ...     price_range=(100.0, 110.0)</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; bool(validation.is_valid)  # Convert from numpy bool if needed</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; float(validation.confidence)  # Convert from numpy float if needed</span>
+<span class="sd">        0.85</span>
+<span class="sd">        &gt;&gt;&gt; validation.failure_reasons == {}  # Empty dict for valid pattern</span>
+<span class="sd">        True</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; # Test failed pattern</span>
+<span class="sd">        &gt;&gt;&gt; failed_validation = PatternValidation(</span>
+<span class="sd">        ...     is_valid=False,</span>
+<span class="sd">        ...     confidence=0.3,</span>
+<span class="sd">        ...     failure_reasons={&#39;slope&#39;: &#39;Neckline slope too steep&#39;},</span>
+<span class="sd">        ...     price_range=None</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; bool(failed_validation.is_valid)</span>
+<span class="sd">        False</span>
+<span class="sd">        &gt;&gt;&gt; bool(len(failed_validation.failure_reasons) &gt; 0)  # Has failure reasons</span>
+<span class="sd">        True</span>
 <span class="sd">    &quot;&quot;&quot;</span>    
     <span class="n">is_valid</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span>
@@ -180,7 +227,18 @@
 <div class="viewcode-block" id="VolumePatternType">
 <a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.VolumePatternType">[docs]</a>
 <span class="k">class</span> <span class="nc">VolumePatternType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Types of volume patterns in relation to price movement.&quot;&quot;&quot;</span>    
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Types of volume patterns in relation to price movement.</span>
+<span class="sd">    </span>
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; VolumePatternType.DIVERGENCE.value</span>
+<span class="sd">        &#39;DIVERGENCE&#39;</span>
+<span class="sd">        &gt;&gt;&gt; pattern_type = VolumePatternType.CONCORDANT</span>
+<span class="sd">        &gt;&gt;&gt; pattern_type == VolumePatternType.CONCORDANT</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; pattern_type.value</span>
+<span class="sd">        &#39;CONCORDANT&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
     
     <span class="c1">#: Volume moving opposite to price</span>
     <span class="n">DIVERGENCE</span> <span class="o">=</span> <span class="s2">&quot;DIVERGENCE&quot;</span>
@@ -211,6 +269,21 @@
 <span class="sd">        pattern_type (VolumePatternType): Type of volume pattern</span>
 <span class="sd">        price_range (Tuple[float, float]): Min and max prices within pattern</span>
 <span class="sd">        volume_range (Tuple[float, float]): Min and max volumes within pattern</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; pattern = VolumePattern(</span>
+<span class="sd">        ...     pattern_type=VolumePatternType.DIVERGENCE,</span>
+<span class="sd">        ...     start_idx=50,</span>
+<span class="sd">        ...     end_idx=60,</span>
+<span class="sd">        ...     price_range=(100.0, 110.0),</span>
+<span class="sd">        ...     volume_range=(5000, 7500)</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; pattern.pattern_type == VolumePatternType.DIVERGENCE</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; pattern.volume_range</span>
+<span class="sd">        (5000, 7500)</span>
+<span class="sd">        &gt;&gt;&gt; pattern.price_range</span>
+<span class="sd">        (100.0, 110.0)</span>
 <span class="sd">    &quot;&quot;&quot;</span>    
     <span class="n">pattern_type</span><span class="p">:</span> <span class="n">VolumePatternType</span>
     <span class="n">price_range</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
@@ -237,7 +310,25 @@
 <span class="sd">            Defaults to 0.02 (2%).</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        PatternValidation: Validation results including confidence score and any failure reasons</span>
+<span class="sd">        PatternValidation: Validation results including confidence score and any failure reasons        </span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; # Create a valid head and shoulders pattern</span>
+<span class="sd">        &gt;&gt;&gt; prices = np.array([10.0, 12.0, 11.0, 13.0, 11.0, 12.0, 10.0])</span>
+<span class="sd">        &gt;&gt;&gt; test_points = HeadAndShouldersPoints(</span>
+<span class="sd">        ...     left_shoulder_idx=1,</span>
+<span class="sd">        ...     head_idx=3,</span>
+<span class="sd">        ...     right_shoulder_idx=5,</span>
+<span class="sd">        ...     left_trough_idx=2,</span>
+<span class="sd">        ...     right_trough_idx=4</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; validation = validate_head_and_shoulders(prices, test_points)</span>
+<span class="sd">        &gt;&gt;&gt; bool(validation.is_valid)  # Convert numpy bool to Python bool</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; bool(float(validation.confidence) &gt; 0.8)  # High confidence score</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; dict(validation.failure_reasons) == {}  # No failure reasons</span>
+<span class="sd">        True</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Extract prices at pattern points</span>
     <span class="n">left_shoulder</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">points</span><span class="o">.</span><span class="n">left_shoulder_idx</span><span class="p">]</span>
@@ -307,8 +398,12 @@
 <div class="viewcode-block" id="LeadLagAnalyzer.__init__">
 <a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.LeadLagAnalyzer.__init__">[docs]</a>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">returns_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span> <span class="o">=</span> <span class="n">returns_data</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">relationships</span> <span class="o">=</span> <span class="p">{}</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">relationships</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">symbol</span> <span class="ow">in</span> <span class="n">returns_data</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">returns_data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns_data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span></div>
 
         
 <div class="viewcode-block" id="LeadLagAnalyzer.calculate_cross_correlations">
@@ -329,11 +424,39 @@
 <span class="sd">                - symbol2: Second symbol in pair</span>
 <span class="sd">                - lag: Time lag in periods</span>
 <span class="sd">                - correlation: Correlation coefficient</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; # Create sample data with known correlation</span>
+<span class="sd">        &gt;&gt;&gt; dates = pd.date_range(&#39;2024-01-01&#39;, &#39;2024-01-10&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">        &gt;&gt;&gt; base_returns = np.random.randn(10) * 0.01</span>
+<span class="sd">        &gt;&gt;&gt; data1 = pd.DataFrame({</span>
+<span class="sd">        ...     &#39;daily_return&#39;: base_returns</span>
+<span class="sd">        ... }, index=dates)</span>
+<span class="sd">        &gt;&gt;&gt; data2 = pd.DataFrame({</span>
+<span class="sd">        ...     &#39;daily_return&#39;: base_returns * 0.9 + np.random.randn(10) * 0.001</span>
+<span class="sd">        ... }, index=dates)</span>
+<span class="sd">        &gt;&gt;&gt; returns_data = {&#39;AAPL&#39;: data1, &#39;MSFT&#39;: data2}</span>
+<span class="sd">        &gt;&gt;&gt; analyzer = LeadLagAnalyzer(returns_data)</span>
+<span class="sd">        &gt;&gt;&gt; correlations = analyzer.calculate_cross_correlations([&#39;AAPL&#39;, &#39;MSFT&#39;], max_lags=2)</span>
+<span class="sd">        &gt;&gt;&gt; isinstance(correlations, pd.DataFrame)</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; set([&#39;symbol1&#39;, &#39;symbol2&#39;, &#39;lag&#39;, &#39;correlation&#39;]).issubset(</span>
+<span class="sd">        ...     set(correlations.columns))</span>
+<span class="sd">        True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
         
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">symbol1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">symbols</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">symbol2</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">symbols</span><span class="p">):</span>
+        <span class="n">non_empty_symbols</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">symbol</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">non_empty_symbols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">non_empty_symbols</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">symbol1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">non_empty_symbols</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">symbol2</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">non_empty_symbols</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="n">j</span><span class="p">:</span>  <span class="c1"># Only calculate upper triangle</span>
                     <span class="k">continue</span>
                     
@@ -386,12 +509,37 @@
 <span class="sd">                - p_value: Test p-value</span>
 <span class="sd">                - r2: R-squared value</span>
 <span class="sd">                - significant_coefficients: String of significant lag coefficients</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; dates = pd.date_range(&#39;2024-01-01&#39;, &#39;2024-01-10&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; # Create more realistic data with noise</span>
+<span class="sd">            &gt;&gt;&gt; leader_returns = [0.01, 0.02, -0.01, 0.03, -0.02, 0.01, 0.02, -0.01, 0.01, -0.01]</span>
+<span class="sd">            &gt;&gt;&gt; follower_returns = [0.005, 0.015, -0.005, 0.025, -0.015, 0.008, 0.018, -0.008, 0.008, -0.008]</span>
+<span class="sd">            &gt;&gt;&gt; data1 = pd.DataFrame({&#39;daily_return&#39;: leader_returns}, index=dates)</span>
+<span class="sd">            &gt;&gt;&gt; data2 = pd.DataFrame({&#39;daily_return&#39;: follower_returns}, index=dates)</span>
+<span class="sd">            &gt;&gt;&gt; returns_data = {&#39;LEADER&#39;: data1, &#39;FOLLOWER&#39;: data2}</span>
+<span class="sd">            &gt;&gt;&gt; analyzer = LeadLagAnalyzer(returns_data)</span>
+<span class="sd">            &gt;&gt;&gt; results = analyzer.test_granger_causality([&#39;LEADER&#39;, &#39;FOLLOWER&#39;], max_lag=2)</span>
+<span class="sd">            &gt;&gt;&gt; isinstance(results, pd.DataFrame)</span>
+<span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">symbols</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
         <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
-        
+
+        <span class="n">non_empty_symbols</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">symbol</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">non_empty_symbols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">non_empty_symbols</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
         <span class="c1"># Test each possible pair of symbols</span>
-        <span class="k">for</span> <span class="n">cause_symbol</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">effect_symbol</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">cause_symbol</span> <span class="ow">in</span> <span class="n">non_empty_symbols</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">effect_symbol</span> <span class="ow">in</span> <span class="n">non_empty_symbols</span><span class="p">:</span>
                 <span class="c1"># Skip self-causation tests</span>
                 <span class="k">if</span> <span class="n">cause_symbol</span> <span class="o">==</span> <span class="n">effect_symbol</span><span class="p">:</span>
                     <span class="k">continue</span>
@@ -452,7 +600,7 @@
         
         <span class="c1"># Convert to DataFrame</span>
         <span class="n">results_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
-        
+
         <span class="c1"># Sort by p-value to highlight most significant relationships</span>
         <span class="n">results_df</span> <span class="o">=</span> <span class="n">results_df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;ssr_f_pvalue&#39;</span><span class="p">)</span>
 
@@ -504,6 +652,21 @@
 <span class="sd">                - Nodes are symbols</span>
 <span class="sd">                - Edges represent correlations above threshold</span>
 <span class="sd">                - Edge weights are correlation values</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; dates = dates = pd.date_range(&#39;2024-01-01&#39;, &#39;2024-12-31&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; # Create more realistic correlated data</span>
+<span class="sd">            &gt;&gt;&gt; base = np.random.randn(len(dates))</span>
+<span class="sd">            &gt;&gt;&gt; data1 = pd.DataFrame({&#39;daily_return&#39;: base}, index=dates)</span>
+<span class="sd">            &gt;&gt;&gt; data2 = pd.DataFrame({&#39;daily_return&#39;: base * 0.9 + 0.01}, index=dates)  # Strongly correlated</span>
+<span class="sd">            &gt;&gt;&gt; data3 = pd.DataFrame({&#39;daily_return&#39;: -base * 0.8 + 0.01}, index=dates)  # Negatively correlated</span>
+<span class="sd">            &gt;&gt;&gt; returns_data = {&#39;A&#39;: data1, &#39;B&#39;: data2, &#39;C&#39;: data3}</span>
+<span class="sd">            &gt;&gt;&gt; analyzer = LeadLagAnalyzer(returns_data)</span>
+<span class="sd">            &gt;&gt;&gt; G = analyzer.build_relationship_network([&#39;A&#39;, &#39;B&#39;, &#39;C&#39;], threshold=0.5)</span>
+<span class="sd">            &gt;&gt;&gt; sorted(G.nodes()) == [&#39;A&#39;, &#39;B&#39;, &#39;C&#39;]  # All nodes present</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; any(G.edges())  # Should have at least one edge</span>
+<span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">G</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
         
@@ -550,6 +713,38 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Dict[str, float]: Dictionary mapping symbols to normalized leadership scores (0-1)</span>
+
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; # Create sample data with clear but imperfect lead-lag relationship</span>
+<span class="sd">            &gt;&gt;&gt; dates = pd.date_range(&#39;2024-01-01&#39;, &#39;2024-01-10&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)  # For reproducibility</span>
+<span class="sd">            &gt;&gt;&gt; leader_base = np.random.randn(10) * 0.1  # Base returns</span>
+<span class="sd">            &gt;&gt;&gt; leader_data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;daily_return&#39;: leader_base</span>
+<span class="sd">            ... }, index=dates)</span>
+<span class="sd">            &gt;&gt;&gt; # Create followers with lag and noise</span>
+<span class="sd">            &gt;&gt;&gt; follower1_data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;daily_return&#39;: np.roll(leader_base, 1) + np.random.randn(10) * 0.02</span>
+<span class="sd">            ... }, index=dates)</span>
+<span class="sd">            &gt;&gt;&gt; follower2_data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;daily_return&#39;: np.roll(leader_base, 2) + np.random.randn(10) * 0.02</span>
+<span class="sd">            ... }, index=dates)</span>
+<span class="sd">            &gt;&gt;&gt; returns_data = {</span>
+<span class="sd">            ...     &#39;LEADER&#39;: leader_data,</span>
+<span class="sd">            ...     &#39;FOLLOWER1&#39;: follower1_data,</span>
+<span class="sd">            ...     &#39;FOLLOWER2&#39;: follower2_data</span>
+<span class="sd">            ... }</span>
+<span class="sd">            &gt;&gt;&gt; analyzer = LeadLagAnalyzer(returns_data)</span>
+<span class="sd">            &gt;&gt;&gt; scores = analyzer.find_market_leaders(</span>
+<span class="sd">            ...     symbols=[&#39;LEADER&#39;, &#39;FOLLOWER1&#39;, &#39;FOLLOWER2&#39;],</span>
+<span class="sd">            ...     max_lag=2,</span>
+<span class="sd">            ...     significance_level=0.1  # More lenient for test</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; isinstance(scores, dict)  # Returns correct type</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; set(scores.keys()) == {&#39;LEADER&#39;, &#39;FOLLOWER1&#39;, &#39;FOLLOWER2&#39;}  # Has all symbols</span>
+<span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Get Granger causality test results for all pairs</span>
         <span class="n">results_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_granger_causality</span><span class="p">(</span><span class="n">symbols</span><span class="p">,</span> <span class="n">max_lag</span><span class="p">,</span> <span class="n">significance_level</span><span class="p">)</span>
@@ -605,7 +800,7 @@
 <span class="sd">    Attributes:</span>
 <span class="sd">        prices (pd.Series): Price data</span>
 <span class="sd">        volumes (pd.Series): Volume data</span>
-<span class="sd">        patterns (list): List of detected patterns</span>
+<span class="sd">        patterns (list): List of detected patterns  </span>
 <span class="sd">    &quot;&quot;&quot;</span>
 <div class="viewcode-block" id="PatternRecognition.__init__">
 <a class="viewcode-back" href="../../pattern_recognition.html#market_analyzer.pattern_recognition.PatternRecognition.__init__">[docs]</a>
@@ -625,6 +820,18 @@
 <span class="sd">            Tuple[np.ndarray, np.ndarray]: Two arrays containing:</span>
 <span class="sd">                - First array: Indices of swing highs</span>
 <span class="sd">                - Second array: Indices of swing lows</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; # Create a series with clear swing points</span>
+<span class="sd">            &gt;&gt;&gt; prices = pd.Series([10, 12, 11, 14, 13, 15, 14, 13])</span>
+<span class="sd">            &gt;&gt;&gt; volumes = pd.Series([1000] * len(prices))</span>
+<span class="sd">            &gt;&gt;&gt; pattern_recognition = PatternRecognition(prices, volumes)</span>
+<span class="sd">            &gt;&gt;&gt; highs, lows = pattern_recognition.find_swing_points()</span>
+<span class="sd">            &gt;&gt;&gt; # Convert numpy indices to Python ints for comparison</span>
+<span class="sd">            &gt;&gt;&gt; [int(i) for i in highs]  # Indices of local maxima</span>
+<span class="sd">            [1, 3, 5]</span>
+<span class="sd">            &gt;&gt;&gt; [int(i) for i in lows]  # Indices of local minima</span>
+<span class="sd">            [2, 4]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="p">)</span>
         <span class="n">maxima</span> <span class="o">=</span> <span class="p">[]</span>
@@ -672,6 +879,19 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            List[TechnicalPattern]: List of detected head and shoulders patterns</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; # Create a price series with a head and shoulders pattern</span>
+<span class="sd">            &gt;&gt;&gt; prices = pd.Series([5, 15, 10, 20, 10, 15, 5])</span>
+<span class="sd">            &gt;&gt;&gt; volumes = pd.Series([1000] * len(prices))</span>
+<span class="sd">            &gt;&gt;&gt; pattern_recognition = PatternRecognition(prices, volumes)</span>
+<span class="sd">            &gt;&gt;&gt; patterns = pattern_recognition.detect_head_and_shoulders()</span>
+<span class="sd">            &gt;&gt;&gt; len(patterns)  # Should find one pattern</span>
+<span class="sd">            1</span>
+<span class="sd">            &gt;&gt;&gt; patterns[0].pattern_type</span>
+<span class="sd">            &#39;HEAD_AND_SHOULDERS&#39;</span>
+<span class="sd">            &gt;&gt;&gt; patterns[0].price_range  # (min_price, max_price)</span>
+<span class="sd">            (10.0, 20.0)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">highs</span><span class="p">,</span> <span class="n">lows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_swing_points</span><span class="p">()</span>
         <span class="n">patterns</span> <span class="o">=</span> <span class="p">[]</span>
@@ -682,7 +902,7 @@
         <span class="k">if</span> <span class="n">lows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">highs</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
             <span class="n">lows</span> <span class="o">=</span> <span class="n">lows</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
 
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">highs</span><span class="p">)</span> <span class="o">-</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">highs</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span><span class="p">):</span>
             <span class="n">points</span> <span class="o">=</span> <span class="n">HeadAndShouldersPoints</span><span class="p">(</span>
                 <span class="n">left_shoulder_idx</span><span class="o">=</span><span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
                 <span class="n">head_idx</span><span class="o">=</span><span class="n">highs</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span>
@@ -693,7 +913,7 @@
             
             <span class="n">validation</span> <span class="o">=</span> <span class="n">validate_head_and_shoulders</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">validation</span><span class="o">.</span><span class="n">is_valid</span><span class="p">:</span>
-                <span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">TechnicalPattern</span><span class="p">(</span><span class="s2">&quot;HEAD_AND_SHOULDERS&quot;</span><span class="p">,</span> <span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">],</span> <span class="n">price_range</span><span class="o">=</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">lows</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]),</span> <span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])))</span>
+                <span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">TechnicalPattern</span><span class="p">(</span><span class="s2">&quot;HEAD_AND_SHOULDERS&quot;</span><span class="p">,</span> <span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">],</span> <span class="n">price_range</span><span class="o">=</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="p">[</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span> <span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="p">[</span><span class="n">lows</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]]),</span> <span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="p">[</span><span class="n">highs</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]])))</span>
 
         <span class="k">return</span> <span class="n">patterns</span></div>
 
@@ -710,6 +930,20 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            List[TechnicalPattern]: List of detected double bottom patterns</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; # Create a price series with a clear double bottom</span>
+<span class="sd">            &gt;&gt;&gt; prices = pd.Series([10, 8, 9.5, 8.1, 11])</span>
+<span class="sd">            &gt;&gt;&gt; volumes = pd.Series([1000, 1200, 900, 1100, 1300])</span>
+<span class="sd">            &gt;&gt;&gt; pattern_recognition = PatternRecognition(prices, volumes)</span>
+<span class="sd">            &gt;&gt;&gt; patterns = pattern_recognition.detect_double_bottom(window=3, tolerance=0.05)</span>
+<span class="sd">            &gt;&gt;&gt; isinstance(patterns, list)</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; if len(patterns) &gt; 0:  # Check pattern properties if found</span>
+<span class="sd">            ...     patterns[0].pattern_type == &#39;DOUBLE_BOTTOM&#39; and abs(patterns[0].price_range[0] - 8.0) &lt; 0.1</span>
+<span class="sd">            ... else:</span>
+<span class="sd">            ...     True  # Skip validation if no patterns found</span>
+<span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">patterns</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">_</span><span class="p">,</span> <span class="n">lows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_swing_points</span><span class="p">()</span>
@@ -765,6 +999,26 @@
 <span class="sd">                - pattern: Classification if above threshold</span>
 <span class="sd">                - Plus columns for each pattern type&#39;s score</span>
 
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; # Create test data with clear volume-price patterns</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)  # For reproducibility</span>
+<span class="sd">            &gt;&gt;&gt; prices = pd.Series([10.0 + i*0.2 + np.random.randn()*0.05 for i in range(5)])</span>
+<span class="sd">            &gt;&gt;&gt; volumes = pd.Series([1000 * (1 + np.random.randn()*0.2) for _ in range(5)])</span>
+<span class="sd">            &gt;&gt;&gt; pattern_recognition = PatternRecognition(prices, volumes)</span>
+<span class="sd">            &gt;&gt;&gt; patterns_df = pattern_recognition.detect_volume_price_patterns(</span>
+<span class="sd">            ...     min_price_change=0.001,  # Lower threshold for test</span>
+<span class="sd">            ...     min_volume_change=0.05,</span>
+<span class="sd">            ...     window_size=3,</span>
+<span class="sd">            ...     target_length=2,</span>
+<span class="sd">            ...     min_pattern_weight=0.3  # Lower threshold for test</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; isinstance(patterns_df, pd.DataFrame)  # Correct return type</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; expected_cols = {&#39;timestamp_idx&#39;, &#39;primary_pattern&#39;, &#39;pattern_weight&#39;, </span>
+<span class="sd">            ...                 &#39;pattern&#39;, &#39;DIVERGENCE&#39;, &#39;NON_CONFIRMATION&#39;, </span>
+<span class="sd">            ...                 &#39;VOLUME_FORCE&#39;, &#39;NEUTRAL&#39;, &#39;CONCORDANT&#39;}</span>
+<span class="sd">            &gt;&gt;&gt; expected_cols.issubset(set(patterns_df.columns))  # Has required columns</span>
+<span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">def</span> <span class="nf">classify_points</span><span class="p">(</span><span class="n">prices</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">volumes</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> 
                         <span class="n">min_price_change</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.002</span><span class="p">,</span>

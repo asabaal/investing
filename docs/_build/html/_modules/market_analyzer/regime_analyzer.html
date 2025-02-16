@@ -45,6 +45,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../base.html">Base Module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../pattern_recognition.html">Pattern Recognition</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../regime_analyzer.html">Regime Analyzer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../utils.html">Utils</a></li>
 </ul>
 
         </div>
@@ -114,6 +115,21 @@
 <span class="sd">            Names of features used in fitting</span>
 <span class="sd">        converged_: bool</span>
 <span class="sd">            Whether the HMM model converged</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; np.random.seed(42)  # For reproducibility</span>
+<span class="sd">        &gt;&gt;&gt; dates = pd.date_range(&#39;2020-01-01&#39;, &#39;2020-12-31&#39;, freq=&#39;B&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">        ...     &#39;returns&#39;: np.random.normal(0, 1, len(dates)),</span>
+<span class="sd">        ...     &#39;volume&#39;: np.random.lognormal(0, 1, len(dates)),</span>
+<span class="sd">        ...     &#39;price&#39;: 100 * (1 + np.random.normal(0, 0.01, len(dates))).cumprod()</span>
+<span class="sd">        ... }, index=dates)</span>
+<span class="sd">        &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)</span>
+<span class="sd">        &gt;&gt;&gt; results = detector.fit_transform(data)</span>
+<span class="sd">        &gt;&gt;&gt; &#39;regime&#39; in results.columns</span>
+<span class="sd">        True</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     
 <div class="viewcode-block" id="RegimeAnalyzer.__init__">
@@ -127,6 +143,33 @@
         <span class="n">hmm_params</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">detection_methods</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;hmm&#39;</span><span class="p">,</span> <span class="s1">&#39;breaks&#39;</span><span class="p">,</span> <span class="s1">&#39;trend&#39;</span><span class="p">]</span>
     <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the RegimeAnalyzer.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; analyzer = RegimeAnalyzer(n_states=2, window=50)</span>
+<span class="sd">            &gt;&gt;&gt; analyzer.n_states</span>
+<span class="sd">            2</span>
+<span class="sd">            &gt;&gt;&gt; analyzer.window</span>
+<span class="sd">            50</span>
+<span class="sd">            </span>
+<span class="sd">            Custom regime labels:</span>
+<span class="sd">            &gt;&gt;&gt; labels = {0: &#39;low_vol&#39;, 1: &#39;high_vol&#39;}</span>
+<span class="sd">            &gt;&gt;&gt; analyzer = RegimeAnalyzer(n_states=2, regime_labels=labels)</span>
+<span class="sd">            &gt;&gt;&gt; analyzer.regime_labels == labels</span>
+<span class="sd">            True</span>
+<span class="sd">            </span>
+<span class="sd">            Invalid parameters:</span>
+<span class="sd">            &gt;&gt;&gt; try:</span>
+<span class="sd">            ...     RegimeAnalyzer(n_states=0)</span>
+<span class="sd">            ... except ValueError as e:</span>
+<span class="sd">            ...     print(str(e))</span>
+<span class="sd">            n_states must be positive</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">n_states</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_states must be positive&quot;</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">n_states</span> <span class="o">=</span> <span class="n">n_states</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">window</span> <span class="o">=</span> <span class="n">window</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">regime_labels</span> <span class="o">=</span> <span class="n">regime_labels</span>
@@ -154,6 +197,34 @@
 
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: If X is not a DataFrame, is empty, or missing required columns</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volume&#39;: np.random.lognormal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;price&#39;: np.random.random(100) * 100</span>
+<span class="sd">            ... })</span>
+<span class="sd">            </span>
+<span class="sd">            Basic fitting:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer()</span>
+<span class="sd">            &gt;&gt;&gt; detector.fit(data)  # doctest: +ELLIPSIS</span>
+<span class="sd">            RegimeAnalyzer(...)</span>
+<span class="sd">            </span>
+<span class="sd">            Error on missing columns:</span>
+<span class="sd">            &gt;&gt;&gt; bad_data = pd.DataFrame({&#39;wrong_col&#39;: [1, 2, 3]})</span>
+<span class="sd">            &gt;&gt;&gt; try:</span>
+<span class="sd">            ...     detector.fit(bad_data)</span>
+<span class="sd">            ... except ValueError as e:</span>
+<span class="sd">            ...     print(str(e))</span>
+<span class="sd">            X must contain &#39;returns&#39; and &#39;volume&#39; columns for break detection</span>
+<span class="sd">            </span>
+<span class="sd">            Error on empty data:</span>
+<span class="sd">            &gt;&gt;&gt; try:  # doctest: +NORMALIZE_WHITESPACE</span>
+<span class="sd">            ...     detector.fit(pd.DataFrame())</span>
+<span class="sd">            ... except ValueError as e:</span>
+<span class="sd">            ...     print(str(e))</span>
+<span class="sd">            X cannot be empty            </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;X must be a pandas DataFrame&quot;</span><span class="p">)</span>
@@ -201,6 +272,38 @@
 <span class="sd">                - significant_break: Boolean indicating major regime break</span>
 <span class="sd">                - trend: Price trend direction</span>
 <span class="sd">                - composite_regime: Combined regime indicator (if multiple methods used)</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volume&#39;: np.random.lognormal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;price&#39;: np.random.random(100) * 100</span>
+<span class="sd">            ... })</span>
+<span class="sd">            </span>
+<span class="sd">            Basic transformation:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)</span>
+<span class="sd">            &gt;&gt;&gt; detector.fit(data)  # doctest: +ELLIPSIS</span>
+<span class="sd">            RegimeAnalyzer(...)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector.transform(data)</span>
+<span class="sd">            &gt;&gt;&gt; sorted(results.columns)  # doctest: +NORMALIZE_WHITESPACE</span>
+<span class="sd">            [&#39;break_chow&#39;, &#39;break_volatility&#39;, &#39;break_volume&#39;, &#39;composite_regime&#39;,</span>
+<span class="sd">            &#39;regime&#39;, &#39;regime_0_prob&#39;, &#39;regime_1_prob&#39;, &#39;regime_type&#39;,</span>
+<span class="sd">            &#39;significant_break&#39;, &#39;trend&#39;]</span>
+<span class="sd">            </span>
+<span class="sd">            HMM-only detection:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(detection_methods=[&#39;hmm&#39;])</span>
+<span class="sd">            &gt;&gt;&gt; results = detector.fit_transform(data)</span>
+<span class="sd">            &gt;&gt;&gt; all(col in results.columns for col in [&#39;regime&#39;, &#39;regime_type&#39;])</span>
+<span class="sd">            True</span>
+<span class="sd">            </span>
+<span class="sd">            Error on untrained model:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer()</span>
+<span class="sd">            &gt;&gt;&gt; try:  # doctest: +NORMALIZE_WHITESPACE</span>
+<span class="sd">            ...     detector.transform(data)</span>
+<span class="sd">            ... except ValueError as e:</span>
+<span class="sd">            ...     print(str(e))</span>
+<span class="sd">            Must fit HMM before transform                </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
         
@@ -219,6 +322,9 @@
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">detection_methods</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">results</span><span class="p">[</span><span class="s1">&#39;composite_regime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_composite_regime</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
         
+        <span class="k">if</span> <span class="s2">&quot;significant_breaks&quot;</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">results</span><span class="p">[</span><span class="s2">&quot;significant_breaks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;significant_breaks&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="n">results</span></div>
 
     
@@ -228,6 +334,36 @@
 
 <span class="sd">        Args:</span>
 <span class="sd">            X (pd.DataFrame): Feature data to fit the HMM model</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volatility&#39;: np.abs(np.random.normal(0, 1, 100))</span>
+<span class="sd">            ... })</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)</span>
+<span class="sd">            &gt;&gt;&gt; detector._fit_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; hasattr(detector, &#39;model_&#39;)</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; hasattr(detector, &#39;converged_&#39;)</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; detector.feature_names_ == [&#39;returns&#39;, &#39;volatility&#39;]</span>
+<span class="sd">            True</span>
+
+<span class="sd">            With standardization:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2, standardize=True)</span>
+<span class="sd">            &gt;&gt;&gt; detector._fit_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; hasattr(detector, &#39;scaler_&#39;)</span>
+<span class="sd">            True</span>
+
+<span class="sd">            With custom HMM parameters:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(</span>
+<span class="sd">            ...     n_states=2,</span>
+<span class="sd">            ...     hmm_params={&#39;covariance_type&#39;: &#39;diag&#39;}</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; detector._fit_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; detector.model_.covariance_type == &#39;diag&#39;</span>
+<span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Store feature names</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">feature_names_</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
@@ -269,6 +405,46 @@
 
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: If HMM has not been fit</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volatility&#39;: np.abs(np.random.normal(0, 1, 100))</span>
+<span class="sd">            ... })</span>
+<span class="sd">            </span>
+<span class="sd">            Basic transformation:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)</span>
+<span class="sd">            &gt;&gt;&gt; detector._fit_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector._transform_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; sorted(results.columns)  # doctest: +NORMALIZE_WHITESPACE</span>
+<span class="sd">            [&#39;regime&#39;, &#39;regime_0_prob&#39;, &#39;regime_1_prob&#39;, &#39;regime_type&#39;]</span>
+<span class="sd">            </span>
+<span class="sd">            Verify probability columns:</span>
+<span class="sd">            &gt;&gt;&gt; all((results[&#39;regime_0_prob&#39;] &gt;= 0) &amp; (results[&#39;regime_0_prob&#39;] &lt;= 1)) </span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; all((results[&#39;regime_1_prob&#39;] &gt;= 0) &amp; (results[&#39;regime_1_prob&#39;] &lt;= 1))</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; all(abs(results[&#39;regime_0_prob&#39;] + results[&#39;regime_1_prob&#39;] - 1) &lt; 1e-6)</span>
+<span class="sd">            True</span>
+
+<span class="sd">            With custom regime labels:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(</span>
+<span class="sd">            ...     n_states=2,</span>
+<span class="sd">            ...     regime_labels={0: &#39;low_vol&#39;, 1: &#39;high_vol&#39;}</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; detector._fit_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector._transform_hmm(data)</span>
+<span class="sd">            &gt;&gt;&gt; set(results[&#39;regime_type&#39;].unique()).issubset({&#39;low_vol&#39;, &#39;high_vol&#39;, &#39;unknown&#39;})</span>
+<span class="sd">            True</span>
+
+<span class="sd">            Error on untrained model:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer()</span>
+<span class="sd">            &gt;&gt;&gt; try:  # doctest: +NORMALIZE_WHITESPACE</span>
+<span class="sd">            ...     detector._transform_hmm(data)</span>
+<span class="sd">            ... except ValueError as e:</span>
+<span class="sd">            ...     print(str(e))</span>
+<span class="sd">            Must fit HMM before transform</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;model_&#39;</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Must fit HMM before transform&quot;</span><span class="p">)</span>
@@ -333,6 +509,25 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            pd.DataFrame: DataFrame containing break detection statistics and indicators</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volume&#39;: np.random.lognormal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;price&#39;: 100 * (1 + np.random.normal(0, 0.01, 100)).cumprod()</span>
+<span class="sd">            ... })</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(window=20)</span>
+<span class="sd">            &gt;&gt;&gt; detector.fit(data)  # doctest: +ELLIPSIS</span>
+<span class="sd">            RegimeAnalyzer(...)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector._detect_breaks(data)</span>
+<span class="sd">            &gt;&gt;&gt; all(col in results.columns for col in [</span>
+<span class="sd">            ...     &#39;break_chow&#39;, &#39;break_volatility&#39;, &#39;break_volume&#39;,</span>
+<span class="sd">            ...     &#39;significant_break&#39;</span>
+<span class="sd">            ... ])</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; results[&#39;significant_break&#39;].dtype == bool</span>
+<span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
         <span class="n">results</span><span class="p">[</span><span class="s1">&#39;break_chow&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
@@ -392,7 +587,7 @@
             <span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;break_chow&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">|</span>  <span class="c1"># 2 std dev threshold</span>
             <span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;break_volatility&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">|</span>  <span class="c1"># Double volatility</span>
             <span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;break_volume&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># Double volume</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># Handle NaN values explicitly</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>  <span class="c1"># Handle NaN values explicitly</span>
         
         <span class="k">return</span> <span class="n">results</span>
     
@@ -405,6 +600,20 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            pd.DataFrame: DataFrame containing trend indicators</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volume&#39;: np.random.lognormal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;price&#39;: 100 * (1 + np.random.normal(0, 0.01, 100)).cumprod()</span>
+<span class="sd">            ... })</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(window=20)</span>
+<span class="sd">            &gt;&gt;&gt; detector.fit(data)  # doctest: +ELLIPSIS</span>
+<span class="sd">            RegimeAnalyzer(...)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector._detect_trend(data)</span>
+<span class="sd">            &gt;&gt;&gt; set(results[&#39;trend&#39;].unique()) == {&#39;uptrend&#39;, &#39;downtrend&#39;}</span>
+<span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
         <span class="n">prices</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span>
@@ -442,6 +651,21 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            pd.Series: Combined regime indicator for each time point</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; results = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;regime_type&#39;: [&#39;bullish&#39;, &#39;bearish&#39;, &#39;neutral&#39;],</span>
+<span class="sd">            ...     &#39;significant_break&#39;: [True, False, True],</span>
+<span class="sd">            ...     &#39;trend&#39;: [&#39;uptrend&#39;, &#39;downtrend&#39;, &#39;uptrend&#39;]</span>
+<span class="sd">            ... })</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer()</span>
+<span class="sd">            &gt;&gt;&gt; composite = detector._compute_composite_regime(results)</span>
+<span class="sd">            &gt;&gt;&gt; len(composite) == len(results)</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; composite.iloc[0] == &#39;bullish_transition_uptrend&#39;</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; composite.iloc[1] == &#39;bearish_downtrend&#39;</span>
+<span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">def</span> <span class="nf">get_composite_regime</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
             <span class="n">components</span> <span class="o">=</span> <span class="p">[]</span>
@@ -471,6 +695,43 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            pd.DataFrame: Transformed data with regime indicators</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; np.random.seed(42)</span>
+<span class="sd">            &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">            ...     &#39;returns&#39;: np.random.normal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;volume&#39;: np.random.lognormal(0, 1, 100),</span>
+<span class="sd">            ...     &#39;price&#39;: np.random.random(100) * 100</span>
+<span class="sd">            ... })</span>
+<span class="sd">            </span>
+<span class="sd">            Basic usage:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(n_states=2)</span>
+<span class="sd">            &gt;&gt;&gt; results = detector.fit_transform(data)</span>
+<span class="sd">            &gt;&gt;&gt; all(col in results.columns for col in [</span>
+<span class="sd">            ...     &#39;regime&#39;, &#39;regime_type&#39;, &#39;break_chow&#39;, &#39;trend&#39;</span>
+<span class="sd">            ... ])</span>
+<span class="sd">            True</span>
+<span class="sd">            </span>
+<span class="sd">            HMM-only detection:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(</span>
+<span class="sd">            ...     n_states=2,</span>
+<span class="sd">            ...     detection_methods=[&#39;hmm&#39;]</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; results = detector.fit_transform(data)</span>
+<span class="sd">            &gt;&gt;&gt; set(results.columns) == {</span>
+<span class="sd">            ...     &#39;regime&#39;, &#39;regime_0_prob&#39;, &#39;regime_1_prob&#39;, &#39;regime_type&#39;</span>
+<span class="sd">            ... }</span>
+<span class="sd">            True</span>
+<span class="sd">            </span>
+<span class="sd">            With custom regime labels:</span>
+<span class="sd">            &gt;&gt;&gt; detector = RegimeAnalyzer(</span>
+<span class="sd">            ...     n_states=2,</span>
+<span class="sd">            ...     regime_labels={0: &#39;low_vol&#39;, 1: &#39;high_vol&#39;},</span>
+<span class="sd">            ...     detection_methods=[&#39;hmm&#39;]</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; results = detector.fit_transform(data)</span>
+<span class="sd">            &gt;&gt;&gt; set(results[&#39;regime_type&#39;].unique()).issubset({&#39;low_vol&#39;, &#39;high_vol&#39;, &#39;unknown&#39;})</span>
+<span class="sd">            True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span></div>
 </div>
