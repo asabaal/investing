@@ -3,29 +3,29 @@
 | Metric | Value |
 |--------|--------|
 | Initial Investment | $100,000.00 |
-| Final Value | $233,622.20 |
-| Regulatory Fees | $1.97 |
-| Total Slippage | $22.26 |
-| Trading Pass | $2,400.00 |
+| Final Value | $207,572.85 |
+| Regulatory Fees | $309.50 |
+| Total Slippage | $2,007.55 |
+| Trading Pass | $2,160.00 |
 
 ### Benchmark Comparison
 
 | Metric vs SPY | Value |
 |---------------|-------|
-| Alpha | -0.00 |
-| Beta | 0.98 |
-| R² | 0.99 |
-| R | 0.99 |
+| Alpha | -0.01 |
+| Beta | 0.87 |
+| R² | 0.91 |
+| R | 0.95 |
 
 ### Performance Metrics
 
 | Metric | This Symphony | SPY |
 |--------|--------------|-----|
-| Cumulative Return | 133.6% | 145.8% |
-| Annualized Return | 13.6% | 14.5% |
-| Trailing 1mo Return | 4.8% | 4.7% |
-| Trailing 3mo Return | 2.7% | 3.1% |
-| Sharpe Ratio | 0.76 | 0.79 |
-| Standard Deviation | 19.2% | 19.5% |
-| Max Drawdown | 34.2% | 33.7% |
-| Calmar Ratio | 0.40 | 0.43 |
+| Cumulative Return | 107.6% | 144.2% |
+| Annualized Return | 13.1% | 16.2% |
+| Trailing 1mo Return | 5.6% | 4.7% |
+| Trailing 3mo Return | 3.2% | 3.1% |
+| Sharpe Ratio | 0.77 | 0.86 |
+| Standard Deviation | 18.3% | 19.9% |
+| Max Drawdown | 33.4% | 33.7% |
+| Calmar Ratio | 0.39 | 0.48 |

@@ -2,35 +2,118 @@
  "SPDR ETFs, Market-Cap Weighted"
  {:asset-class "EQUITIES", :rebalance-threshold 0.02}
  (weight-specified
+  0.5
+  (weight-equal
+   [(filter
+     (cumulative-return {:window 90})
+     (select-top 4)
+     [(asset
+       "XLK"
+       "SSgA Active Trust - Technology Select Sector SPDR ETF")
+      (asset "XLF" "SSgA Active Trust - Financial Select Sector SPDR")
+      (asset
+       "XLV"
+       "SSgA Active Trust - Health Care Select Sector SPDR")
+      (asset
+       "XLE"
+       "SSgA Active Trust - The Energy Select Sector SPDR Fund")
+      (asset "XLI" "SSgA Active Trust - Industrial Select Sector SPDR")
+      (asset
+       "XLP"
+       "SSgA Active Trust - Consumer Staples Select Sector SPDR")
+      (asset
+       "XLY"
+       "SSgA Active Trust - Consumer Discretionary Select Sector SPDR")
+      (asset "XLB" "SSgA Active Trust - Materials Select Sector SPDR")
+      (asset
+       "XLU"
+       "SSgA Active Trust - Utilities Select Sector SPDR ETF")
+      (asset
+       "XLRE"
+       "SSgA Active Trust - Real Estate Select Sector SPDR Fund (The)")
+      (asset
+       "XLC"
+       "SSgA Active Trust - Communication Services Select Sector SPDR Fund")])])
+  0.3
+  (weight-equal
+   [(filter
+     (cumulative-return {:window 90})
+     (select-top 4)
+     [(weight-equal
+       [(filter
+         (stdev-return {:window 90})
+         (select-bottom 7)
+         [(asset
+           "XLK"
+           "SSgA Active Trust - Technology Select Sector SPDR ETF")
+          (asset
+           "XLF"
+           "SSgA Active Trust - Financial Select Sector SPDR")
+          (asset
+           "XLV"
+           "SSgA Active Trust - Health Care Select Sector SPDR")
+          (asset
+           "XLE"
+           "SSgA Active Trust - The Energy Select Sector SPDR Fund")
+          (asset
+           "XLI"
+           "SSgA Active Trust - Industrial Select Sector SPDR")
+          (asset
+           "XLP"
+           "SSgA Active Trust - Consumer Staples Select Sector SPDR")
+          (asset
+           "XLY"
+           "SSgA Active Trust - Consumer Discretionary Select Sector SPDR")
+          (asset
+           "XLB"
+           "SSgA Active Trust - Materials Select Sector SPDR")
+          (asset
+           "XLU"
+           "SSgA Active Trust - Utilities Select Sector SPDR ETF")
+          (asset
+           "XLRE"
+           "SSgA Active Trust - Real Estate Select Sector SPDR Fund (The)")
+          (asset
+           "XLC"
+           "SSgA Active Trust - Communication Services Select Sector SPDR Fund")])])])])
   0.2
-  (asset "XLK" "SSgA Active Trust - Technology Select Sector SPDR ETF")
-  0.15
-  (asset "XLF" "SSgA Active Trust - Financial Select Sector SPDR")
-  0.12
-  (asset "XLV" "SSgA Active Trust - Health Care Select Sector SPDR")
-  0.12
-  (asset
-   "XLY"
-   "SSgA Active Trust - Consumer Discretionary Select Sector SPDR")
-  0.1
-  (asset "XLI" "SSgA Active Trust - Industrial Select Sector SPDR")
-  0.1
-  (asset
-   "XLC"
-   "SSgA Active Trust - Communication Services Select Sector SPDR Fund")
-  0.08
-  (asset
-   "XLP"
-   "SSgA Active Trust - Consumer Staples Select Sector SPDR")
-  0.05
-  (asset
-   "XLE"
-   "SSgA Active Trust - The Energy Select Sector SPDR Fund")
-  0.03
-  (asset "XLB" "SSgA Active Trust - Materials Select Sector SPDR")
-  0.03
-  (asset "XLU" "SSgA Active Trust - Utilities Select Sector SPDR ETF")
-  0.02
-  (asset
-   "XLRE"
-   "SSgA Active Trust - Real Estate Select Sector SPDR Fund (The)")))
+  (filter
+   (max-drawdown {:window 90})
+   (select-bottom 2)
+   [(weight-equal
+     [(filter
+       (rsi {:window 90})
+       (select-bottom 6)
+       [(asset
+         "XLK"
+         "SSgA Active Trust - Technology Select Sector SPDR ETF")
+        (asset
+         "XLF"
+         "SSgA Active Trust - Financial Select Sector SPDR")
+        (asset
+         "XLV"
+         "SSgA Active Trust - Health Care Select Sector SPDR")
+        (asset
+         "XLE"
+         "SSgA Active Trust - The Energy Select Sector SPDR Fund")
+        (asset
+         "XLI"
+         "SSgA Active Trust - Industrial Select Sector SPDR")
+        (asset
+         "XLP"
+         "SSgA Active Trust - Consumer Staples Select Sector SPDR")
+        (asset
+         "XLY"
+         "SSgA Active Trust - Consumer Discretionary Select Sector SPDR")
+        (asset
+         "XLB"
+         "SSgA Active Trust - Materials Select Sector SPDR")
+        (asset
+         "XLU"
+         "SSgA Active Trust - Utilities Select Sector SPDR ETF")
+        (asset
+         "XLRE"
+         "SSgA Active Trust - Real Estate Select Sector SPDR Fund (The)")
+        (asset
+         "XLC"
+         "SSgA Active Trust - Communication Services Select Sector SPDR Fund")])])])))
