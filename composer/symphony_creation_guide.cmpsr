@@ -1,0 +1,157 @@
+# Symphony Language Reference Guide
+
+## Basic Structure
+Every symphony follows this basic structure:
+```clojure
+(defsymphony
+ "Strategy Name"
+ {:asset-class "EQUITIES", :rebalance-threshold 0.02}
+ ; Strategy logic here
+)
+```
+
+## Core Components
+
+### Asset Definition
+```clojure
+(asset "TICKER" "Full Asset Name")
+```
+
+### Weighting Functions
+
+1. Specified Weights:
+```clojure
+(weight-specified
+ 0.20  ; weight as decimal
+ (asset "TICKER1" "Name1")
+ 0.80
+ (asset "TICKER2" "Name2"))
+```
+
+2. Equal Weights:
+```clojure
+(weight-equal
+ [(asset "TICKER1" "Name1")
+  (asset "TICKER2" "Name2")])
+```
+
+### Filtering Functions
+
+Basic filter structure:
+```clojure
+(filter
+ (metric {:window period})
+ (select-direction number)
+ [asset-list])
+```
+
+Available metrics:
+- `cumulative-return`
+- `stdev-return`
+- `rsi`
+- `max-drawdown`
+- `moving-average`
+- `ema`
+
+Selection directions:
+- `select-top n`
+- `select-bottom n`
+
+Example:
+```clojure
+(filter
+ (cumulative-return {:window 90})
+ (select-top 4)
+ [asset-list])
+```
+
+### Conditional Logic
+
+Basic if structure:
+```clojure
+(if
+ (condition)
+ [true-branch]
+ [false-branch])
+```
+
+Comparison operators:
+- `>` greater than
+- `<` less than
+- `>=` greater than or equal
+- `<=` less than or equal
+
+Example:
+```clojure
+(if
+ (> (rsi "XLK" {:window 90}) 70)
+ [strategy-if-true]
+ [strategy-if-false])
+```
+
+## Strategy Patterns
+
+### Basic Equal Weight
+```clojure
+(weight-equal
+ [(asset "TICKER1" "Name1")
+  (asset "TICKER2" "Name2")])
+```
+
+### Momentum Strategy
+```clojure
+(filter
+ (cumulative-return {:window 90})
+ (select-top 4)
+ [asset-list])
+```
+
+### Risk-Based Allocation
+```clojure
+(filter
+ (stdev-return {:window 90})
+ (select-bottom 5)
+ [asset-list])
+```
+
+### Conditional Allocation
+```clojure
+(if
+ (> (rsi "TICKER" {:window 90}) 70)
+ [(weight-specified ...) ; high RSI strategy]
+ [(weight-specified ...) ; low RSI strategy])
+```
+
+## Best Practices
+
+1. Window Periods:
+   - Short-term: 30 days
+   - Medium-term: 90 days
+   - Long-term: 180+ days
+
+2. Weight Distribution:
+   - Core holdings: 40-60%
+   - Tactical allocations: 20-40%
+   - Defensive positions: 10-30%
+
+3. Filter Combinations:
+   - Combine momentum with volatility filters
+   - Use nested filters for multi-factor strategies
+   - Consider using different window periods for different metrics
+
+## Areas for Exploration
+
+1. Additional Metrics to Test:
+   - Different EMA periods
+   - Combined RSI/Moving Average signals
+   - Drawdown thresholds
+
+2. Strategy Components to Investigate:
+   - Multiple conditional layers
+   - Complex filter combinations
+   - Dynamic window periods
+
+3. Risk Management Rules:
+   - Maximum position sizes
+   - Sector concentration limits
+   - Volatility targets
