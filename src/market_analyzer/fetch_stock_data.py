@@ -3,7 +3,7 @@ import logging
 import sys
 import sqlite3
 import requests
-from stock_data_fetcher import StockDataFetcher
+from data_fetcher import StockDataFetcher
 
 # Set up logging
 logging.basicConfig(
