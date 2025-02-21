@@ -42,23 +42,33 @@ class YFinanceSource(StockDataSource):
     def can_fetch_data(self) -> bool:
         return True  # YFinance doesn't have API limits
     
-    def fetch_data(self, symbol: str, start_date: Optional[datetime] = None,
-                  end_date: Optional[datetime] = None, period: Optional[str] = None) -> pd.DataFrame:
-        try:
-            ticker = yf.Ticker(symbol)
-            data, used_period = self._get_history_with_fallback(ticker, period, start_date, end_date)
-            
-            if data.empty:
-                self.logger.warning(f"No data found for {symbol} using YFinance")
-                return pd.DataFrame()
-            
-            # Standardize the data format
-            data = self._standardize_data(data, symbol)
-            return data
-            
-        except Exception as e:
-            self.logger.error(f"Error fetching YFinance data for {symbol}: {str(e)}")
-            return pd.DataFrame()
+    def fetch_data(self, symbols: Union[str, List[str]], start_date: Optional[datetime] = None,
+                end_date: Optional[datetime] = None, period: Optional[str] = None) -> pd.DataFrame:
+        """
+        Fetch data for one or more symbols
+        """
+        if isinstance(symbols, str):
+            symbols = [symbols]
+        
+        all_data = []
+        for symbol in symbols:
+            try:
+                ticker = yf.Ticker(symbol)
+                data, used_period = self._get_history_with_fallback(ticker, period, start_date, end_date)
+                
+                if not data.empty:
+                    # Standardize the data format
+                    standardized_data = self._standardize_data(data, symbol)
+                    all_data.append(standardized_data)
+                    
+            except Exception as e:
+                self.logger.error(f"Error fetching YFinance data for {symbol}: {str(e)}")
+                continue
+        
+        if all_data:
+            return pd.concat(all_data, ignore_index=True)
+        
+        return pd.DataFrame()
     
     def _get_history_with_fallback(self, ticker: yf.Ticker, period: Optional[str] = None,
                                  start: Optional[datetime] = None, 
@@ -203,7 +213,7 @@ class AlphaVantageSource(StockDataSource):
         
         return df
 
-class EnhancedStockDataFetcher:
+class StockDataFetcher:
     """Enhanced version of StockDataFetcher that supports multiple data sources"""
     
     def __init__(self, db_path: str = 'stock_data.db', av_api_key: Optional[str] = None):
@@ -262,8 +272,8 @@ class EnhancedStockDataFetcher:
             raise
 
     def fetch_data(self, symbols: Union[str, List[str]], start_date: Optional[str] = None,
-                  end_date: Optional[str] = None, period: Optional[str] = None,
-                  verify_across_sources: bool = False, replace: bool = False) -> None:
+                end_date: Optional[str] = None, period: Optional[str] = None,
+                verify_across_sources: bool = False, replace: bool = False) -> None:
         """
         Fetch data using all available sources
         
@@ -278,85 +288,120 @@ class EnhancedStockDataFetcher:
         if isinstance(symbols, str):
             symbols = [symbols]
         
-        for symbol in symbols:
-            try:
-                if not replace:
-                    # Get latest date in database for this symbol
-                    with self.get_db_connection() as conn:
-                        query = "SELECT MAX(date) FROM daily_prices WHERE symbol = ?"
-                        last_date = pd.read_sql_query(query, conn, params=(symbol,)).iloc[0, 0]
-                        
-                        if last_date:
-                            start_date = datetime.strptime(last_date, '%Y-%m-%d').date() + timedelta(days=1)
-                            if start_date >= datetime.now().date():
-                                self.logger.info(f"Data already up to date for {symbol}")
-                                continue
-                
-                dfs = []
-                
-                # Try primary source first
-                primary_df = self.sources[0].fetch_data(symbol, start_date, end_date, period)
-                if not primary_df.empty:
-                    dfs.append(primary_df)
-                
-                # If verification requested and we have other sources, use them
-                if verify_across_sources:
-                    for source in self.sources[1:]:
-                        if source.can_fetch_data():
-                            secondary_df = source.fetch_data(symbol, start_date, end_date, period)
-                            if not secondary_df.empty:
-                                dfs.append(secondary_df)
-                
-                if dfs:
-                    final_df = self._merge_data_sources(dfs)
-                    self._save_to_db(symbol, final_df, replace)
+        try:
+            if not replace:
+                # Get latest date in database for these symbols
+                with self.get_db_connection() as conn:
+                    placeholders = ','.join(['?' for _ in symbols])
+                    query = f"""
+                        SELECT symbol, MAX(date) as last_date 
+                        FROM daily_prices 
+                        WHERE symbol IN ({placeholders})
+                        GROUP BY symbol
+                    """
+                    last_dates = pd.read_sql_query(query, conn, params=symbols)
                     
+                    if not last_dates.empty:
+                        min_date = pd.to_datetime(last_dates['last_date'].min()) + timedelta(days=1)
+                        if min_date.date() >= datetime.now().date():
+                            self.logger.info(f"Data already up to date for batch: {symbols}")
+                            return
+                        start_date = min_date
+            
+            dfs = []
+            
+            # Try primary source first
+            primary_source = self.sources[0]
+            try:
+                batch_data = primary_source.fetch_data(symbols, start_date, end_date, period)
+                if not batch_data.empty:
+                    dfs.append(batch_data)
             except Exception as e:
-                self.logger.error(f"Error fetching data for {symbol}: {str(e)}")
+                self.logger.error(f"Primary source failed: {str(e)}")
+            
+            # If verification requested and we have other sources, use them
+            if verify_across_sources:
+                for source in self.sources[1:]:
+                    if source.can_fetch_data():
+                        try:
+                            secondary_data = source.fetch_data(symbols, start_date, end_date, period)
+                            if not secondary_data.empty:
+                                dfs.append(secondary_data)
+                        except Exception as e:
+                            self.logger.error(f"Secondary source failed: {str(e)}")
+            
+            if dfs:
+                final_df = self._merge_data_sources(dfs)
+                # Save batch data
+                symbol_str = ','.join(symbols)  # For logging purposes
+                self._save_to_db(symbol_str, final_df, replace)
+                
+        except Exception as e:
+            self.logger.error(f"Error fetching data for {symbols}: {str(e)}")
+            # Don't re-raise the exception
     
     def update_symbols(self, symbols: Union[str, List[str]], batch_size: int = 50):
         """Update data for given symbols with latest prices"""
         if isinstance(symbols, str):
             symbols = [symbols]
-            
+        
+        self.logger.info(f"Starting update for {len(symbols)} symbols with batch size {batch_size}")
+                
         for i in range(0, len(symbols), batch_size):
             batch = symbols[i:i + batch_size]
+            self.logger.info(f"Processing batch {i//batch_size + 1}: {batch}")
+            
             try:
                 # Get latest dates for symbols in batch
                 with self.get_db_connection() as conn:
-                    query = """
+                    placeholders = ','.join(['?' for _ in batch])
+                    query = f"""
                         SELECT symbol, MAX(date) as last_date 
                         FROM daily_prices 
-                        WHERE symbol IN ({})
+                        WHERE symbol IN ({placeholders})
                         GROUP BY symbol
-                    """.format(','.join(['?'] * len(batch)))
-                    
+                    """
                     last_dates = pd.read_sql_query(query, conn, params=batch)
+                    self.logger.debug(f"Found last dates for batch: {last_dates.to_dict() if not last_dates.empty else 'No dates'}")
                 
                 if not last_dates.empty:
                     min_date = pd.to_datetime(last_dates['last_date'].min()) + timedelta(days=1)
+                    self.logger.info(f"Fetching data from {min_date} for batch")
+                    
                     if min_date.date() < datetime.now().date():
-                        self.fetch_data(batch, start_date=min_date)
+                        # Process entire batch at once
+                        for source in self.sources:
+                            self.logger.info(f"Trying source: {source.get_source_name()}")
+                            if source.can_fetch_data():
+                                data = source.fetch_data(batch, start_date=min_date)
+                                if not data.empty:
+                                    self.logger.info(f"Got data from {source.get_source_name()}, saving batch")
+                                    self._save_to_db(batch[0], data)  # First symbol represents the batch
+                                    break
+                            else:
+                                self.logger.warning(f"Source {source.get_source_name()} cannot fetch data")
                 else:
-                    # No existing data, fetch full history
+                    self.logger.info(f"No existing data found, fetching full history for batch: {batch}")
                     self.fetch_data(batch, period='max')
                 
-                # Sleep between batches to avoid rate limits
+                # Sleep between batches
                 if i + batch_size < len(symbols):
+                    self.logger.debug("Sleeping between batches")
                     time.sleep(5)
-                    
+                            
             except Exception as e:
                 self.logger.error(f"Error updating batch starting with {batch[0]}: {str(e)}")
                 if "429" in str(e) or "rate limit" in str(e).lower():
+                    self.logger.warning("Rate limit hit, sleeping for 60 seconds")
                     time.sleep(60)
                     i -= batch_size  # Retry this batch
-    
+                        
     def _merge_data_sources(self, dfs: List[pd.DataFrame]) -> pd.DataFrame:
         """Merge data from multiple sources with conflict resolution"""
         if len(dfs) == 1:
             return dfs[0]
         
-        # Convert all dates to datetime
+        # Convert dates to datetime for merging
         for df in dfs:
             if 'date' in df.columns:
                 df['date'] = pd.to_datetime(df['date'])
@@ -365,23 +410,28 @@ class EnhancedStockDataFetcher:
         final_df = dfs[0]
         
         for df in dfs[1:]:
-            # Merge dataframes
-            merged = pd.merge(final_df, df, on=['date', 'symbol'], suffixes=('_1', '_2'))
-            
-            # For each numeric column, take the average if they differ
+            # Get numeric columns to average
             numeric_cols = ['open', 'high', 'low', 'close', 'volume']
+            
+            # Merge on date and symbol without creating duplicate columns
+            merged = pd.merge(final_df, df, on=['date', 'symbol'], how='outer', suffixes=(None, '_y'))
+            
+            # Average the numeric columns
             for col in numeric_cols:
-                if f'{col}_1' in merged.columns and f'{col}_2' in merged.columns:
-                    merged[col] = merged[[f'{col}_1', f'{col}_2']].mean(axis=1)
-                    merged.drop([f'{col}_1', f'{col}_2'], axis=1, inplace=True)
+                if f'{col}_y' in merged.columns:
+                    merged[col] = merged[[col, f'{col}_y']].mean(axis=1)
+                    merged.drop(f'{col}_y', axis=1, inplace=True)
             
             # Keep the most recent data source
             merged['data_source'] = merged.apply(
-                lambda x: x['data_source_1'] if pd.to_datetime(x['last_updated_1']) > pd.to_datetime(x['last_updated_2'])
-                else x['data_source_2'], axis=1
+                lambda x: x['data_source'] if pd.to_datetime(x['last_updated']) > pd.to_datetime(x['last_updated_y'])
+                else x['data_source_y'], axis=1
             )
             
-            # Update the final dataframe
+            # Clean up remaining _y columns
+            y_columns = [col for col in merged.columns if col.endswith('_y')]
+            merged.drop(columns=y_columns, inplace=True)
+            
             final_df = merged
         
         return final_df
