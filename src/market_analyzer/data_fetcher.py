@@ -257,14 +257,15 @@ class StockDataFetcher:
                         volume INTEGER,
                         dividends REAL,
                         stock_splits REAL,
-                        data_source TEXT,
+                        data_sources TEXT,  -- Changed from data_source to data_sources
                         last_updated TIMESTAMP,
                         PRIMARY KEY (date, symbol)
                     )
                 ''')
                 
+                # Add indices for better performance
                 c.execute('CREATE INDEX IF NOT EXISTS idx_symbol_date ON daily_prices(symbol, date)')
-                c.execute('CREATE INDEX IF NOT EXISTS idx_symbol_source ON daily_prices(symbol, data_source)')
+                c.execute('CREATE INDEX IF NOT EXISTS idx_symbol_sources ON daily_prices(symbol, data_sources)')
                 
                 conn.commit()
         except Exception as e:
@@ -289,12 +290,12 @@ class StockDataFetcher:
             symbols = [symbols]
         
         try:
-            if not replace:
+            if not replace and not start_date:
                 # Get latest date in database for these symbols
                 with self.get_db_connection() as conn:
                     placeholders = ','.join(['?' for _ in symbols])
                     query = f"""
-                        SELECT symbol, MAX(date) as last_date 
+                        SELECT symbol, MAX(date) as last_date, GROUP_CONCAT(data_sources) as sources
                         FROM daily_prices 
                         WHERE symbol IN ({placeholders})
                         GROUP BY symbol
@@ -309,15 +310,14 @@ class StockDataFetcher:
                         start_date = min_date
             
             dfs = []
+            used_sources = set()
             
             # Try primary source first
             primary_source = self.sources[0]
-            try:
-                batch_data = primary_source.fetch_data(symbols, start_date, end_date, period)
-                if not batch_data.empty:
-                    dfs.append(batch_data)
-            except Exception as e:
-                self.logger.error(f"Primary source failed: {str(e)}")
+            batch_data = primary_source.fetch_data(symbols, start_date, end_date, period)
+            if not batch_data.empty:
+                dfs.append(batch_data)
+                used_sources.add(primary_source.get_source_name())
             
             # If verification requested and we have other sources, use them
             if verify_across_sources:
@@ -327,18 +327,25 @@ class StockDataFetcher:
                             secondary_data = source.fetch_data(symbols, start_date, end_date, period)
                             if not secondary_data.empty:
                                 dfs.append(secondary_data)
+                                used_sources.add(source.get_source_name())
                         except Exception as e:
-                            self.logger.error(f"Secondary source failed: {str(e)}")
+                            self.logger.error(f"Error fetching from {source.get_source_name()}: {e}")
             
             if dfs:
                 final_df = self._merge_data_sources(dfs)
+                
+                # Add source tracking
+                final_df['data_sources'] = '|'.join(sorted(used_sources))
+                
                 # Save batch data
                 symbol_str = ','.join(symbols)  # For logging purposes
                 self._save_to_db(symbol_str, final_df, replace)
                 
+                self.logger.info(f"Data fetched from sources: {', '.join(used_sources)}")
+                
         except Exception as e:
             self.logger.error(f"Error fetching data for {symbols}: {str(e)}")
-            # Don't re-raise the exception
+            raise
     
     def update_symbols(self, symbols: Union[str, List[str]], batch_size: int = 50):
         """Update data for given symbols with latest prices"""
@@ -407,13 +414,19 @@ class StockDataFetcher:
                 df['date'] = pd.to_datetime(df['date'])
         
         # Start with the primary source
-        final_df = dfs[0]
+        final_df = dfs[0].copy()
+        
+        # Keep track of all sources used
+        all_sources = [final_df['data_source'].iloc[0]]
         
         for df in dfs[1:]:
+            current_source = df['data_source'].iloc[0]
+            all_sources.append(current_source)
+            
             # Get numeric columns to average
             numeric_cols = ['open', 'high', 'low', 'close', 'volume']
             
-            # Merge on date and symbol without creating duplicate columns
+            # Merge on date and symbol
             merged = pd.merge(final_df, df, on=['date', 'symbol'], how='outer', suffixes=(None, '_y'))
             
             # Average the numeric columns
@@ -422,10 +435,15 @@ class StockDataFetcher:
                     merged[col] = merged[[col, f'{col}_y']].mean(axis=1)
                     merged.drop(f'{col}_y', axis=1, inplace=True)
             
-            # Keep the most recent data source
-            merged['data_source'] = merged.apply(
-                lambda x: x['data_source'] if pd.to_datetime(x['last_updated']) > pd.to_datetime(x['last_updated_y'])
-                else x['data_source_y'], axis=1
+            # Combine data sources
+            merged['data_sources'] = '|'.join(sorted(set(all_sources)))
+            
+            # Keep most recent last_updated
+            merged['last_updated'] = merged.apply(
+                lambda x: max(pd.to_datetime(x['last_updated']), 
+                            pd.to_datetime(x['last_updated_y']))
+                if 'last_updated_y' in merged.columns else x['last_updated'],
+                axis=1
             )
             
             # Clean up remaining _y columns
