@@ -1,0 +1,276 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>market_analyzer.risk_analyzer &mdash; Market Analyzer 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Market Analyzer
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Market Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">market_analyzer.risk_analyzer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for market_analyzer.risk_analyzer</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">norm</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RiskAnalyzer">
+<a class="viewcode-back" href="../../api.html#market_analyzer.risk_analyzer.RiskAnalyzer">[docs]</a>
+<span class="k">class</span> <span class="nc">RiskAnalyzer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Advanced risk analysis including VaR, stress testing, and volatility analysis.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="RiskAnalyzer.__init__">
+<a class="viewcode-back" href="../../api.html#market_analyzer.risk_analyzer.RiskAnalyzer.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">returns</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">returns</span> <span class="o">=</span> <span class="n">returns</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prices</span> <span class="o">=</span> <span class="n">prices</span></div>
+
+        
+<div class="viewcode-block" id="RiskAnalyzer.calculate_var">
+<a class="viewcode-back" href="../../api.html#market_analyzer.risk_analyzer.RiskAnalyzer.calculate_var">[docs]</a>
+    <span class="k">def</span> <span class="nf">calculate_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                     <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span> 
+                     <span class="n">time_horizon</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                     <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;historical&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate Value at Risk using multiple methods.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            confidence_level: Confidence level for VaR calculation (e.g., 0.95 for 95%)</span>
+<span class="sd">            time_horizon: Time horizon in days</span>
+<span class="sd">            method: Method to use (&#39;historical&#39;, &#39;parametric&#39;, or &#39;monte_carlo&#39;)</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary containing VaR calculations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="k">if</span> <span class="n">time_horizon</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;historical&#39;</span> <span class="ow">or</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;all&#39;</span><span class="p">:</span>
+            <span class="c1"># Historical VaR</span>
+            <span class="n">var_percentile</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">confidence_level</span>
+            <span class="n">historical_var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="p">,</span> <span class="n">var_percentile</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">time_horizon</span><span class="p">)</span>
+            <span class="n">results</span><span class="p">[</span><span class="s1">&#39;historical_var&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">historical_var</span>
+            
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;parametric&#39;</span> <span class="ow">or</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;all&#39;</span><span class="p">:</span>
+            <span class="c1"># Parametric VaR (assuming normal distribution)</span>
+            <span class="n">mean</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">std</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">z_score</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">confidence_level</span><span class="p">)</span>
+            <span class="n">parametric_var</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">mean</span> <span class="o">+</span> <span class="n">z_score</span> <span class="o">*</span> <span class="n">std</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">time_horizon</span><span class="p">)</span>
+            <span class="n">results</span><span class="p">[</span><span class="s1">&#39;parametric_var&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">parametric_var</span>
+            
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;monte_carlo&#39;</span> <span class="ow">or</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;all&#39;</span><span class="p">:</span>
+            <span class="c1"># Monte Carlo VaR</span>
+            <span class="n">mean</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">std</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">n_simulations</span> <span class="o">=</span> <span class="mi">10000</span>
+            <span class="n">simulated_returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">std</span><span class="p">,</span> <span class="n">n_simulations</span><span class="p">)</span>
+            <span class="n">mc_var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">simulated_returns</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">confidence_level</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">time_horizon</span><span class="p">)</span>
+            <span class="n">results</span><span class="p">[</span><span class="s1">&#39;monte_carlo_var&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mc_var</span>
+        
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;historical&quot;</span><span class="p">,</span> <span class="s2">&quot;parametric&quot;</span><span class="p">,</span> <span class="s2">&quot;monte_carlo&quot;</span><span class="p">,</span> <span class="s2">&quot;all&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+
+        <span class="k">return</span> <span class="n">results</span></div>
+
+    
+<div class="viewcode-block" id="RiskAnalyzer.calculate_expected_shortfall">
+<a class="viewcode-back" href="../../api.html#market_analyzer.risk_analyzer.RiskAnalyzer.calculate_expected_shortfall">[docs]</a>
+    <span class="k">def</span> <span class="nf">calculate_expected_shortfall</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                                   <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span> 
+                                   <span class="n">time_horizon</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate Expected Shortfall (CVaR).</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            confidence_level: Confidence level</span>
+<span class="sd">            time_horizon: Time horizon in days</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Expected Shortfall value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">var_percentile</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">confidence_level</span>
+        <span class="n">threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="p">,</span> <span class="n">var_percentile</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="n">tail_returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">returns</span> <span class="o">&lt;=</span> <span class="n">threshold</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">tail_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">time_horizon</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="RiskAnalyzer.stress_test">
+<a class="viewcode-back" href="../../api.html#market_analyzer.risk_analyzer.RiskAnalyzer.stress_test">[docs]</a>
+    <span class="k">def</span> <span class="nf">stress_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                   <span class="n">scenarios</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Perform stress testing under different scenarios.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            scenarios: Dictionary of scenario names and return shocks</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame with stress test results</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">scenario_name</span><span class="p">,</span> <span class="n">shock</span> <span class="ow">in</span> <span class="n">scenarios</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">price_impact</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">shock</span><span class="p">)</span>
+            <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_var</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;parametric&#39;</span><span class="p">)[</span><span class="s1">&#39;parametric_var&#39;</span><span class="p">]</span>
+            <span class="n">stressed_var</span> <span class="o">=</span> <span class="n">var</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">shock</span><span class="p">))</span>  <span class="c1"># VaR increases with volatility</span>
+            
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s1">&#39;scenario&#39;</span><span class="p">:</span> <span class="n">scenario_name</span><span class="p">,</span>
+                <span class="s1">&#39;price_shock&#39;</span><span class="p">:</span> <span class="n">shock</span><span class="p">,</span>
+                <span class="s1">&#39;stressed_price&#39;</span><span class="p">:</span> <span class="n">price_impact</span><span class="p">,</span>
+                <span class="s1">&#39;price_change&#39;</span><span class="p">:</span> <span class="n">price_impact</span> <span class="o">-</span> <span class="n">current_price</span><span class="p">,</span>
+                <span class="s1">&#39;normal_var&#39;</span><span class="p">:</span> <span class="n">var</span><span class="p">,</span>
+                <span class="s1">&#39;stressed_var&#39;</span><span class="p">:</span> <span class="n">stressed_var</span>
+            <span class="p">})</span>
+            
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="RiskAnalyzer.calculate_volatility_surface">
+<a class="viewcode-back" href="../../api.html#market_analyzer.risk_analyzer.RiskAnalyzer.calculate_volatility_surface">[docs]</a>
+    <span class="k">def</span> <span class="nf">calculate_volatility_surface</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                                <span class="n">windows</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">252</span><span class="p">],</span>
+                                <span class="n">quantiles</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate volatility surface across different time windows and return quantiles.</span>
+<span class="sd">        </span>
+<span class="sd">        Step by step:</span>
+<span class="sd">        1. For each window (e.g., 5 days):</span>
+<span class="sd">        - Calculate rolling volatility</span>
+<span class="sd">        - Calculate rolling returns</span>
+<span class="sd">        - For each quantile:</span>
+<span class="sd">            - Find that quantile&#39;s value in both the volatility and returns series</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            windows: List of rolling windows to calculate volatility</span>
+<span class="sd">            quantiles: List of return quantiles to calculate</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame with columns: window, quantile, volatility, return</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">surface_data</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="n">windows</span><span class="p">:</span>
+            <span class="c1"># Calculate rolling volatility for this window</span>
+            <span class="n">rolling_vol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">252</span><span class="p">)</span>  <span class="c1"># Annualized</span>
+            
+            <span class="c1"># Calculate rolling returns (not annualized since these are cumulative returns)</span>
+            <span class="n">rolling_rets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            
+            <span class="c1"># For each quantile, find its value in both the volatility and returns series</span>
+            <span class="k">for</span> <span class="n">quantile</span> <span class="ow">in</span> <span class="n">quantiles</span><span class="p">:</span>
+                <span class="n">vol_at_quantile</span> <span class="o">=</span> <span class="n">rolling_vol</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">quantile</span><span class="p">)</span>
+                <span class="n">ret_at_quantile</span> <span class="o">=</span> <span class="n">rolling_rets</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">quantile</span><span class="p">)</span>
+                
+                <span class="n">surface_data</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;window&#39;</span><span class="p">:</span> <span class="n">window</span><span class="p">,</span>
+                    <span class="s1">&#39;quantile&#39;</span><span class="p">:</span> <span class="n">quantile</span><span class="p">,</span>
+                    <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="n">vol_at_quantile</span><span class="p">,</span>
+                    <span class="s1">&#39;return&#39;</span><span class="p">:</span> <span class="n">ret_at_quantile</span>
+                <span class="p">})</span>
+        
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">surface_data</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Asabaal Horan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

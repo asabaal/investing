@@ -1,0 +1,1057 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>market_analyzer.base &mdash; Market Analyzer 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Market Analyzer
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../base.html">Base Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../pattern_recognition.html">Pattern Recognition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../regime_analyzer.html">Regime Analyzer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../utils.html">Utils</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Market Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">market_analyzer.base</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for market_analyzer.base</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">plotly.graph_objects</span> <span class="k">as</span> <span class="nn">go</span>
+
+<span class="kn">from</span> <span class="nn">arch</span> <span class="kn">import</span> <span class="n">arch_model</span>
+<span class="kn">from</span> <span class="nn">plotly.subplots</span> <span class="kn">import</span> <span class="n">make_subplots</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">from</span> <span class="nn">market_analyzer.pattern_recognition</span> <span class="kn">import</span> <span class="n">TechnicalPattern</span><span class="p">,</span> <span class="n">PatternRecognition</span><span class="p">,</span> <span class="n">LeadLagAnalyzer</span>
+<span class="kn">from</span> <span class="nn">market_analyzer.regime_analyzer</span> <span class="kn">import</span> <span class="n">RegimeAnalyzer</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MarketAnalyzer">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketAnalyzer">[docs]</a>
+<span class="k">class</span> <span class="nc">MarketAnalyzer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A comprehensive framework for market analysis and investment decision-making.</span>
+
+<span class="sd">    This class processes financial market data to calculate various metrics and identify </span>
+<span class="sd">    patterns useful for trading and investment decisions.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data (Dict[str, pd.DataFrame]): Dictionary containing market data for each symbol.</span>
+<span class="sd">            Each DataFrame should have columns: [&#39;open&#39;, &#39;high&#39;, &#39;low&#39;, &#39;close&#39;, &#39;volume&#39;].</span>
+<span class="sd">        market_indices (List[str], optional): List of market index symbols to use as benchmarks.</span>
+<span class="sd">            Defaults to [&#39;^GSPC&#39;] (S&amp;P 500).</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        data (Dict[str, pd.DataFrame]): Market data for each symbol.</span>
+<span class="sd">        market_indices (List[str]): List of market indices used as benchmarks.</span>
+<span class="sd">        returns_data (Dict[str, pd.DataFrame]): Calculated returns for each symbol.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Market data terminology:</span>
+<span class="sd">        - OHLCV: Open, High, Low, Close prices and Volume</span>
+<span class="sd">        - Open: First trading price of the day</span>
+<span class="sd">        - Close: Last trading price of the day</span>
+<span class="sd">        - High/Low: Highest/lowest prices during the day</span>
+<span class="sd">        - Volume: Number of shares traded</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; data = {</span>
+<span class="sd">        ...     &#39;AAPL&#39;: apple_data_df,  # DataFrame with OHLCV data</span>
+<span class="sd">        ...     &#39;^GSPC&#39;: sp500_data_df  # S&amp;P 500 index data</span>
+<span class="sd">        ... }</span>
+<span class="sd">        &gt;&gt;&gt; analyzer = MarketAnalyzer(data=data, market_indices=[&#39;^GSPC&#39;])</span>
+<span class="sd">        &gt;&gt;&gt; features = analyzer.calculate_rolling_features(&#39;AAPL&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MarketAnalyzer.__init__">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketAnalyzer.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                 <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span>
+                 <span class="n">market_indices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;^GSPC&#39;</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">market_indices</span> <span class="o">=</span> <span class="n">market_indices</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_returns_data</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_prepare_returns_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate and store various types of returns for all symbols.</span>
+
+<span class="sd">        Calculates and stores the following returns metrics:</span>
+<span class="sd">        - Daily Returns: Simple percentage change (P₁ - P₀)/P₀</span>
+<span class="sd">        - Log Returns: Natural logarithm of price ratio ln(P₁/P₀)</span>
+<span class="sd">        - Volume: Trading volume</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            Log returns are used because they are:</span>
+<span class="sd">            - More likely to be normally distributed</span>
+<span class="sd">            - Additive across time periods</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            For a stock price movement $100 → $102 → $100:</span>
+<span class="sd">            - Daily returns: +2%, -1.96%</span>
+<span class="sd">            - Log returns: +1.98%, -1.98% (sum to ~0)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">symbol</span><span class="p">,</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+                <span class="s1">&#39;daily_return&#39;</span><span class="p">:</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(),</span>
+                <span class="s1">&#39;log_return&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">diff</span><span class="p">(),</span>
+                <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span>
+            <span class="p">})</span>
+            <span class="n">returns</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span>
+
+<div class="viewcode-block" id="MarketAnalyzer.calculate_rolling_features">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketAnalyzer.calculate_rolling_features">[docs]</a>
+    <span class="k">def</span> <span class="nf">calculate_rolling_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                                 <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                                 <span class="n">windows</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">252</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate rolling window features for market analysis.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbol (str): The stock symbol to analyze.</span>
+<span class="sd">            windows (List[int], optional): List of rolling window sizes in days.</span>
+<span class="sd">                Defaults to [5, 21, 63, 252] representing week, month, quarter, year.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame containing calculated features with columns:</span>
+<span class="sd">                - return_mean_{window}d: Average return</span>
+<span class="sd">                - return_std_{window}d: Return standard deviation</span>
+<span class="sd">                - return_skew_{window}d: Return skewness</span>
+<span class="sd">                - return_kurt_{window}d: Return kurtosis</span>
+<span class="sd">                - price_mean_{window}d: Average price</span>
+<span class="sd">                - price_std_{window}d: Price standard deviation</span>
+<span class="sd">                - volume_mean_{window}d: Average volume</span>
+<span class="sd">                - volume_std_{window}d: Volume standard deviation</span>
+<span class="sd">                - RSI_{window}d: Relative Strength Index</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; features = analyzer.calculate_rolling_features(&#39;AAPL&#39;, windows=[5, 21])</span>
+<span class="sd">            &gt;&gt;&gt; # Check if stock is trending up over last month</span>
+<span class="sd">            &gt;&gt;&gt; if features[&#39;return_mean_21d&#39;].iloc[-1] &gt; 0:</span>
+<span class="sd">            ...     print(&quot;Stock has positive momentum&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">price_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">symbol</span><span class="p">][</span><span class="s1">&#39;close&#39;</span><span class="p">]</span>
+        
+        <span class="n">features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="n">windows</span><span class="p">:</span>
+            <span class="c1"># Return-based features</span>
+            <span class="n">roll</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;daily_return&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">)</span>
+            <span class="n">features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;return_mean_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roll</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;return_std_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roll</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;return_skew_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roll</span><span class="o">.</span><span class="n">skew</span><span class="p">()</span>
+            <span class="n">features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;return_kurt_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roll</span><span class="o">.</span><span class="n">kurt</span><span class="p">()</span>
+            
+            <span class="c1"># Price-based features</span>
+            <span class="n">roll_price</span> <span class="o">=</span> <span class="n">price_data</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">)</span>
+            <span class="n">features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;price_mean_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roll_price</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;price_std_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roll_price</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            
+            <span class="c1"># Volume-based features</span>
+            <span class="n">roll_vol</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">)</span>
+            <span class="n">features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;volume_mean_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roll_vol</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;volume_std_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">roll_vol</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            
+            <span class="c1"># Technical indicators</span>
+            <span class="n">features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;RSI_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_rsi</span><span class="p">(</span><span class="n">price_data</span><span class="p">,</span> <span class="n">window</span><span class="p">)</span>
+            
+        <span class="k">return</span> <span class="n">features</span></div>
+
+
+<div class="viewcode-block" id="MarketAnalyzer.detect_volatility_regime">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketAnalyzer.detect_volatility_regime">[docs]</a>
+    <span class="k">def</span> <span class="nf">detect_volatility_regime</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                               <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                               <span class="n">lookback</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Detect market volatility regimes using GARCH models.</span>
+
+<span class="sd">        Uses GARCH (Generalized AutoRegressive Conditional Heteroskedasticity) models </span>
+<span class="sd">        to classify market volatility into different regimes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbol (str): The stock symbol to analyze.</span>
+<span class="sd">            lookback (int, optional): Number of days to look back. Defaults to 252 (1 trading year).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame with columns:</span>
+<span class="sd">                - volatility: Conditional volatility from GARCH model</span>
+<span class="sd">                - regime: Volatility regime classification (0=Low, 1=Normal, 2=High)</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; regimes = analyzer.detect_volatility_regime(&#39;AAPL&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; if regimes[&#39;regime&#39;].iloc[-1] == 2:</span>
+<span class="sd">            ...     print(&quot;Market is highly volatile&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol</span><span class="p">][</span><span class="s1">&#39;daily_return&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        
+        <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">returns</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;regime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">lookback</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">returns</span><span class="p">)):</span>
+            <span class="n">window_returns</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="n">lookback</span><span class="p">:</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">arch_model</span><span class="p">(</span><span class="n">window_returns</span><span class="p">,</span> <span class="n">vol</span><span class="o">=</span><span class="s1">&#39;Garch&#39;</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">disp</span><span class="o">=</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">conditional_volatility</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                
+                <span class="n">vol_mean</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">conditional_volatility</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="n">vol_std</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">conditional_volatility</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+                <span class="n">current_vol</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">conditional_volatility</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                
+                <span class="k">if</span> <span class="n">current_vol</span> <span class="o">&gt;</span> <span class="n">vol_mean</span> <span class="o">+</span> <span class="n">vol_std</span><span class="p">:</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># High volatility</span>
+                <span class="k">elif</span> <span class="n">current_vol</span> <span class="o">&lt;</span> <span class="n">vol_mean</span> <span class="o">-</span> <span class="n">vol_std</span><span class="p">:</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Low volatility</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Normal volatility</span>
+                    
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">continue</span>
+                
+        <span class="k">return</span> <span class="n">results</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_calculate_rsi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the Relative Strength Index (RSI).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            prices (pd.Series): Price series to calculate RSI for.</span>
+<span class="sd">            window (int, optional): Calculation window. Defaults to 14.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.Series: RSI values ranging from 0 to 100.</span>
+<span class="sd">            - RSI &gt; 70: Potentially overbought</span>
+<span class="sd">            - RSI &lt; 30: Potentially oversold</span>
+<span class="sd">            - RSI = 50: Neutral momentum</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            RSI = 100 - (100 / (1 + RS))</span>
+<span class="sd">            where RS = (Average Gain / Average Loss)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
+        <span class="n">gain</span> <span class="o">=</span> <span class="p">(</span><span class="n">delta</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">delta</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">delta</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">delta</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        
+        <span class="n">rs</span> <span class="o">=</span> <span class="n">gain</span> <span class="o">/</span> <span class="n">loss</span>
+        <span class="k">return</span> <span class="mi">100</span> <span class="o">-</span> <span class="p">(</span><span class="mi">100</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">rs</span><span class="p">))</span>
+
+<div class="viewcode-block" id="MarketAnalyzer.analyze_patterns">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketAnalyzer.analyze_patterns">[docs]</a>
+    <span class="k">def</span> <span class="nf">analyze_patterns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                     <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                     <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                     <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">TechnicalPattern</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Analyze price data to detect technical trading patterns.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbol (str): The stock symbol to analyze.</span>
+<span class="sd">            start_date (str, optional): Start date in &#39;YYYY-MM-DD&#39; format.</span>
+<span class="sd">            end_date (str, optional): End date in &#39;YYYY-MM-DD&#39; format.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, List[TechnicalPattern]]: Dictionary of detected patterns:</span>
+<span class="sd">                - head_and_shoulders: Head and shoulders reversal patterns</span>
+<span class="sd">                - double_bottom: Double bottom reversal patterns</span>
+<span class="sd">                - volume_price: Volume-price divergence patterns</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; patterns = analyzer.analyze_patterns(</span>
+<span class="sd">            ...     symbol=&#39;AAPL&#39;,</span>
+<span class="sd">            ...     start_date=&#39;2023-01-01&#39;,</span>
+<span class="sd">            ...     end_date=&#39;2023-12-31&#39;</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; hs_patterns = patterns[&#39;head_and_shoulders&#39;]</span>
+<span class="sd">            &gt;&gt;&gt; if hs_patterns:</span>
+<span class="sd">            ...     print(f&quot;Found pattern with {hs_patterns[0].confidence:.1%} confidence&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Get symbol data</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">start_date</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">start_date</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">end_date</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">end_date</span><span class="p">]</span>
+            
+        <span class="c1"># Initialize pattern recognition</span>
+        <span class="n">pattern_finder</span> <span class="o">=</span> <span class="n">PatternRecognition</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">],</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">])</span>
+        
+        <span class="c1"># Detect patterns</span>
+        <span class="n">patterns</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;head_and_shoulders&#39;</span><span class="p">:</span> <span class="n">pattern_finder</span><span class="o">.</span><span class="n">detect_head_and_shoulders</span><span class="p">(),</span>
+            <span class="s1">&#39;double_bottom&#39;</span><span class="p">:</span> <span class="n">pattern_finder</span><span class="o">.</span><span class="n">detect_double_bottom</span><span class="p">(),</span>
+            <span class="s1">&#39;volume_price&#39;</span><span class="p">:</span> <span class="n">pattern_finder</span><span class="o">.</span><span class="n">detect_volume_price_patterns</span><span class="p">()</span>
+        <span class="p">}</span>
+        
+        <span class="k">return</span> <span class="n">patterns</span></div>
+
+
+<div class="viewcode-block" id="MarketAnalyzer.analyze_market_state">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketAnalyzer.analyze_market_state">[docs]</a>
+    <span class="k">def</span> <span class="nf">analyze_market_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                            <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Analyze overall market conditions using index data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            start_date (str, optional): Start date in &#39;YYYY-MM-DD&#39; format.</span>
+<span class="sd">            end_date (str, optional): End date in &#39;YYYY-MM-DD&#39; format.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, pd.DataFrame]: Dictionary mapping index symbols to DataFrames with:</span>
+<span class="sd">                - trend_20d: Binary indicator (1=uptrend, 0=downtrend)</span>
+<span class="sd">                - volatility_20d: Rolling 20-day standard deviation</span>
+<span class="sd">                - momentum_20d: Rolling 20-day average return</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; market_state = analyzer.analyze_market_state(&#39;2023-01-01&#39;, &#39;2023-12-31&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; sp500_state = market_state[&#39;^GSPC&#39;]</span>
+<span class="sd">            &gt;&gt;&gt; latest = sp500_state.iloc[-1]</span>
+<span class="sd">            &gt;&gt;&gt; if latest[&#39;trend_20d&#39;] == 1 and latest[&#39;momentum_20d&#39;] &gt; 0:</span>
+<span class="sd">            ...     print(&quot;Market in positive trend&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">market_state</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_indices</span><span class="p">:</span>
+            <span class="c1"># Skip if index data not available</span>
+            <span class="k">if</span> <span class="n">index</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+                <span class="k">continue</span>
+                
+            <span class="c1"># Get index data for specified date range</span>
+            <span class="n">index_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">start_date</span><span class="p">:</span>
+                <span class="n">index_data</span> <span class="o">=</span> <span class="n">index_data</span><span class="p">[</span><span class="n">index_data</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">start_date</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">end_date</span><span class="p">:</span>
+                <span class="n">index_data</span> <span class="o">=</span> <span class="n">index_data</span><span class="p">[</span><span class="n">index_data</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">end_date</span><span class="p">]</span>
+            
+            <span class="c1"># Initialize features DataFrame</span>
+            <span class="n">features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">index_data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            
+            <span class="c1"># 1. Calculate trend indicator</span>
+            <span class="c1"># Compare 20-day vs 50-day moving averages</span>
+            <span class="n">ma_20</span> <span class="o">=</span> <span class="n">index_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">ma_50</span> <span class="o">=</span> <span class="n">index_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">features</span><span class="p">[</span><span class="s1">&#39;trend_20d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ma_20</span> <span class="o">&gt;</span> <span class="n">ma_50</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            
+            <span class="c1"># 2. Calculate volatility</span>
+            <span class="c1"># Use log returns for better statistical properties</span>
+            <span class="n">log_returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">index_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
+            <span class="n">features</span><span class="p">[</span><span class="s1">&#39;volatility_20d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">log_returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            
+            <span class="c1"># 3. Calculate momentum</span>
+            <span class="c1"># Use 20-day average of log returns</span>
+            <span class="n">features</span><span class="p">[</span><span class="s1">&#39;momentum_20d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">log_returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            
+            <span class="n">market_state</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">features</span>
+            
+        <span class="k">return</span> <span class="n">market_state</span></div>
+
+    
+<div class="viewcode-block" id="MarketAnalyzer.analyze_relationships">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketAnalyzer.analyze_relationships">[docs]</a>
+    <span class="k">def</span> <span class="nf">analyze_relationships</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                              <span class="n">symbols</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+                              <span class="n">max_lags</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+                              <span class="n">correlation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Analyze relationships between multiple symbols.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbols (List[str]): List of symbols to analyze.</span>
+<span class="sd">            max_lags (int, optional): Maximum number of lags for analysis. Defaults to 5.</span>
+<span class="sd">            correlation_threshold (float, optional): Minimum correlation threshold. </span>
+<span class="sd">                Defaults to 0.5.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, Union[pd.DataFrame, nx.Graph, Dict]]: Dictionary containing:</span>
+<span class="sd">                - cross_correlations: Cross-correlation analysis</span>
+<span class="sd">                - relationship_network: NetworkX graph of relationships</span>
+<span class="sd">                - market_leaders: Dictionary of market leader scores</span>
+<span class="sd">                - granger_causality: Granger causality test results</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lead_lag</span> <span class="o">=</span> <span class="n">LeadLagAnalyzer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">)</span>
+        
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;cross_correlations&#39;</span><span class="p">:</span> <span class="n">lead_lag</span><span class="o">.</span><span class="n">calculate_cross_correlations</span><span class="p">(</span><span class="n">symbols</span><span class="p">,</span> <span class="n">max_lags</span><span class="p">),</span>
+            <span class="s1">&#39;relationship_network&#39;</span><span class="p">:</span> <span class="n">lead_lag</span><span class="o">.</span><span class="n">build_relationship_network</span><span class="p">(</span><span class="n">symbols</span><span class="p">,</span> <span class="n">correlation_threshold</span><span class="p">),</span>
+            <span class="s1">&#39;market_leaders&#39;</span><span class="p">:</span> <span class="n">lead_lag</span><span class="o">.</span><span class="n">find_market_leaders</span><span class="p">(</span><span class="n">symbols</span><span class="p">,</span> <span class="n">max_lags</span><span class="p">)</span>
+        <span class="p">}</span>
+        
+        <span class="c1"># Add pairwise Granger causality for market leaders</span>
+        <span class="n">leader_symbols</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;market_leaders&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">]</span>
+        <span class="n">granger_results</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="k">for</span> <span class="n">symbol1</span> <span class="ow">in</span> <span class="n">leader_symbols</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">symbol2</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">symbol1</span> <span class="o">!=</span> <span class="n">symbol2</span><span class="p">:</span>
+                    <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">symbol1</span><span class="si">}</span><span class="s2">-&gt;</span><span class="si">{</span><span class="n">symbol2</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="n">granger_results</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">lead_lag</span><span class="o">.</span><span class="n">test_granger_causality</span><span class="p">(</span><span class="n">symbol1</span><span class="p">,</span> <span class="n">symbol2</span><span class="p">,</span> <span class="n">max_lags</span><span class="p">)</span>
+        
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;granger_causality&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">granger_results</span>
+        
+        <span class="k">return</span> <span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="MarketAnalyzer.analyze_regimes">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketAnalyzer.analyze_regimes">[docs]</a>
+    <span class="k">def</span> <span class="nf">analyze_regimes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                         <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                         <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                         <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                         <span class="n">hmm_states</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+                         <span class="n">window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Analyze market regimes using multiple methods.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbol (str): Stock symbol to analyze.</span>
+<span class="sd">            start_date (str, optional): Start date in &#39;YYYY-MM-DD&#39; format.</span>
+<span class="sd">            end_date (str, optional): End date in &#39;YYYY-MM-DD&#39; format.</span>
+<span class="sd">            hmm_states (int, optional): Number of HMM states to detect. Defaults to 3.</span>
+<span class="sd">            window (int, optional): Window size for structural break detection. </span>
+<span class="sd">                Defaults to 252.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, pd.DataFrame]: Dictionary containing:</span>
+<span class="sd">                - hmm_regimes: Hidden Markov Model regime classification</span>
+<span class="sd">                - structural_breaks: Structural break points</span>
+<span class="sd">                - combined_regimes: Combined regime analysis</span>
+<span class="sd">                - volatility_regimes: Volatility regime classification</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get symbol data</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns_data</span><span class="p">[</span><span class="n">symbol</span><span class="p">][</span><span class="s1">&#39;daily_return&#39;</span><span class="p">]</span>
+        <span class="n">prices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">symbol</span><span class="p">][</span><span class="s1">&#39;close&#39;</span><span class="p">]</span>
+        <span class="n">volumes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">symbol</span><span class="p">][</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">start_date</span><span class="p">:</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">returns</span><span class="p">[</span><span class="n">returns</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">start_date</span><span class="p">]</span>
+            <span class="n">prices</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">prices</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">start_date</span><span class="p">]</span>
+            <span class="n">volumes</span> <span class="o">=</span> <span class="n">volumes</span><span class="p">[</span><span class="n">volumes</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">start_date</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">end_date</span><span class="p">:</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">returns</span><span class="p">[</span><span class="n">returns</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">end_date</span><span class="p">]</span>
+            <span class="n">prices</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">prices</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">end_date</span><span class="p">]</span>
+            <span class="n">volumes</span> <span class="o">=</span> <span class="n">volumes</span><span class="p">[</span><span class="n">volumes</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">end_date</span><span class="p">]</span>
+            
+        <span class="c1"># Initialize regime analyzer</span>
+        <span class="n">regime_analyzer</span> <span class="o">=</span> <span class="n">RegimeAnalyzer</span><span class="p">(</span><span class="n">returns</span><span class="p">,</span> <span class="n">prices</span><span class="p">,</span> <span class="n">volumes</span><span class="p">)</span>
+        
+        <span class="c1"># Get various regime analyses</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;hmm_regimes&#39;</span><span class="p">:</span> <span class="n">regime_analyzer</span><span class="o">.</span><span class="n">detect_hmm_regimes</span><span class="p">(</span><span class="n">hmm_states</span><span class="p">),</span>
+            <span class="s1">&#39;structural_breaks&#39;</span><span class="p">:</span> <span class="n">regime_analyzer</span><span class="o">.</span><span class="n">detect_structural_breaks</span><span class="p">(</span><span class="n">window</span><span class="p">),</span>
+            <span class="s1">&#39;combined_regimes&#39;</span><span class="p">:</span> <span class="n">regime_analyzer</span><span class="o">.</span><span class="n">detect_combined_regime</span><span class="p">(</span><span class="n">hmm_states</span><span class="p">,</span> <span class="n">window</span><span class="p">)</span>
+        <span class="p">}</span>
+        
+        <span class="c1"># Add volatility regimes from earlier method</span>
+        <span class="n">vol_regimes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detect_volatility_regime</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">start_date</span><span class="p">:</span>
+            <span class="n">vol_regimes</span> <span class="o">=</span> <span class="n">vol_regimes</span><span class="p">[</span><span class="n">vol_regimes</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">start_date</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">end_date</span><span class="p">:</span>
+            <span class="n">vol_regimes</span> <span class="o">=</span> <span class="n">vol_regimes</span><span class="p">[</span><span class="n">vol_regimes</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">end_date</span><span class="p">]</span>
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;volatility_regimes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol_regimes</span>
+        
+        <span class="k">return</span> <span class="n">results</span>    </div>
+
+    
+<div class="viewcode-block" id="MarketAnalyzer.create_visualizations">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketAnalyzer.create_visualizations">[docs]</a>
+    <span class="k">def</span> <span class="nf">create_visualizations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                              <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                              <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                              <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a comprehensive set of analysis visualizations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbol (str): Stock symbol to visualize.</span>
+<span class="sd">            start_date (str, optional): Start date in &#39;YYYY-MM-DD&#39; format.</span>
+<span class="sd">            end_date (str, optional): End date in &#39;YYYY-MM-DD&#39; format.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, go.Figure]: Dictionary of Plotly figures:</span>
+<span class="sd">                - price_patterns: Price chart with pattern annotations</span>
+<span class="sd">                - combined_regimes: Combined regime analysis visualization</span>
+<span class="sd">                - volatility_regimes: Volatility regime visualization</span>
+<span class="sd">                - relationship_network: Network graph of relationships</span>
+<span class="sd">                - lead_lag_heatmap: Lead-lag relationship heatmap</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">visualizer</span> <span class="o">=</span> <span class="n">MarketVisualizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">)</span>
+        
+        <span class="n">figures</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;price_patterns&#39;</span><span class="p">:</span> <span class="n">visualizer</span><span class="o">.</span><span class="n">plot_price_patterns</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">),</span>
+            <span class="s1">&#39;combined_regimes&#39;</span><span class="p">:</span> <span class="n">visualizer</span><span class="o">.</span><span class="n">plot_regimes</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="s1">&#39;combined&#39;</span><span class="p">),</span>
+            <span class="s1">&#39;volatility_regimes&#39;</span><span class="p">:</span> <span class="n">visualizer</span><span class="o">.</span><span class="n">plot_regimes</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="s1">&#39;volatility&#39;</span><span class="p">),</span>
+            <span class="s1">&#39;relationship_network&#39;</span><span class="p">:</span> <span class="n">visualizer</span><span class="o">.</span><span class="n">plot_network</span><span class="p">(),</span>
+            <span class="s1">&#39;lead_lag_heatmap&#39;</span><span class="p">:</span> <span class="n">visualizer</span><span class="o">.</span><span class="n">plot_lead_lag_heatmap</span><span class="p">()</span>
+        <span class="p">}</span>
+        
+        <span class="k">return</span> <span class="n">figures</span></div>
+</div>
+
+    
+<div class="viewcode-block" id="MarketVisualizer">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketVisualizer">[docs]</a>
+<span class="k">class</span> <span class="nc">MarketVisualizer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates interactive visualizations for market analysis results.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data (Dict[str, pd.DataFrame]): Market data dictionary.</span>
+<span class="sd">        results (Dict[str, Any]): Analysis results dictionary.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        data (Dict[str, pd.DataFrame]): Market data for visualization.</span>
+<span class="sd">        results (Dict[str, Any]): Analysis results for visualization.</span>
+<span class="sd">        returns (pd.DataFrame): Calculated returns for all assets.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MarketVisualizer.__init__">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketVisualizer.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span> <span class="n">results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="n">results</span>
+
+        <span class="k">if</span> <span class="s2">&quot;returns&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="c1"># Calculate returns for all assets</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">returns</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+                <span class="n">symbol</span><span class="p">:</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">symbol</span><span class="p">,</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">})</span>        </div>
+
+        
+<div class="viewcode-block" id="MarketVisualizer.plot_price_patterns">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketVisualizer.plot_price_patterns">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_price_patterns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create candlestick chart with pattern annotations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbol (str): Stock symbol to plot.</span>
+<span class="sd">            start_date (str, optional): Start date in &#39;YYYY-MM-DD&#39; format.</span>
+<span class="sd">            end_date (str, optional): End date in &#39;YYYY-MM-DD&#39; format.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            go.Figure: Plotly figure with price and volume subplots.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">start_date</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">start_date</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">end_date</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">end_date</span><span class="p">]</span>
+            
+        <span class="c1"># Create candlestick chart</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">make_subplots</span><span class="p">(</span><span class="n">rows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">shared_xaxes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+                           <span class="n">vertical_spacing</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                           <span class="n">row_heights</span><span class="o">=</span><span class="p">[</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">])</span>
+        
+        <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Candlestick</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+            <span class="nb">open</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;open&#39;</span><span class="p">],</span>
+            <span class="n">high</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">],</span>
+            <span class="n">low</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">],</span>
+            <span class="n">close</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">],</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Price&#39;</span>
+        <span class="p">),</span> <span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="c1"># Add volume bars</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+            <span class="n">y</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">],</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Volume&#39;</span>
+        <span class="p">),</span> <span class="n">row</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Add patterns if available</span>
+        <span class="k">if</span> <span class="s1">&#39;patterns&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">:</span>
+            <span class="n">patterns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;patterns&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">pattern_type</span><span class="p">,</span> <span class="n">pattern_list</span> <span class="ow">in</span> <span class="n">patterns</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">pattern_list</span><span class="p">:</span>
+                    <span class="c1"># Add pattern annotation</span>
+                    <span class="n">fig</span><span class="o">.</span><span class="n">add_shape</span><span class="p">(</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;rect&quot;</span><span class="p">,</span>
+                        <span class="n">x0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">pattern</span><span class="o">.</span><span class="n">start_idx</span><span class="p">],</span>
+                        <span class="n">x1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">pattern</span><span class="o">.</span><span class="n">end_idx</span><span class="p">],</span>
+                        <span class="n">y0</span><span class="o">=</span><span class="n">pattern</span><span class="o">.</span><span class="n">price_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="n">y1</span><span class="o">=</span><span class="n">pattern</span><span class="o">.</span><span class="n">price_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;rgba(255, 0, 0, 0.3)&quot;</span><span class="p">),</span>
+                        <span class="n">fillcolor</span><span class="o">=</span><span class="s2">&quot;rgba(255, 0, 0, 0.1)&quot;</span><span class="p">,</span>
+                        <span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="mi">1</span>
+                    <span class="p">)</span>
+                    
+                    <span class="c1"># Add pattern label</span>
+                    <span class="n">fig</span><span class="o">.</span><span class="n">add_annotation</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">pattern</span><span class="o">.</span><span class="n">start_idx</span><span class="p">],</span>
+                        <span class="n">y</span><span class="o">=</span><span class="n">pattern</span><span class="o">.</span><span class="n">price_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">text</span><span class="o">=</span><span class="n">pattern_type</span><span class="p">,</span>
+                        <span class="n">showarrow</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">arrowhead</span><span class="o">=</span><span class="mi">1</span>
+                    <span class="p">)</span>
+        
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">symbol</span><span class="si">}</span><span class="s2"> Price and Volume with Pattern Detection&quot;</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Date&quot;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Price&quot;</span><span class="p">,</span>
+            <span class="n">yaxis2_title</span><span class="o">=</span><span class="s2">&quot;Volume&quot;</span><span class="p">,</span>
+            <span class="n">showlegend</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">fig</span></div>
+
+    
+<div class="viewcode-block" id="MarketVisualizer.plot_regimes">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketVisualizer.plot_regimes">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_regimes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">regime_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;combined&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visualize regime analysis results.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            symbol (str): Stock symbol to plot.</span>
+<span class="sd">            regime_type (str, optional): Type of regime analysis to visualize. </span>
+<span class="sd">                Defaults to &#39;combined&#39;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            go.Figure: Plotly figure with price and regime indicators.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If specified regime type not found in results.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">regime_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;regimes&#39;</span><span class="p">,</span> <span class="p">{}):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Regime type </span><span class="si">{</span><span class="n">regime_type</span><span class="si">}</span><span class="s2"> not found in results&quot;</span><span class="p">)</span>
+  
+        <span class="n">regime_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;regimes&#39;</span><span class="p">][</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">regime_type</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="n">price_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">symbol</span><span class="p">][</span><span class="s1">&#39;close&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># Create figure with secondary y-axis</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">make_subplots</span><span class="p">(</span><span class="n">specs</span><span class="o">=</span><span class="p">[[{</span><span class="s2">&quot;secondary_y&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}]])</span>
+        
+        <span class="c1"># Add price line</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">price_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">price_data</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Price&quot;</span><span class="p">),</span>
+            <span class="n">secondary_y</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># Add regime indicators</span>
+        <span class="k">if</span> <span class="s1">&#39;regime&#39;</span> <span class="ow">in</span> <span class="n">regime_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">regime_numeric</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">regime_data</span><span class="p">[</span><span class="s1">&#39;regime&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">codes</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">regime_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">regime_numeric</span><span class="p">,</span> 
+                          <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Regime&quot;</span><span class="p">,</span> <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">dash</span><span class="o">=</span><span class="s1">&#39;dot&#39;</span><span class="p">)),</span>
+                <span class="n">secondary_y</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            
+        <span class="c1"># Add regime probability if available</span>
+        <span class="n">prob_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">regime_data</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="s1">&#39;prob&#39;</span> <span class="ow">in</span> <span class="n">col</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">prob_cols</span><span class="p">:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">regime_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">regime_data</span><span class="p">[</span><span class="n">col</span><span class="p">],</span>
+                          <span class="n">name</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">dash</span><span class="o">=</span><span class="s1">&#39;dot&#39;</span><span class="p">)),</span>
+                <span class="n">secondary_y</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">symbol</span><span class="si">}</span><span class="s2"> Price and </span><span class="si">{</span><span class="n">regime_type</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s2"> Regimes&quot;</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Date&quot;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Price&quot;</span><span class="p">,</span>
+            <span class="n">yaxis2_title</span><span class="o">=</span><span class="s2">&quot;Regime/Probability&quot;</span><span class="p">,</span>
+            <span class="n">showlegend</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">fig</span></div>
+
+    
+<div class="viewcode-block" id="MarketVisualizer.plot_network">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketVisualizer.plot_network">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_network</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_correlation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create network visualization of stock relationships.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            min_correlation (float, optional): Minimum correlation threshold. </span>
+<span class="sd">                Defaults to 0.5.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            go.Figure: Plotly figure with network graph.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If relationship network not found in results.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s1">&#39;relationship_network&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Relationship network not found in results&quot;</span><span class="p">)</span>
+            
+        <span class="n">G</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;relationship_network&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># Get node positions using Fruchterman-Reingold force-directed algorithm</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">spring_layout</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+        
+        <span class="c1"># Create edges</span>
+        <span class="n">edge_x</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">edge_y</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">edge_text</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">edges</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="n">x0</span><span class="p">,</span> <span class="n">y0</span> <span class="o">=</span> <span class="n">pos</span><span class="p">[</span><span class="n">edge</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span> <span class="o">=</span> <span class="n">pos</span><span class="p">[</span><span class="n">edge</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+            <span class="n">edge_x</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">x0</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+            <span class="n">edge_y</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">y0</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+            <span class="n">edge_text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Correlation: </span><span class="si">{</span><span class="n">edge</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+        <span class="n">edge_trace</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">edge_x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">edge_y</span><span class="p">,</span>
+            <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#888&#39;</span><span class="p">),</span>
+            <span class="n">hoverinfo</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">,</span>
+            <span class="n">text</span><span class="o">=</span><span class="n">edge_text</span><span class="p">,</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;lines&#39;</span><span class="p">)</span>
+        
+        <span class="c1"># Create nodes</span>
+        <span class="n">node_x</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">node_y</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">node_text</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">nodes</span><span class="p">():</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">pos</span><span class="p">[</span><span class="n">node</span><span class="p">]</span>
+            <span class="n">node_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">node_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+            <span class="n">node_text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+            
+        <span class="n">node_trace</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">node_x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">node_y</span><span class="p">,</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;markers+text&#39;</span><span class="p">,</span>
+            <span class="n">hoverinfo</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">,</span>
+            <span class="n">text</span><span class="o">=</span><span class="n">node_text</span><span class="p">,</span>
+            <span class="n">textposition</span><span class="o">=</span><span class="s2">&quot;top center&quot;</span><span class="p">,</span>
+            <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">showscale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">colorscale</span><span class="o">=</span><span class="s1">&#39;YlGnBu&#39;</span><span class="p">,</span>
+                <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                <span class="n">colorbar</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">thickness</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+                    <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Node Connections&#39;</span><span class="p">,</span>
+                    <span class="n">xanchor</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span>
+                    <span class="n">titleside</span><span class="o">=</span><span class="s1">&#39;right&#39;</span>
+                <span class="p">)</span>
+            <span class="p">))</span>
+        
+        <span class="c1"># Color nodes by number of connections</span>
+        <span class="n">node_adjacencies</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">G</span><span class="o">.</span><span class="n">nodes</span><span class="p">():</span>
+            <span class="n">node_adjacencies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">node</span><span class="p">))))</span>
+            
+        <span class="n">node_trace</span><span class="o">.</span><span class="n">marker</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="n">node_adjacencies</span>
+        
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">edge_trace</span><span class="p">,</span> <span class="n">node_trace</span><span class="p">],</span>
+                       <span class="n">layout</span><span class="o">=</span><span class="n">go</span><span class="o">.</span><span class="n">Layout</span><span class="p">(</span>
+                           <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Stock Relationship Network&#39;</span><span class="p">,</span>
+                           <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                           <span class="n">hovermode</span><span class="o">=</span><span class="s1">&#39;closest&#39;</span><span class="p">,</span>
+                           <span class="n">margin</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">b</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span><span class="n">l</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">r</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">t</span><span class="o">=</span><span class="mi">40</span><span class="p">),</span>
+                           <span class="n">xaxis</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">showgrid</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">zeroline</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">showticklabels</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+                           <span class="n">yaxis</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">showgrid</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">zeroline</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">showticklabels</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+                       <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">fig</span></div>
+
+    
+<div class="viewcode-block" id="MarketVisualizer.plot_lead_lag_heatmap">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketVisualizer.plot_lead_lag_heatmap">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_lead_lag_heatmap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create heatmap of lead-lag relationships.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            go.Figure: Plotly figure with correlation heatmap.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If cross-correlation results not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s1">&#39;cross_correlations&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cross-correlation results not found&quot;</span><span class="p">)</span>
+            
+        <span class="c1"># Pivot the cross-correlation results</span>
+        <span class="n">corr_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;cross_correlations&#39;</span><span class="p">]</span>
+        <span class="n">heatmap_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span>
+            <span class="n">corr_data</span><span class="p">,</span>
+            <span class="n">values</span><span class="o">=</span><span class="s1">&#39;correlation&#39;</span><span class="p">,</span>
+            <span class="n">index</span><span class="o">=</span><span class="s1">&#39;symbol1&#39;</span><span class="p">,</span>
+            <span class="n">columns</span><span class="o">=</span><span class="s1">&#39;lag&#39;</span>
+        <span class="p">)</span>
+        
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">go</span><span class="o">.</span><span class="n">Heatmap</span><span class="p">(</span>
+            <span class="n">z</span><span class="o">=</span><span class="n">heatmap_data</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">heatmap_data</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span>
+            <span class="n">y</span><span class="o">=</span><span class="n">heatmap_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+            <span class="n">colorscale</span><span class="o">=</span><span class="s1">&#39;RdBu&#39;</span><span class="p">,</span>
+            <span class="n">zmid</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">text</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">heatmap_data</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="n">texttemplate</span><span class="o">=</span><span class="s1">&#39;%</span><span class="si">{text}</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="n">textfont</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
+            <span class="n">hoverongaps</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+        
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Lead-Lag Correlation Heatmap&#39;</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s1">&#39;Lag&#39;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s1">&#39;Symbol&#39;</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">800</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">fig</span></div>
+
+    
+<div class="viewcode-block" id="MarketVisualizer.plot_volatility_surface">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketVisualizer.plot_volatility_surface">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_volatility_surface</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create 3D visualization of volatility surface.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            go.Figure: Plotly figure with 3D surface plot.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">surface_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;volatility_surface&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># Create 3D surface plot</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">go</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">surface_data</span><span class="p">[</span><span class="s1">&#39;window&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">(),</span>
+            <span class="n">y</span><span class="o">=</span><span class="n">surface_data</span><span class="p">[</span><span class="s1">&#39;quantile&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">(),</span>
+            <span class="n">z</span><span class="o">=</span><span class="n">surface_data</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s1">&#39;quantile&#39;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s1">&#39;window&#39;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s1">&#39;volatility&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+            <span class="n">colorscale</span><span class="o">=</span><span class="s1">&#39;Viridis&#39;</span>
+        <span class="p">)])</span>
+        
+        <span class="c1"># Update layout for better visualization</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Volatility Surface&#39;</span><span class="p">,</span>
+            <span class="n">scene</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">xaxis_title</span><span class="o">=</span><span class="s1">&#39;Time Window (days)&#39;</span><span class="p">,</span>
+                <span class="n">yaxis_title</span><span class="o">=</span><span class="s1">&#39;Quantile&#39;</span><span class="p">,</span>
+                <span class="n">zaxis_title</span><span class="o">=</span><span class="s1">&#39;Volatility&#39;</span><span class="p">,</span>
+                <span class="n">camera</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">eye</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mf">1.2</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">),</span>
+            <span class="n">width</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">800</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">fig</span></div>
+
+    
+<div class="viewcode-block" id="MarketVisualizer.plot_risk_metrics">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketVisualizer.plot_risk_metrics">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_risk_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create visualization of risk metrics.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            go.Figure: Plotly figure with risk analysis dashboard including:</span>
+<span class="sd">                - VaR comparison</span>
+<span class="sd">                - Expected shortfall</span>
+<span class="sd">                - Stress test scenarios</span>
+<span class="sd">                - Return distribution</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">risk_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;risk_metrics&#39;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">stress_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;stress_test&#39;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">())</span>
+        
+        <span class="c1"># Create subplot figure</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">make_subplots</span><span class="p">(</span>
+            <span class="n">rows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">subplot_titles</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;VaR Comparison&#39;</span><span class="p">,</span> <span class="s1">&#39;Expected Shortfall&#39;</span><span class="p">,</span> 
+                          <span class="s1">&#39;Stress Test Scenarios&#39;</span><span class="p">,</span> <span class="s1">&#39;Return Distribution&#39;</span><span class="p">)</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># Plot VaR comparison</span>
+        <span class="k">if</span> <span class="s1">&#39;var&#39;</span> <span class="ow">in</span> <span class="n">risk_data</span><span class="p">:</span>
+            <span class="n">var_methods</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">risk_data</span><span class="p">[</span><span class="s1">&#39;var&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="n">var_values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">risk_data</span><span class="p">[</span><span class="s1">&#39;var&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">var_methods</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">var_values</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;VaR&#39;</span><span class="p">),</span>
+                <span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="mi">1</span>
+            <span class="p">)</span>
+            
+        <span class="c1"># Plot Expected Shortfall</span>
+        <span class="k">if</span> <span class="s1">&#39;expected_shortfall&#39;</span> <span class="ow">in</span> <span class="n">risk_data</span><span class="p">:</span>
+            <span class="n">es_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">risk_data</span><span class="p">[</span><span class="s1">&#39;expected_shortfall&#39;</span><span class="p">])</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">es_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">es_data</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> 
+                          <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;lines+markers&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;ES&#39;</span><span class="p">),</span>
+                <span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="mi">2</span>
+            <span class="p">)</span>
+            
+        <span class="c1"># Plot stress test results</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">stress_data</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">stress_data</span><span class="p">[</span><span class="s1">&#39;scenario&#39;</span><span class="p">],</span> 
+                      <span class="n">y</span><span class="o">=</span><span class="n">stress_data</span><span class="p">[</span><span class="s1">&#39;price_change&#39;</span><span class="p">],</span>
+                      <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Price Impact&#39;</span><span class="p">),</span>
+                <span class="n">row</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="mi">1</span>
+            <span class="p">)</span>
+            
+        <span class="c1"># Plot return distribution</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">returns</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Returns&#39;</span><span class="p">,</span>
+                        <span class="n">nbinsx</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">histnorm</span><span class="o">=</span><span class="s1">&#39;probability&#39;</span><span class="p">),</span>
+            <span class="n">row</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="mi">2</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># Update layout</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span>
+            <span class="n">width</span><span class="o">=</span><span class="mi">1200</span><span class="p">,</span>
+            <span class="n">showlegend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">title_text</span><span class="o">=</span><span class="s2">&quot;Risk Analysis Dashboard&quot;</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">fig</span>    </div>
+
+
+<div class="viewcode-block" id="MarketVisualizer.plot_efficient_frontier">
+<a class="viewcode-back" href="../../base.html#market_analyzer.base.MarketVisualizer.plot_efficient_frontier">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_efficient_frontier</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ef_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot the efficient frontier.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ef_data (pd.DataFrame): DataFrame with efficient frontier data.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            go.Figure: Plotly figure with efficient frontier plot.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Create scatter plot of efficient frontier</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        
+        <span class="c1"># Add efficient frontier line</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">ef_data</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">],</span>
+            <span class="n">y</span><span class="o">=</span><span class="n">ef_data</span><span class="p">[</span><span class="s1">&#39;return&#39;</span><span class="p">],</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;lines+markers&#39;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Efficient Frontier&#39;</span><span class="p">,</span>
+            <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">color</span><span class="o">=</span><span class="n">ef_data</span><span class="p">[</span><span class="s1">&#39;sharpe_ratio&#39;</span><span class="p">],</span>
+                <span class="n">colorscale</span><span class="o">=</span><span class="s1">&#39;Viridis&#39;</span><span class="p">,</span>
+                <span class="n">showscale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">colorbar</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;Sharpe Ratio&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">))</span>
+        
+        <span class="c1"># Add individual assets</span>
+        <span class="k">for</span> <span class="n">symbol</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">asset_vol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span><span class="o">.</span><span class="n">var</span><span class="p">()</span> <span class="o">*</span> <span class="mi">252</span><span class="p">)</span>
+            <span class="n">asset_ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mi">252</span>
+            
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="p">[</span><span class="n">asset_vol</span><span class="p">],</span>
+                <span class="n">y</span><span class="o">=</span><span class="p">[</span><span class="n">asset_ret</span><span class="p">],</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;markers+text&#39;</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">symbol</span><span class="p">,</span>
+                <span class="n">text</span><span class="o">=</span><span class="p">[</span><span class="n">symbol</span><span class="p">],</span>
+                <span class="n">textposition</span><span class="o">=</span><span class="s2">&quot;top center&quot;</span><span class="p">,</span>
+                <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+            <span class="p">))</span>
+            
+        <span class="c1"># Update layout</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Efficient Frontier&#39;</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s1">&#39;Portfolio Volatility&#39;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s1">&#39;Portfolio Return&#39;</span><span class="p">,</span>
+            <span class="n">showlegend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">width</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">600</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">fig</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Asabaal Horan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

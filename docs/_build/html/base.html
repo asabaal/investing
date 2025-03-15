@@ -1,0 +1,656 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Base Module &mdash; Market Analyzer 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Pattern Recognition" href="pattern_recognition.html" />
+    <link rel="prev" title="Welcome to Market Analyzer’s documentation!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Market Analyzer
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Base Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.data"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.data</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.market_indices"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.market_indices</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.returns_data"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.returns_data</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.__init__"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.calculate_rolling_features"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.calculate_rolling_features()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.detect_volatility_regime"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.detect_volatility_regime()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.analyze_patterns"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.analyze_patterns()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.analyze_market_state"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.analyze_market_state()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.analyze_relationships"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.analyze_relationships()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.analyze_regimes"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.analyze_regimes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketAnalyzer.create_visualizations"><code class="docutils literal notranslate"><span class="pre">MarketAnalyzer.create_visualizations()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.data"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.data</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.results"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.results</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.returns"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.returns</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.__init__"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.plot_price_patterns"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.plot_price_patterns()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.plot_regimes"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.plot_regimes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.plot_network"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.plot_network()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.plot_lead_lag_heatmap"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.plot_lead_lag_heatmap()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.plot_volatility_surface"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.plot_volatility_surface()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.plot_risk_metrics"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.plot_risk_metrics()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market_analyzer.base.MarketVisualizer.plot_efficient_frontier"><code class="docutils literal notranslate"><span class="pre">MarketVisualizer.plot_efficient_frontier()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="pattern_recognition.html">Pattern Recognition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="regime_analyzer.html">Regime Analyzer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Market Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Base Module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/base.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-market_analyzer.base">
+<span id="base-module"></span><h1>Base Module<a class="headerlink" href="#module-market_analyzer.base" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">market_analyzer.base.</span></span><span class="sig-name descname"><span class="pre">MarketAnalyzer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">market_indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['^GSPC']</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketAnalyzer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A comprehensive framework for market analysis and investment decision-making.</p>
+<p>This class processes financial market data to calculate various metrics and identify
+patterns useful for trading and investment decisions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>pd.DataFrame</em><em>]</em>) – Dictionary containing market data for each symbol.
+Each DataFrame should have columns: [‘open’, ‘high’, ‘low’, ‘close’, ‘volume’].</p></li>
+<li><p><strong>market_indices</strong> (<em>List</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – List of market index symbols to use as benchmarks.
+Defaults to [‘^GSPC’] (S&amp;P 500).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.data">
+<span class="sig-name descname"><span class="pre">data</span></span><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.data" title="Link to this definition"></a></dt>
+<dd><p>Market data for each symbol.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, pd.DataFrame]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.market_indices">
+<span class="sig-name descname"><span class="pre">market_indices</span></span><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.market_indices" title="Link to this definition"></a></dt>
+<dd><p>List of market indices used as benchmarks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.returns_data">
+<span class="sig-name descname"><span class="pre">returns_data</span></span><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.returns_data" title="Link to this definition"></a></dt>
+<dd><p>Calculated returns for each symbol.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, pd.DataFrame]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Market data terminology:
+- OHLCV: Open, High, Low, Close prices and Volume
+- Open: First trading price of the day
+- Close: Last trading price of the day
+- High/Low: Highest/lowest prices during the day
+- Volume: Number of shares traded</p>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s1">&#39;AAPL&#39;</span><span class="p">:</span> <span class="n">apple_data_df</span><span class="p">,</span>  <span class="c1"># DataFrame with OHLCV data</span>
+<span class="gp">... </span>    <span class="s1">&#39;^GSPC&#39;</span><span class="p">:</span> <span class="n">sp500_data_df</span>  <span class="c1"># S&amp;P 500 index data</span>
+<span class="gp">... </span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">analyzer</span> <span class="o">=</span> <span class="n">MarketAnalyzer</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">market_indices</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;^GSPC&#39;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">features</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">calculate_rolling_features</span><span class="p">(</span><span class="s1">&#39;AAPL&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">market_indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['^GSPC']</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketAnalyzer.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.calculate_rolling_features">
+<span class="sig-name descname"><span class="pre">calculate_rolling_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">windows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[5,</span> <span class="pre">21,</span> <span class="pre">63,</span> <span class="pre">252]</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketAnalyzer.calculate_rolling_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.calculate_rolling_features" title="Link to this definition"></a></dt>
+<dd><p>Calculate rolling window features for market analysis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbol</strong> (<em>str</em>) – The stock symbol to analyze.</p></li>
+<li><p><strong>windows</strong> (<em>List</em><em>[</em><em>int</em><em>]</em><em>, </em><em>optional</em>) – List of rolling window sizes in days.
+Defaults to [5, 21, 63, 252] representing week, month, quarter, year.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>DataFrame containing calculated features with columns:</dt><dd><ul class="simple">
+<li><p>return_mean_{window}d: Average return</p></li>
+<li><p>return_std_{window}d: Return standard deviation</p></li>
+<li><p>return_skew_{window}d: Return skewness</p></li>
+<li><p>return_kurt_{window}d: Return kurtosis</p></li>
+<li><p>price_mean_{window}d: Average price</p></li>
+<li><p>price_std_{window}d: Price standard deviation</p></li>
+<li><p>volume_mean_{window}d: Average volume</p></li>
+<li><p>volume_std_{window}d: Volume standard deviation</p></li>
+<li><p>RSI_{window}d: Relative Strength Index</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">features</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">calculate_rolling_features</span><span class="p">(</span><span class="s1">&#39;AAPL&#39;</span><span class="p">,</span> <span class="n">windows</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">21</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Check if stock is trending up over last month</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">if</span> <span class="n">features</span><span class="p">[</span><span class="s1">&#39;return_mean_21d&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Stock has positive momentum&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.detect_volatility_regime">
+<span class="sig-name descname"><span class="pre">detect_volatility_regime</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lookback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">252</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketAnalyzer.detect_volatility_regime"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.detect_volatility_regime" title="Link to this definition"></a></dt>
+<dd><p>Detect market volatility regimes using GARCH models.</p>
+<p>Uses GARCH (Generalized AutoRegressive Conditional Heteroskedasticity) models
+to classify market volatility into different regimes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbol</strong> (<em>str</em>) – The stock symbol to analyze.</p></li>
+<li><p><strong>lookback</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of days to look back. Defaults to 252 (1 trading year).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>DataFrame with columns:</dt><dd><ul class="simple">
+<li><p>volatility: Conditional volatility from GARCH model</p></li>
+<li><p>regime: Volatility regime classification (0=Low, 1=Normal, 2=High)</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">regimes</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">detect_volatility_regime</span><span class="p">(</span><span class="s1">&#39;AAPL&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">if</span> <span class="n">regimes</span><span class="p">[</span><span class="s1">&#39;regime&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Market is highly volatile&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.analyze_patterns">
+<span class="sig-name descname"><span class="pre">analyze_patterns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="pattern_recognition.html#market_analyzer.pattern_recognition.TechnicalPattern" title="market_analyzer.pattern_recognition.TechnicalPattern"><span class="pre">TechnicalPattern</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketAnalyzer.analyze_patterns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.analyze_patterns" title="Link to this definition"></a></dt>
+<dd><p>Analyze price data to detect technical trading patterns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbol</strong> (<em>str</em>) – The stock symbol to analyze.</p></li>
+<li><p><strong>start_date</strong> (<em>str</em><em>, </em><em>optional</em>) – Start date in ‘YYYY-MM-DD’ format.</p></li>
+<li><p><strong>end_date</strong> (<em>str</em><em>, </em><em>optional</em>) – End date in ‘YYYY-MM-DD’ format.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Dictionary of detected patterns:</dt><dd><ul class="simple">
+<li><p>head_and_shoulders: Head and shoulders reversal patterns</p></li>
+<li><p>double_bottom: Double bottom reversal patterns</p></li>
+<li><p>volume_price: Volume-price divergence patterns</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, List[<a class="reference internal" href="pattern_recognition.html#market_analyzer.pattern_recognition.TechnicalPattern" title="market_analyzer.pattern_recognition.TechnicalPattern">TechnicalPattern</a>]]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">patterns</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_patterns</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">symbol</span><span class="o">=</span><span class="s1">&#39;AAPL&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">start_date</span><span class="o">=</span><span class="s1">&#39;2023-01-01&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">end_date</span><span class="o">=</span><span class="s1">&#39;2023-12-31&#39;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hs_patterns</span> <span class="o">=</span> <span class="n">patterns</span><span class="p">[</span><span class="s1">&#39;head_and_shoulders&#39;</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">if</span> <span class="n">hs_patterns</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found pattern with </span><span class="si">{</span><span class="n">hs_patterns</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">confidence</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> confidence&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.analyze_market_state">
+<span class="sig-name descname"><span class="pre">analyze_market_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketAnalyzer.analyze_market_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.analyze_market_state" title="Link to this definition"></a></dt>
+<dd><p>Analyze overall market conditions using index data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start_date</strong> (<em>str</em><em>, </em><em>optional</em>) – Start date in ‘YYYY-MM-DD’ format.</p></li>
+<li><p><strong>end_date</strong> (<em>str</em><em>, </em><em>optional</em>) – End date in ‘YYYY-MM-DD’ format.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Dictionary mapping index symbols to DataFrames with:</dt><dd><ul class="simple">
+<li><p>trend_20d: Binary indicator (1=uptrend, 0=downtrend)</p></li>
+<li><p>volatility_20d: Rolling 20-day standard deviation</p></li>
+<li><p>momentum_20d: Rolling 20-day average return</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, pd.DataFrame]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">market_state</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_market_state</span><span class="p">(</span><span class="s1">&#39;2023-01-01&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-12-31&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sp500_state</span> <span class="o">=</span> <span class="n">market_state</span><span class="p">[</span><span class="s1">&#39;^GSPC&#39;</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">latest</span> <span class="o">=</span> <span class="n">sp500_state</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">if</span> <span class="n">latest</span><span class="p">[</span><span class="s1">&#39;trend_20d&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">latest</span><span class="p">[</span><span class="s1">&#39;momentum_20d&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Market in positive trend&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.analyze_relationships">
+<span class="sig-name descname"><span class="pre">analyze_relationships</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_lags</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">correlation_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Graph</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketAnalyzer.analyze_relationships"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.analyze_relationships" title="Link to this definition"></a></dt>
+<dd><p>Analyze relationships between multiple symbols.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbols</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of symbols to analyze.</p></li>
+<li><p><strong>max_lags</strong> (<em>int</em><em>, </em><em>optional</em>) – Maximum number of lags for analysis. Defaults to 5.</p></li>
+<li><p><strong>correlation_threshold</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum correlation threshold.
+Defaults to 0.5.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Dictionary containing:</dt><dd><ul class="simple">
+<li><p>cross_correlations: Cross-correlation analysis</p></li>
+<li><p>relationship_network: NetworkX graph of relationships</p></li>
+<li><p>market_leaders: Dictionary of market leader scores</p></li>
+<li><p>granger_causality: Granger causality test results</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Union[pd.DataFrame, nx.Graph, Dict]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.analyze_regimes">
+<span class="sig-name descname"><span class="pre">analyze_regimes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hmm_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">252</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketAnalyzer.analyze_regimes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.analyze_regimes" title="Link to this definition"></a></dt>
+<dd><p>Analyze market regimes using multiple methods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbol</strong> (<em>str</em>) – Stock symbol to analyze.</p></li>
+<li><p><strong>start_date</strong> (<em>str</em><em>, </em><em>optional</em>) – Start date in ‘YYYY-MM-DD’ format.</p></li>
+<li><p><strong>end_date</strong> (<em>str</em><em>, </em><em>optional</em>) – End date in ‘YYYY-MM-DD’ format.</p></li>
+<li><p><strong>hmm_states</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of HMM states to detect. Defaults to 3.</p></li>
+<li><p><strong>window</strong> (<em>int</em><em>, </em><em>optional</em>) – Window size for structural break detection.
+Defaults to 252.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Dictionary containing:</dt><dd><ul class="simple">
+<li><p>hmm_regimes: Hidden Markov Model regime classification</p></li>
+<li><p>structural_breaks: Structural break points</p></li>
+<li><p>combined_regimes: Combined regime analysis</p></li>
+<li><p>volatility_regimes: Volatility regime classification</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, pd.DataFrame]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketAnalyzer.create_visualizations">
+<span class="sig-name descname"><span class="pre">create_visualizations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Figure</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketAnalyzer.create_visualizations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketAnalyzer.create_visualizations" title="Link to this definition"></a></dt>
+<dd><p>Create a comprehensive set of analysis visualizations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbol</strong> (<em>str</em>) – Stock symbol to visualize.</p></li>
+<li><p><strong>start_date</strong> (<em>str</em><em>, </em><em>optional</em>) – Start date in ‘YYYY-MM-DD’ format.</p></li>
+<li><p><strong>end_date</strong> (<em>str</em><em>, </em><em>optional</em>) – End date in ‘YYYY-MM-DD’ format.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Dictionary of Plotly figures:</dt><dd><ul class="simple">
+<li><p>price_patterns: Price chart with pattern annotations</p></li>
+<li><p>combined_regimes: Combined regime analysis visualization</p></li>
+<li><p>volatility_regimes: Volatility regime visualization</p></li>
+<li><p>relationship_network: Network graph of relationships</p></li>
+<li><p>lead_lag_heatmap: Lead-lag relationship heatmap</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, go.Figure]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">market_analyzer.base.</span></span><span class="sig-name descname"><span class="pre">MarketVisualizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketVisualizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketVisualizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Creates interactive visualizations for market analysis results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>pd.DataFrame</em><em>]</em>) – Market data dictionary.</p></li>
+<li><p><strong>results</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Analysis results dictionary.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.data">
+<span class="sig-name descname"><span class="pre">data</span></span><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.data" title="Link to this definition"></a></dt>
+<dd><p>Market data for visualization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, pd.DataFrame]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.results">
+<span class="sig-name descname"><span class="pre">results</span></span><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.results" title="Link to this definition"></a></dt>
+<dd><p>Analysis results for visualization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.returns">
+<span class="sig-name descname"><span class="pre">returns</span></span><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.returns" title="Link to this definition"></a></dt>
+<dd><p>Calculated returns for all assets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketVisualizer.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.plot_price_patterns">
+<span class="sig-name descname"><span class="pre">plot_price_patterns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketVisualizer.plot_price_patterns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.plot_price_patterns" title="Link to this definition"></a></dt>
+<dd><p>Create candlestick chart with pattern annotations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbol</strong> (<em>str</em>) – Stock symbol to plot.</p></li>
+<li><p><strong>start_date</strong> (<em>str</em><em>, </em><em>optional</em>) – Start date in ‘YYYY-MM-DD’ format.</p></li>
+<li><p><strong>end_date</strong> (<em>str</em><em>, </em><em>optional</em>) – End date in ‘YYYY-MM-DD’ format.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Plotly figure with price and volume subplots.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>go.Figure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.plot_regimes">
+<span class="sig-name descname"><span class="pre">plot_regimes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regime_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'combined'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketVisualizer.plot_regimes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.plot_regimes" title="Link to this definition"></a></dt>
+<dd><p>Visualize regime analysis results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbol</strong> (<em>str</em>) – Stock symbol to plot.</p></li>
+<li><p><strong>regime_type</strong> (<em>str</em><em>, </em><em>optional</em>) – Type of regime analysis to visualize.
+Defaults to ‘combined’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Plotly figure with price and regime indicators.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>go.Figure</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If specified regime type not found in results.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.plot_network">
+<span class="sig-name descname"><span class="pre">plot_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_correlation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketVisualizer.plot_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.plot_network" title="Link to this definition"></a></dt>
+<dd><p>Create network visualization of stock relationships.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>min_correlation</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum correlation threshold.
+Defaults to 0.5.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Plotly figure with network graph.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>go.Figure</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If relationship network not found in results.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.plot_lead_lag_heatmap">
+<span class="sig-name descname"><span class="pre">plot_lead_lag_heatmap</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketVisualizer.plot_lead_lag_heatmap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.plot_lead_lag_heatmap" title="Link to this definition"></a></dt>
+<dd><p>Create heatmap of lead-lag relationships.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Plotly figure with correlation heatmap.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>go.Figure</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If cross-correlation results not found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.plot_volatility_surface">
+<span class="sig-name descname"><span class="pre">plot_volatility_surface</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketVisualizer.plot_volatility_surface"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.plot_volatility_surface" title="Link to this definition"></a></dt>
+<dd><p>Create 3D visualization of volatility surface.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Plotly figure with 3D surface plot.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>go.Figure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.plot_risk_metrics">
+<span class="sig-name descname"><span class="pre">plot_risk_metrics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketVisualizer.plot_risk_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.plot_risk_metrics" title="Link to this definition"></a></dt>
+<dd><p>Create visualization of risk metrics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Plotly figure with risk analysis dashboard including:</dt><dd><ul class="simple">
+<li><p>VaR comparison</p></li>
+<li><p>Expected shortfall</p></li>
+<li><p>Stress test scenarios</p></li>
+<li><p>Return distribution</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>go.Figure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="market_analyzer.base.MarketVisualizer.plot_efficient_frontier">
+<span class="sig-name descname"><span class="pre">plot_efficient_frontier</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ef_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="_modules/market_analyzer/base.html#MarketVisualizer.plot_efficient_frontier"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#market_analyzer.base.MarketVisualizer.plot_efficient_frontier" title="Link to this definition"></a></dt>
+<dd><p>Plot the efficient frontier.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ef_data</strong> (<em>pd.DataFrame</em>) – DataFrame with efficient frontier data.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Plotly figure with efficient frontier plot.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>go.Figure</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to Market Analyzer’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="pattern_recognition.html" class="btn btn-neutral float-right" title="Pattern Recognition" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Asabaal Horan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
