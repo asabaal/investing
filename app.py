@@ -271,6 +271,9 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
     Fetch multiple months of intraday data by making sequential API calls
     while respecting rate limits
     """
+    # Update the session state to indicate fetching has started
+    st.session_state.fetch_state['is_fetching'] = True
+    
     # Create a progress bar
     st.info(f"Fetching historical intraday data from {start_month}/{start_year} to {end_month}/{end_year}")
     progress_bar = st.progress(0)
@@ -278,6 +281,10 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
     
     # Calculate total number of months to fetch
     total_months = (end_year - start_year) * 12 + end_month - start_month + 1
+    
+    # Update session state with total months
+    st.session_state.fetch_state['total_months'] = total_months
+    st.session_state.fetch_state['current_month'] = 0
     
     # Initialize list to store data from each month
     all_data = []
@@ -291,140 +298,177 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
     if isinstance(end_month, str) and end_month in month_names:
         end_month = month_names.index(end_month) + 1
     
-    # Current year and month for calculating slice parameters
-    current_year = datetime.now().year
-    current_month = datetime.now().month
-    
-    # Process each month
-    month_count = 0
-    
     # Get current date for calculating slice parameters
     current_date = datetime.now()
     current_year = current_date.year
     current_month = current_date.month
     
-    # Loop through each year and month
-    for year in range(start_year, end_year + 1):
-        # Determine start/end months for this year
-        if year == start_year:
-            first_month = start_month
-        else:
-            first_month = 1
-            
-        if year == end_year:
-            last_month = end_month
-        else:
-            last_month = 12
-            
-        for month in range(first_month, last_month + 1):
-            month_count += 1
-            
-            # Update progress
-            progress_percentage = min(1.0, month_count / total_months)
-            progress_bar.progress(progress_percentage)
-            
-            status_text.info(f"Fetching data for {month_names[month-1]} {year} ({month_count}/{total_months})")
-            
-            # Calculate months ago from current date
-            months_ago = (current_year - year) * 12 + (current_month - month)
-            
-            # Calculate slice parameter
-            # AlphaVantage uses: year1month1 (most recent), year1month2 (month before), etc.
-            if months_ago <= 11:
-                slice_year = 1
-                slice_month = months_ago + 1  # +1 because current month is month1
-            else:
-                slice_year = 2
-                slice_month = months_ago - 11
-                
-            # Skip if out of range (AlphaVantage only supports 2 years)
-            if slice_year > 2 or (slice_year == 2 and slice_month > 12):
-                status_text.warning(f"Skipping {month_names[month-1]} {year} - beyond 2 year AlphaVantage limit")
-                continue
-                
-            slice_param = f"year{slice_year}month{slice_month}"
-            
-            # Check rate limit and wait if necessary
-            rate_status = get_rate_limit_status()
-            if rate_status["calls_remaining"] == 0:
-                wait_time = math.ceil(rate_status["reset_in"])
-                waiting_bar = st.progress(0)
-                
-                status_text.warning(f"Rate limit reached. Waiting {wait_time} seconds for reset...")
-                
-                for i in range(wait_time):
-                    time.sleep(1)
-                    waiting_bar.progress((i + 1) / wait_time)
-                
-                waiting_bar.empty()
-            
-            # Fetch data for this month
-            try:
-                # Make API call
-                track_api_call("intraday_extended")
-                url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={ticker}&interval={interval}&slice={slice_param}&apikey={api_key}'
-                response = requests.get(url)
-                
-                if response.status_code != 200:
-                    status_text.error(f"Error fetching data: HTTP {response.status_code}")
-                    continue
-                
-                csv_data = response.text
-                
-                # Check for API limit messages
-                if "Thank you for using Alpha Vantage" in csv_data and "Our standard API" in csv_data:
-                    status_text.warning(f"API Limit reached: {csv_data}")
-                    # Wait longer for API daily limit reset (if that's the issue)
-                    status_text.warning("API daily limit may have been reached. Waiting 60 seconds...")
-                    time.sleep(60)
-                    continue
-                
-                # Parse the CSV data
-                month_df = pd.read_csv(StringIO(csv_data))
-                
-                # Skip if no data or just headers
-                if len(month_df) <= 1:
-                    status_text.info(f"No data available for {month_names[month-1]} {year}")
-                    continue
-                
-                # Rename columns to match our standard format
-                month_df = month_df.rename(columns={
-                    'time': 'Date',
-                    'open': 'Open',
-                    'high': 'High',
-                    'low': 'Low',
-                    'close': 'Close',
-                    'volume': 'Volume'
-                })
-                
-                # Convert time to datetime
-                month_df['Date'] = pd.to_datetime(month_df['Date'])
-                
-                # Append to our data collection
-                all_data.append(month_df)
-                
-                # Show data count
-                if len(month_df) > 0:
-                    status_text.info(f"Added {len(month_df)} data points for {month_names[month-1]} {year}")
-                
-                # Add slight delay between calls to avoid overwhelming the API
-                time.sleep(0.5)
-                
-            except Exception as e:
-                status_text.error(f"Error processing data for {month_names[month-1]} {year}: {str(e)}")
-                continue
+    # Process each month
+    month_count = 0
     
-    # Combine all the monthly data
-    if len(all_data) > 0:
-        combined_df = pd.concat(all_data, ignore_index=True)
-        combined_df = combined_df.sort_values('Date').reset_index(drop=True)
+    try:
+        # Loop through each year and month
+        for year in range(start_year, end_year + 1):
+            # Determine start/end months for this year
+            if year == start_year:
+                first_month = start_month
+            else:
+                first_month = 1
+                
+            if year == end_year:
+                last_month = end_month
+            else:
+                last_month = 12
+                
+            for month in range(first_month, last_month + 1):
+                month_count += 1
+                
+                # Update session state with current month
+                st.session_state.fetch_state['current_month'] = month_count
+                
+                # Update progress
+                progress_percentage = min(1.0, month_count / total_months)
+                progress_bar.progress(progress_percentage)
+                
+                status_text.info(f"Fetching data for {month_names[month-1]} {year} ({month_count}/{total_months})")
+                
+                # Update status in session state
+                st.session_state.fetch_state['last_status_update'] = f"Fetching {month_names[month-1]} {year}"
+                
+                # Calculate months ago from current date
+                months_ago = (current_year - year) * 12 + (current_month - month)
+                
+                # Calculate slice parameter
+                # AlphaVantage uses: year1month1 (most recent), year1month2 (month before), etc.
+                if months_ago <= 11:
+                    slice_year = 1
+                    slice_month = months_ago + 1  # +1 because current month is month1
+                else:
+                    slice_year = 2
+                    slice_month = months_ago - 11
+                    
+                # Skip if out of range (AlphaVantage only supports 2 years)
+                if slice_year > 2 or (slice_year == 2 and slice_month > 12):
+                    status_text.warning(f"Skipping {month_names[month-1]} {year} - beyond 2 year AlphaVantage limit")
+                    continue
+                    
+                slice_param = f"year{slice_year}month{slice_month}"
+                
+                # Check rate limit and wait if necessary
+                rate_status = get_rate_limit_status()
+                if rate_status["calls_remaining"] == 0:
+                    wait_time = math.ceil(rate_status["reset_in"])
+                    waiting_bar = st.progress(0)
+                    
+                    # Update session state to indicate waiting for rate limit
+                    st.session_state.fetch_state['waiting_for_rate_limit'] = True
+                    st.session_state.fetch_state['waiting_until'] = time.time() + wait_time
+                    
+                    status_text.warning(f"Rate limit reached. Waiting {wait_time} seconds for reset...")
+                    
+                    for i in range(wait_time):
+                        time.sleep(1)
+                        waiting_bar.progress((i + 1) / wait_time)
+                    
+                    waiting_bar.empty()
+                    
+                    # Reset waiting status
+                    st.session_state.fetch_state['waiting_for_rate_limit'] = False
+                    st.session_state.fetch_state['waiting_until'] = None
+                
+                # Fetch data for this month
+                try:
+                    # Make API call
+                    track_api_call("intraday_extended")
+                    url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={ticker}&interval={interval}&slice={slice_param}&apikey={api_key}'
+                    response = requests.get(url)
+                    
+                    if response.status_code != 200:
+                        status_text.error(f"Error fetching data: HTTP {response.status_code}")
+                        continue
+                    
+                    csv_data = response.text
+                    
+                    # Check for API limit messages
+                    if "Thank you for using Alpha Vantage" in csv_data and "Our standard API" in csv_data:
+                        status_text.warning(f"API Limit reached: {csv_data}")
+                        # Wait longer for API daily limit reset (if that's the issue)
+                        
+                        # Update session state to indicate waiting for rate limit
+                        st.session_state.fetch_state['waiting_for_rate_limit'] = True
+                        st.session_state.fetch_state['waiting_until'] = time.time() + 60
+                        
+                        status_text.warning("API daily limit may have been reached. Waiting 60 seconds...")
+                        time.sleep(60)
+                        
+                        # Reset waiting status
+                        st.session_state.fetch_state['waiting_for_rate_limit'] = False
+                        st.session_state.fetch_state['waiting_until'] = None
+                        
+                        continue
+                    
+                    # Parse the CSV data
+                    month_df = pd.read_csv(StringIO(csv_data))
+                    
+                    # Skip if no data or just headers
+                    if len(month_df) <= 1:
+                        status_text.info(f"No data available for {month_names[month-1]} {year}")
+                        continue
+                    
+                    # Rename columns to match our standard format
+                    month_df = month_df.rename(columns={
+                        'time': 'Date',
+                        'open': 'Open',
+                        'high': 'High',
+                        'low': 'Low',
+                        'close': 'Close',
+                        'volume': 'Volume'
+                    })
+                    
+                    # Convert time to datetime
+                    month_df['Date'] = pd.to_datetime(month_df['Date'])
+                    
+                    # Append to our data collection
+                    all_data.append(month_df)
+                    
+                    # Show data count
+                    if len(month_df) > 0:
+                        status_text.info(f"Added {len(month_df)} data points for {month_names[month-1]} {year}")
+                    
+                    # Add slight delay between calls to avoid overwhelming the API
+                    time.sleep(0.5)
+                    
+                except Exception as e:
+                    status_text.error(f"Error processing data for {month_names[month-1]} {year}: {str(e)}")
+                    continue
+    
+        # Combine all the monthly data
+        if len(all_data) > 0:
+            combined_df = pd.concat(all_data, ignore_index=True)
+            combined_df = combined_df.sort_values('Date').reset_index(drop=True)
+            
+            # Final status update
+            status_text.success(f"✅ Completed! Fetched data from {len(all_data)} months with {len(combined_df)} total data points")
+            
+            # Reset session state
+            st.session_state.fetch_state['is_fetching'] = False
+            
+            return combined_df
+        else:
+            status_text.error("No data was retrieved. Please check your selections and try again.")
+            
+            # Reset session state
+            st.session_state.fetch_state['is_fetching'] = False
+            
+            return None
+            
+    except Exception as e:
+        # Handle any unexpected exceptions
+        status_text.error(f"Unexpected error during data fetch: {str(e)}")
         
-        # Final status update
-        status_text.success(f"✅ Completed! Fetched data from {len(all_data)} months with {len(combined_df)} total data points")
+        # Reset session state in case of error
+        st.session_state.fetch_state['is_fetching'] = False
         
-        return combined_df
-    else:
-        status_text.error("No data was retrieved. Please check your selections and try again.")
         return None
 
 # Function to add a sidebar fetch status indicator
