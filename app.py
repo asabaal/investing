@@ -265,6 +265,33 @@ def get_csv_download_link(df, filename, text):
     href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">{text}</a>'
     return href
 
+# Calculate exponential backoff wait time with jitter
+def get_backoff_wait_time(retry_count, base_seconds=5, max_seconds=120):
+    """Calculate exponential backoff wait time with jitter
+    
+    Parameters:
+    -----------
+    retry_count : int
+        Number of retries so far
+    base_seconds : int, default 5
+        Base wait time in seconds
+    max_seconds : int, default 120
+        Maximum wait time in seconds
+        
+    Returns:
+    --------
+    int
+        Wait time in seconds with some random jitter
+    """
+    # Exponential backoff formula: base * 2^retry with jitter
+    wait_time = min(base_seconds * (2 ** retry_count), max_seconds)
+    
+    # Add jitter (±10%) to avoid thundering herd problem
+    jitter = random.uniform(-0.1, 0.1) * wait_time
+    wait_time = max(1, wait_time + jitter)  # Ensure wait time is at least 1 second
+    
+    return math.ceil(wait_time)  # Round up to nearest second
+
 # Function to fetch multi-month intraday data in batches
 def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_month, end_year, end_month):
     """
@@ -285,6 +312,7 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
     # Update session state with total months
     st.session_state.fetch_state['total_months'] = total_months
     st.session_state.fetch_state['current_month'] = 0
+    st.session_state.fetch_state['retry_count'] = 0  # Reset retry counter
     
     # Initialize list to store data from each month
     all_data = []
@@ -357,14 +385,19 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
                 # Check rate limit and wait if necessary
                 rate_status = get_rate_limit_status()
                 if rate_status["calls_remaining"] == 0:
-                    wait_time = math.ceil(rate_status["reset_in"])
+                    # Use exponential backoff for wait time calculation
+                    wait_time = get_backoff_wait_time(st.session_state.fetch_state['retry_count'])
+                    
+                    # Increment retry counter for exponential backoff
+                    st.session_state.fetch_state['retry_count'] += 1
+                    
                     waiting_bar = st.progress(0)
                     
                     # Update session state to indicate waiting for rate limit
                     st.session_state.fetch_state['waiting_for_rate_limit'] = True
                     st.session_state.fetch_state['waiting_until'] = time.time() + wait_time
                     
-                    status_text.warning(f"Rate limit reached. Waiting {wait_time} seconds for reset...")
+                    status_text.warning(f"Rate limit reached. Waiting {wait_time} seconds with exponential backoff (retry #{st.session_state.fetch_state['retry_count']})...")
                     
                     for i in range(wait_time):
                         time.sleep(1)
@@ -385,6 +418,8 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
                     
                     if response.status_code != 200:
                         status_text.error(f"Error fetching data: HTTP {response.status_code}")
+                        # Increment retry count on failure
+                        st.session_state.fetch_state['retry_count'] += 1
                         continue
                     
                     csv_data = response.text
@@ -392,14 +427,21 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
                     # Check for API limit messages
                     if "Thank you for using Alpha Vantage" in csv_data and "Our standard API" in csv_data:
                         status_text.warning(f"API Limit reached: {csv_data}")
-                        # Wait longer for API daily limit reset (if that's the issue)
+                        
+                        # Use exponential backoff for API daily limit
+                        wait_time = get_backoff_wait_time(st.session_state.fetch_state['retry_count'], 
+                                                          base_seconds=15, 
+                                                          max_seconds=300)
+                        
+                        # Increment retry counter for exponential backoff
+                        st.session_state.fetch_state['retry_count'] += 1
                         
                         # Update session state to indicate waiting for rate limit
                         st.session_state.fetch_state['waiting_for_rate_limit'] = True
-                        st.session_state.fetch_state['waiting_until'] = time.time() + 60
+                        st.session_state.fetch_state['waiting_until'] = time.time() + wait_time
                         
-                        status_text.warning("API daily limit may have been reached. Waiting 60 seconds...")
-                        time.sleep(60)
+                        status_text.warning(f"API daily limit may have been reached. Waiting {wait_time} seconds with exponential backoff (retry #{st.session_state.fetch_state['retry_count']})...")
+                        time.sleep(wait_time)
                         
                         # Reset waiting status
                         st.session_state.fetch_state['waiting_for_rate_limit'] = False
@@ -435,11 +477,16 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
                     if len(month_df) > 0:
                         status_text.info(f"Added {len(month_df)} data points for {month_names[month-1]} {year}")
                     
+                    # Reset retry counter on success
+                    st.session_state.fetch_state['retry_count'] = 0
+                    
                     # Add slight delay between calls to avoid overwhelming the API
                     time.sleep(0.5)
                     
                 except Exception as e:
                     status_text.error(f"Error processing data for {month_names[month-1]} {year}: {str(e)}")
+                    # Increment retry count on failure
+                    st.session_state.fetch_state['retry_count'] += 1
                     continue
     
         # Combine all the monthly data
@@ -452,6 +499,7 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
             
             # Reset session state
             st.session_state.fetch_state['is_fetching'] = False
+            st.session_state.fetch_state['retry_count'] = 0
             
             return combined_df
         else:
@@ -459,6 +507,7 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
             
             # Reset session state
             st.session_state.fetch_state['is_fetching'] = False
+            st.session_state.fetch_state['retry_count'] = 0
             
             return None
             
@@ -468,6 +517,7 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
         
         # Reset session state in case of error
         st.session_state.fetch_state['is_fetching'] = False
+        st.session_state.fetch_state['retry_count'] = 0
         
         return None
 
