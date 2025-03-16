@@ -8,10 +8,12 @@ from prophet.plot import plot_plotly, plot_components_plotly
 import os.path
 from datetime import datetime, timedelta
 import base64
-from io import BytesIO
+from io import BytesIO, StringIO
 import requests
 import json
 import time
+import math  # Added missing import for math.ceil
+import random  # For jitter in exponential backoff
 
 # Set page configuration
 st.set_page_config(
@@ -213,22 +215,140 @@ def get_csv_download_link(df, filename, text):
     href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">{text}</a>'
     return href
 
+# Function to handle API rate limits with exponential backoff
+def handle_rate_limit(status_text, attempt=1, max_attempts=5):
+    """
+    Handle API rate limits with exponential backoff
+    
+    Parameters:
+    -----------
+    status_text : streamlit.empty
+        Streamlit text element to display status messages
+    attempt : int, default 1
+        Current attempt number
+    max_attempts : int, default 5
+        Maximum number of retry attempts
+        
+    Returns:
+    --------
+    bool
+        True if should retry, False if max attempts reached
+    """
+    if attempt > max_attempts:
+        status_text.error(f"Maximum retry attempts ({max_attempts}) reached. Please try again later.")
+        return False
+    
+    # Calculate wait time with exponential backoff and jitter
+    base_wait = min(60 * (2 ** (attempt - 1)), 300)  # Cap at 5 minutes
+    jitter = random.uniform(0, 0.1 * base_wait)  # Add 0-10% jitter
+    wait_time = base_wait + jitter
+    
+    status_text.warning(f"Rate limit reached (attempt {attempt}/{max_attempts}). Waiting {wait_time:.1f} seconds...")
+    
+    # Create a progress bar
+    progress_bar = st.progress(0)
+    
+    # Wait with progress bar
+    for i in range(int(wait_time)):
+        progress = (i + 1) / wait_time
+        progress_bar.progress(progress)
+        time.sleep(1)
+        
+    progress_bar.empty()
+    return True
+
+# Function to save checkpoint data
+def save_checkpoint(data, ticker, interval, progress):
+    """
+    Save fetched data to session state as a checkpoint
+    
+    Parameters:
+    -----------
+    data : pandas.DataFrame
+        DataFrame containing the fetched data so far
+    ticker : str
+        Ticker symbol
+    interval : str
+        Time interval
+    progress : dict
+        Progress information including current year, month and count
+    """
+    if 'checkpoints' not in st.session_state:
+        st.session_state.checkpoints = {}
+    
+    checkpoint_key = f"{ticker}_{interval}"
+    st.session_state.checkpoints[checkpoint_key] = {
+        "data": data,
+        "progress": progress,
+        "last_updated": datetime.now()
+    }
+
+# Function to load checkpoint data
+def load_checkpoint(ticker, interval):
+    """
+    Load checkpoint data if available
+    
+    Parameters:
+    -----------
+    ticker : str
+        Ticker symbol
+    interval : str
+        Time interval
+        
+    Returns:
+    --------
+    tuple or None
+        (DataFrame, progress_dict) if checkpoint exists, None otherwise
+    """
+    if 'checkpoints' not in st.session_state:
+        return None
+    
+    checkpoint_key = f"{ticker}_{interval}"
+    if checkpoint_key in st.session_state.checkpoints:
+        checkpoint = st.session_state.checkpoints[checkpoint_key]
+        return checkpoint["data"], checkpoint["progress"]
+    
+    return None
+
 # Function to fetch multi-month intraday data in batches
-def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_month, end_year, end_month):
+def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_month, end_year, end_month, 
+                               use_checkpoint=True, resume=False):
     """
     Fetch multiple months of intraday data by making sequential API calls
     while respecting rate limits
+    
+    Parameters:
+    -----------
+    ticker : str
+        Stock ticker symbol
+    api_key : str
+        AlphaVantage API key
+    interval : str
+        Time interval for intraday data
+    start_year : int
+        Starting year
+    start_month : int
+        Starting month
+    end_year : int
+        Ending year
+    end_month : int
+        Ending month
+    use_checkpoint : bool, default True
+        Whether to save checkpoints during fetching
+    resume : bool, default False
+        Whether to resume from a previous checkpoint
+        
+    Returns:
+    --------
+    pandas.DataFrame or None
+        DataFrame with combined intraday data if successful, None if failed
     """
-    # Create a progress bar
-    st.info(f"Fetching historical intraday data from {start_month}/{start_year} to {end_month}/{end_year}")
-    progress_bar = st.progress(0)
+    # Create containers for status updates
+    info_container = st.empty()
     status_text = st.empty()
+    progress_container = st.container()
     
-    # Calculate total number of months to fetch
-    total_months = (end_year - start_year) * 12 + end_month - start_month + 1
-    
-    # Initialize list to store data from each month
-    all_data = []
+    info_container.info(f"Fetching historical intraday data from {start_month}/{start_year} to {end_month}/{end_year}")
     
     # Convert month names to numbers if needed
     month_names = ["January", "February", "March", "April", "May", "June", 
@@ -239,139 +359,263 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
     if isinstance(end_month, str) and end_month in month_names:
         end_month = month_names.index(end_month) + 1
     
-    # Current year and month for calculating slice parameters
-    current_year = datetime.now().year
-    current_month = datetime.now().month
+    # Calculate total number of months to fetch
+    total_months = (end_year - start_year) * 12 + end_month - start_month + 1
     
-    # Process each month
-    month_count = 0
+    # Try to load checkpoint data if resume is True
+    checkpoint_data = None
+    initial_month_count = 0
+    
+    if resume:
+        checkpoint_result = load_checkpoint(ticker, interval)
+        if checkpoint_result:
+            checkpoint_data, checkpoint_progress = checkpoint_result
+            initial_month_count = checkpoint_progress.get("month_count", 0)
+            
+            if initial_month_count > 0:
+                status_text.info(f"Resuming from checkpoint: {initial_month_count}/{total_months} months already fetched")
+                
+                # Calculate the starting point for resuming
+                months_elapsed = initial_month_count
+                current_year = start_year
+                current_month = start_month
+                
+                while months_elapsed > 0:
+                    if current_month == 12:
+                        current_year += 1
+                        current_month = 1
+                    else:
+                        current_month += 1
+                    months_elapsed -= 1
+                
+                # Update start point
+                start_year = current_year
+                start_month = current_month
+    
+    # Initialize with checkpoint data or empty list
+    all_data = [checkpoint_data] if checkpoint_data is not None else []
+    
+    # Create progress bar
+    with progress_container:
+        progress_bar = st.progress(initial_month_count / total_months if total_months > 0 else 0)
     
     # Get current date for calculating slice parameters
     current_date = datetime.now()
     current_year = current_date.year
     current_month = current_date.month
     
+    # Process each month
+    month_count = initial_month_count
+    
     # Loop through each year and month
-    for year in range(start_year, end_year + 1):
-        # Determine start/end months for this year
-        if year == start_year:
-            first_month = start_month
-        else:
-            first_month = 1
-            
-        if year == end_year:
-            last_month = end_month
-        else:
-            last_month = 12
-            
-        for month in range(first_month, last_month + 1):
-            month_count += 1
-            
-            # Update progress
-            progress_percentage = min(1.0, month_count / total_months)
-            progress_bar.progress(progress_percentage)
-            
-            status_text.info(f"Fetching data for {month_names[month-1]} {year} ({month_count}/{total_months})")
-            
-            # Calculate months ago from current date
-            months_ago = (current_year - year) * 12 + (current_month - month)
-            
-            # Calculate slice parameter
-            # AlphaVantage uses: year1month1 (most recent), year1month2 (month before), etc.
-            if months_ago <= 11:
-                slice_year = 1
-                slice_month = months_ago + 1  # +1 because current month is month1
+    try:
+        for year in range(start_year, end_year + 1):
+            # Determine start/end months for this year
+            if year == start_year:
+                first_month = start_month
             else:
-                slice_year = 2
-                slice_month = months_ago - 11
+                first_month = 1
                 
-            # Skip if out of range (AlphaVantage only supports 2 years)
-            if slice_year > 2 or (slice_year == 2 and slice_month > 12):
-                status_text.warning(f"Skipping {month_names[month-1]} {year} - beyond 2 year AlphaVantage limit")
-                continue
+            if year == end_year:
+                last_month = end_month
+            else:
+                last_month = 12
                 
-            slice_param = f"year{slice_year}month{slice_month}"
-            
-            # Check rate limit and wait if necessary
-            rate_status = get_rate_limit_status()
-            if rate_status["calls_remaining"] == 0:
-                wait_time = math.ceil(rate_status["reset_in"])
-                waiting_bar = st.progress(0)
+            for month in range(first_month, last_month + 1):
+                month_count += 1
                 
-                status_text.warning(f"Rate limit reached. Waiting {wait_time} seconds for reset...")
+                # Update progress
+                progress_percentage = min(1.0, month_count / total_months) if total_months > 0 else 1.0
+                progress_bar.progress(progress_percentage)
                 
-                for i in range(wait_time):
-                    time.sleep(1)
-                    waiting_bar.progress((i + 1) / wait_time)
+                status_text.info(f"Fetching data for {month_names[month-1]} {year} ({month_count}/{total_months})")
                 
-                waiting_bar.empty()
-            
-            # Fetch data for this month
-            try:
-                # Make API call
-                track_api_call("intraday_extended")
-                url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={ticker}&interval={interval}&slice={slice_param}&apikey={api_key}'
-                response = requests.get(url)
+                # Calculate months ago from current date
+                months_ago = (current_year - year) * 12 + (current_month - month)
                 
-                if response.status_code != 200:
-                    status_text.error(f"Error fetching data: HTTP {response.status_code}")
+                # Calculate slice parameter
+                # AlphaVantage uses: year1month1 (most recent), year1month2 (month before), etc.
+                if months_ago <= 11:
+                    slice_year = 1
+                    slice_month = months_ago + 1  # +1 because current month is month1
+                else:
+                    slice_year = 2
+                    slice_month = months_ago - 11
+                    
+                # Skip if out of range (AlphaVantage only supports 2 years)
+                if slice_year > 2 or (slice_year == 2 and slice_month > 12):
+                    status_text.warning(f"Skipping {month_names[month-1]} {year} - beyond 2 year AlphaVantage limit")
+                    continue
+                    
+                slice_param = f"year{slice_year}month{slice_month}"
+                
+                # Check rate limit and wait if necessary
+                rate_status = get_rate_limit_status()
+                retry_attempt = 1
+                
+                while rate_status["calls_remaining"] == 0:
+                    if not handle_rate_limit(status_text, retry_attempt):
+                        return None  # Max retries exceeded
+                    
+                    # Update rate status
+                    rate_status = get_rate_limit_status()
+                    retry_attempt += 1
+                
+                # Fetch data for this month with retries
+                max_api_attempts = 3
+                api_attempt = 1
+                month_data = None
+                
+                while api_attempt <= max_api_attempts and month_data is None:
+                    try:
+                        # Make API call
+                        track_api_call("intraday_extended")
+                        url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={ticker}&interval={interval}&slice={slice_param}&apikey={api_key}'
+                        
+                        # Add logging for debugging
+                        status_text.info(f"API Call ({api_attempt}/{max_api_attempts}): {ticker}, {interval}, {slice_param}")
+                        
+                        response = requests.get(url, timeout=30)  # Add timeout
+                        
+                        if response.status_code != 200:
+                            status_text.error(f"Error fetching data: HTTP {response.status_code}")
+                            api_attempt += 1
+                            time.sleep(5)  # Wait before retry
+                            continue
+                        
+                        csv_data = response.text
+                        
+                        # Check for API limit messages
+                        if "Thank you for using Alpha Vantage" in csv_data and "Our standard API" in csv_data:
+                            # This is likely a rate limit or API limit message
+                            status_text.warning(f"API Limit message received: {csv_data}")
+                            
+                            # Check if it's a daily limit message
+                            if "standard API call frequency is" in csv_data:
+                                status_text.warning("Daily API limit may have been reached. Waiting before retrying...")
+                                time.sleep(60)  # Wait longer for potential daily limit
+                            else:
+                                # Likely a per-minute limit
+                                if not handle_rate_limit(status_text, api_attempt, max_api_attempts):
+                                    # Save checkpoint before exiting
+                                    if use_checkpoint and len(all_data) > 0:
+                                        combined_df = pd.concat(all_data, ignore_index=True)
+                                        save_checkpoint(combined_df, ticker, interval, {"month_count": month_count - 1})
+                                        status_text.info(f"Checkpoint saved with {len(combined_df)} data points")
+                                    
+                                    return None
+                            
+                            api_attempt += 1
+                            continue
+                        
+                        # Parse the CSV data
+                        try:
+                            month_df = pd.read_csv(StringIO(csv_data))
+                            
+                            # Skip if no data or just headers
+                            if len(month_df) <= 1:
+                                status_text.info(f"No data available for {month_names[month-1]} {year}")
+                                month_data = pd.DataFrame()  # Empty but valid DataFrame
+                                continue
+                            
+                            # Rename columns to match our standard format
+                            month_df = month_df.rename(columns={
+                                'time': 'Date',
+                                'open': 'Open',
+                                'high': 'High',
+                                'low': 'Low',
+                                'close': 'Close',
+                                'volume': 'Volume'
+                            })
+                            
+                            # Convert time to datetime
+                            month_df['Date'] = pd.to_datetime(month_df['Date'])
+                            
+                            # Data validation
+                            if not all(col in month_df.columns for col in ['Date', 'Open', 'High', 'Low', 'Close']):
+                                status_text.warning(f"Invalid data format for {month_names[month-1]} {year}. Retrying...")
+                                api_attempt += 1
+                                time.sleep(5)
+                                continue
+                            
+                            month_data = month_df
+                            
+                        except Exception as e:
+                            status_text.error(f"Error parsing CSV data: {str(e)}")
+                            api_attempt += 1
+                            time.sleep(5)  # Wait before retry
+                            continue
+                        
+                    except Exception as e:
+                        status_text.error(f"Error during API request: {str(e)}")
+                        api_attempt += 1
+                        time.sleep(5)  # Wait before retry
+                        continue
+                
+                # Check if we got data after all retries
+                if month_data is None or api_attempt > max_api_attempts:
+                    status_text.error(f"Failed to fetch data for {month_names[month-1]} {year} after {max_api_attempts} attempts")
+                    
+                    # Save checkpoint before continuing
+                    if use_checkpoint and len(all_data) > 0:
+                        combined_df = pd.concat(all_data, ignore_index=True)
+                        save_checkpoint(combined_df, ticker, interval, {"month_count": month_count - 1})
+                        status_text.info(f"Checkpoint saved with {len(combined_df)} data points")
+                    
+                    # Continue to next month
                     continue
                 
-                csv_data = response.text
-                
-                # Check for API limit messages
-                if "Thank you for using Alpha Vantage" in csv_data and "Our standard API" in csv_data:
-                    status_text.warning(f"API Limit reached: {csv_data}")
-                    # Wait longer for API daily limit reset (if that's the issue)
-                    status_text.warning("API daily limit may have been reached. Waiting 60 seconds...")
-                    time.sleep(60)
-                    continue
-                
-                # Parse the CSV data
-                from io import StringIO
-                month_df = pd.read_csv(StringIO(csv_data))
-                
-                # Skip if no data or just headers
-                if len(month_df) <= 1:
-                    status_text.info(f"No data available for {month_names[month-1]} {year}")
-                    continue
-                
-                # Rename columns to match our standard format
-                month_df = month_df.rename(columns={
-                    'time': 'Date',
-                    'open': 'Open',
-                    'high': 'High',
-                    'low': 'Low',
-                    'close': 'Close',
-                    'volume': 'Volume'
-                })
-                
-                # Convert time to datetime
-                month_df['Date'] = pd.to_datetime(month_df['Date'])
-                
-                # Append to our data collection
-                all_data.append(month_df)
-                
-                # Show data count
-                if len(month_df) > 0:
-                    status_text.info(f"Added {len(month_df)} data points for {month_names[month-1]} {year}")
+                # Append to our data collection if we have data
+                if len(month_data) > 0:
+                    all_data.append(month_data)
+                    status_text.info(f"Added {len(month_data)} data points for {month_names[month-1]} {year}")
+                    
+                    # Save checkpoint every 3 months
+                    if use_checkpoint and month_count % 3 == 0:
+                        combined_checkpoint = pd.concat(all_data, ignore_index=True)
+                        save_checkpoint(combined_checkpoint, ticker, interval, {"month_count": month_count})
+                        status_text.info(f"Checkpoint saved with {len(combined_checkpoint)} data points")
                 
                 # Add slight delay between calls to avoid overwhelming the API
-                time.sleep(0.5)
-                
-            except Exception as e:
-                status_text.error(f"Error processing data for {month_names[month-1]} {year}: {str(e)}")
-                continue
+                time.sleep(1)
+    
+    except Exception as e:
+        status_text.error(f"Unexpected error: {str(e)}")
+        
+        # Save checkpoint before exiting
+        if use_checkpoint and len(all_data) > 0:
+            try:
+                combined_df = pd.concat(all_data, ignore_index=True)
+                save_checkpoint(combined_df, ticker, interval, {"month_count": month_count})
+                status_text.info(f"Emergency checkpoint saved with {len(combined_df)} data points")
+            except Exception as save_err:
+                status_text.error(f"Error saving checkpoint: {str(save_err)}")
+        
+        return None
     
     # Combine all the monthly data
     if len(all_data) > 0:
-        combined_df = pd.concat(all_data, ignore_index=True)
-        combined_df = combined_df.sort_values('Date').reset_index(drop=True)
-        
-        # Final status update
-        status_text.success(f"✅ Completed! Fetched data from {len(all_data)} months with {len(combined_df)} total data points")
-        
-        return combined_df
+        try:
+            combined_df = pd.concat(all_data, ignore_index=True)
+            combined_df = combined_df.sort_values('Date').reset_index(drop=True)
+            
+            # Remove duplicates that might occur at month boundaries
+            combined_df = combined_df.drop_duplicates(subset='Date', keep='first')
+            
+            # Cleanup checkpoint if successful
+            if use_checkpoint:
+                checkpoint_key = f"{ticker}_{interval}"
+                if 'checkpoints' in st.session_state and checkpoint_key in st.session_state.checkpoints:
+                    # Keep checkpoint but mark as complete
+                    st.session_state.checkpoints[checkpoint_key]["complete"] = True
+            
+            # Final status update
+            status_text.success(f"✅ Completed! Fetched data from {len(all_data)} months with {len(combined_df)} total data points")
+            
+            return combined_df
+        except Exception as e:
+            status_text.error(f"Error combining data: {str(e)}")
+            return None
     else:
         status_text.error("No data was retrieved. Please check your selections and try again.")
         return None
@@ -838,7 +1082,7 @@ with st.sidebar:
                 # Set a default value for multi_month_params
                 multi_month_params = None
                 
-            else:  # Monthly slice
+            elif intraday_range == "Monthly slice":
                 st.info("""
                 AlphaVantage provides historical intraday data in monthly slices.
                 Select a specific year and month to analyze.
@@ -889,22 +1133,187 @@ with st.sidebar:
                 
                 st.info(f"Will fetch data for {selected_month_name} {selected_year}")
             
-            # Add time pickers for more granular control
-            st.subheader("Time Range (Optional)")
-            use_time_filter = st.checkbox("Filter by specific times", value=False)
-            
-            if use_time_filter:
+            else:  # Multi-month historical data
+                st.info("""
+                This option allows you to fetch multiple months of historical intraday data.
+                **Note:** This can involve many API calls and may take time to complete.
+                """)
+                
+                # Add selection for start and end dates for multi-month fetching
                 col1, col2 = st.columns(2)
+                
+                current_year = datetime.now().year
+                current_month = datetime.now().month
+                
+                # Create year options (current year and 2 years back)
+                year_options = list(range(current_year - 2, current_year + 1))
+                
                 with col1:
-                    start_time = st.time_input("Start Time", datetime.strptime("09:30", "%H:%M").time())
+                    st.subheader("Start Period")
+                    start_year = st.selectbox("Start Year", options=year_options, index=0, key="start_year")
+                    
+                    # Show all months for start year
+                    month_names = ["January", "February", "March", "April", "May", "June", 
+                                  "July", "August", "September", "October", "November", "December"]
+                    
+                    # Limit end year's months if it's the current year
+                    if start_year == current_year:
+                        start_month_options = month_names[:current_month]
+                    else:
+                        start_month_options = month_names
+                    
+                    start_month_name = st.selectbox("Start Month", options=start_month_options, index=0, key="start_month")
+                    start_month = month_names.index(start_month_name) + 1
+                
                 with col2:
-                    end_time = st.time_input("End Time", datetime.strptime("16:00", "%H:%M").time())
-            else:
-                start_time = None
-                end_time = None
-            
-            time_filter_msg = f" between {start_time.strftime('%H:%M')} and {end_time.strftime('%H:%M')}" if use_time_filter else ""
-            st.info(f"Will fetch {interval} intraday data from {start_date} to {end_date}{time_filter_msg}")
+                    st.subheader("End Period")
+                    # End year should be >= start year
+                    end_year_options = [y for y in year_options if y >= start_year]
+                    end_year = st.selectbox("End Year", options=end_year_options, index=len(end_year_options)-1, key="end_year")
+                    
+                    # Limit end months based on selection
+                    if end_year == current_year:
+                        end_month_options = month_names[:current_month]
+                    else:
+                        end_month_options = month_names
+                    
+                    # If same year as start, limit months to >= start month
+                    if end_year == start_year:
+                        end_month_options = end_month_options[start_month-1:]
+                    
+                    end_month_name = st.selectbox("End Month", options=end_month_options, index=len(end_month_options)-1, key="end_month")
+                    end_month = month_names.index(end_month_name) + 1
+                
+                # Calculate how many months this will fetch
+                months_total = (end_year - start_year) * 12 + (end_month - start_month) + 1
+                
+                if months_total > 24:
+                    st.warning(f"""
+                    You've selected {months_total} months of data, but AlphaVantage only 
+                    provides up to 24 months of historical intraday data. Only the most 
+                    recent 24 months will be available.
+                    """)
+                
+                st.info(f"This will attempt to fetch {min(months_total, 24)} months of {interval} intraday data")
+                
+                # Check for existing checkpoint
+                checkpoint_exists = False
+                checkpoint_key = f"{ticker}_{interval}"
+                
+                if 'checkpoints' in st.session_state and checkpoint_key in st.session_state.checkpoints:
+                    checkpoint_data = st.session_state.checkpoints[checkpoint_key]
+                    last_updated = checkpoint_data.get("last_updated", datetime.now())
+                    
+                    progress = checkpoint_data.get("progress", {})
+                    saved_month_count = progress.get("month_count", 0)
+                    
+                    if saved_month_count > 0:
+                        st.success(f"""
+                        Found checkpoint from {last_updated.strftime('%Y-%m-%d %H:%M:%S')} 
+                        with {saved_month_count} months of data already fetched
+                        """)
+                        checkpoint_exists = True
+                
+                # Option to resume from checkpoint
+                resume_from_checkpoint = False
+                if checkpoint_exists:
+                    resume_from_checkpoint = st.checkbox("Resume from previous checkpoint", value=True)
+                
+                # Set date range for post filtering (optional)
+                st.subheader("Additional Filtering (Optional)")
+                apply_filter = st.checkbox("Apply date/time filters to fetched data", value=False)
+                
+                filter_start_date = None
+                filter_end_date = None
+                filter_start_time = None
+                filter_end_time = None
+                
+                if apply_filter:
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        filter_start_date = st.date_input(
+                            "Filter Start Date", 
+                            value=datetime(start_year, start_month, 1).date(),
+                            help="Filter data after fetching to this start date"
+                        )
+                    
+                    with col2:
+                        # Default to end of selected month/year or today, whichever is earlier
+                        if end_year == current_year and end_month == current_month:
+                            default_end = datetime.now().date()
+                        else:
+                            if end_month == 12:
+                                next_month = datetime(end_year + 1, 1, 1).date()
+                            else:
+                                next_month = datetime(end_year, end_month + 1, 1).date()
+                            default_end = next_month - timedelta(days=1)
+                        
+                        filter_end_date = st.date_input(
+                            "Filter End Date",
+                            value=default_end,
+                            help="Filter data after fetching to this end date"
+                        )
+                    
+                    filter_by_time = st.checkbox("Also filter by time of day", value=False)
+                    
+                    if filter_by_time:
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            filter_start_time = st.time_input(
+                                "Filter Start Time", 
+                                datetime.strptime("09:30", "%H:%M").time()
+                            )
+                        with col2:
+                            filter_end_time = st.time_input(
+                                "Filter End Time", 
+                                datetime.strptime("16:00", "%H:%M").time()
+                            )
+                
+                # Store parameters for multi-month fetching
+                multi_month_params = {
+                    "start_year": start_year,
+                    "start_month": start_month,
+                    "end_year": end_year,
+                    "end_month": end_month,
+                    "post_filter": apply_filter,
+                    "filter_start_date": filter_start_date,
+                    "filter_end_date": filter_end_date,
+                    "start_time": filter_start_time,
+                    "end_time": filter_end_time,
+                    "resume": resume_from_checkpoint
+                }
+                
+                output_size = "full"  # Not used for multi-month
+                
+                # For multi-month we don't use these directly, but set them so they're defined
+                start_date = datetime(start_year, start_month, 1).date()
+                
+                # Calculate last day of end month
+                if end_month == 12:
+                    next_month = datetime(end_year + 1, 1, 1).date()
+                else:
+                    next_month = datetime(end_year, end_month + 1, 1).date()
+                
+                end_date = next_month - timedelta(days=1)
+                
+            # Add time pickers for more granular control
+            if intraday_range != "Multi-month historical data":
+                st.subheader("Time Range (Optional)")
+                use_time_filter = st.checkbox("Filter by specific times", value=False)
+                
+                if use_time_filter:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        start_time = st.time_input("Start Time", datetime.strptime("09:30", "%H:%M").time())
+                    with col2:
+                        end_time = st.time_input("End Time", datetime.strptime("16:00", "%H:%M").time())
+                else:
+                    start_time = None
+                    end_time = None
+                
+                time_filter_msg = f" between {start_time.strftime('%H:%M')} and {end_time.strftime('%H:%M')}" if use_time_filter else ""
+                st.info(f"Will fetch {interval} intraday data from {start_date} to {end_date}{time_filter_msg}")
         else:
             interval = "5min"  # Default, won't be used for daily data
             data_amount = st.radio("Amount of Data", ["Full History (20+ years)", "Recent (100 days)"], index=1)
@@ -916,6 +1325,7 @@ with st.sidebar:
             start_time = None
             end_time = None
             use_time_filter = False
+            multi_month_params = None
         
         # Fixed column names for AlphaVantage data
         date_col = "Date"
@@ -981,7 +1391,9 @@ elif data_source == "AlphaVantage API" and load_data:
                     multi_month_params['start_year'],
                     multi_month_params['start_month'],
                     multi_month_params['end_year'],
-                    multi_month_params['end_month']
+                    multi_month_params['end_month'],
+                    use_checkpoint=True,
+                    resume=multi_month_params['resume']
                 )
                 
                 # Apply post-filtering if requested
@@ -1024,6 +1436,19 @@ elif data_source == "AlphaVantage API" and load_data:
                     
                     # Set slice parameter for monthly slice option
                     if intraday_range == "Monthly slice":
+                        # Calculate months ago for slice parameter
+                        current_date = datetime.now()
+                        months_ago = (current_date.year - selected_year) * 12 + (current_date.month - selected_month)
+                        
+                        # Calculate appropriate slice
+                        if months_ago <= 11:
+                            slice_year = 1
+                            slice_month = months_ago + 1  # +1 because current month is month1
+                        else:
+                            slice_year = 2
+                            slice_month = months_ago - 11
+                        
+                        slice_param = f"year{slice_year}month{slice_month}"
                         date_range_str += f" (using slice: {slice_param})"
                 else:
                     fetch_start_date = None
@@ -1443,6 +1868,11 @@ with st.expander("Help & Troubleshooting"):
     - **Invalid Ticker**: Check that you're using the correct ticker symbol
     - **No Data Found**: For intraday data, try adjusting the date and time range
     
+    #### Multi-Month Data Fetching
+    - **Long Intraday Pulls**: When fetching 24 months of intraday data, be patient as the process can take time
+    - **API Limits**: The system now implements checkpointing - if the process is interrupted, you can resume later
+    - **Missing Data**: If you notice gaps, try using a different interval (e.g., 15min instead of 5min)
+    
     #### Forecasting
     - **Error in Model Training**: Try using fewer features or a shorter forecast period
     - **Wide Confidence Intervals**: This indicates high uncertainty - consider using more historical data
@@ -1462,4 +1892,7 @@ with st.expander("Help & Troubleshooting"):
 # Add cache cleanup to prevent memory issues on repeated use
 if st.button("Clear Cache"):
     st.cache_data.clear()
+    # Clear checkpoints only if explicitly requested
+    if 'checkpoints' in st.session_state:
+        del st.session_state['checkpoints']
     st.experimental_rerun()
