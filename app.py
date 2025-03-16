@@ -405,6 +405,433 @@ def load_checkpoint(ticker, interval):
     
     return None
 
+# Function to fetch multi-month intraday data in batches
+def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_month, end_year, end_month, 
+                               use_checkpoint=True, resume=False):
+    """
+    Fetch multiple months of intraday data by making sequential API calls
+    while respecting rate limits
+    
+    Parameters:
+    -----------
+    ticker : str
+        Stock ticker symbol
+    api_key : str
+        AlphaVantage API key
+    interval : str
+        Time interval for intraday data
+    start_year : int
+        Starting year
+    start_month : int
+        Starting month
+    end_year : int
+        Ending year
+    end_month : int
+        Ending month
+    use_checkpoint : bool, default True
+        Whether to save checkpoints during fetching
+    resume : bool, default False
+        Whether to resume from a previous checkpoint
+        
+    Returns:
+    --------
+    pandas.DataFrame or None
+        DataFrame with combined intraday data if successful, None if failed
+    """
+    # Mark that we're starting a fetch operation
+    st.session_state.fetch_state['is_fetching'] = True
+    
+    # Create containers for status updates - use containers to keep UI elements in place
+    status_container = st.container()
+    info_container = status_container.empty()
+    status_text = status_container.empty()
+    progress_container = st.container()
+    wait_container = st.container()  # Separate container for wait animations
+    data_preview_container = st.container()  # To show data previews
+    
+    with status_container:
+        st.markdown(f"""
+        <div class='active-fetching'>
+            <h4>📊 Data Fetch Operation</h4>
+            <p>Preparing to fetch historical intraday data from {start_month}/{start_year} to {end_month}/{end_year}</p>
+            <p class="animate-ellipsis">Initializing</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Convert month names to numbers if needed
+    month_names = ["January", "February", "March", "April", "May", "June", 
+                   "July", "August", "September", "October", "November", "December"]
+                   
+    if isinstance(start_month, str) and start_month in month_names:
+        start_month = month_names.index(start_month) + 1
+    if isinstance(end_month, str) and end_month in month_names:
+        end_month = month_names.index(end_month) + 1
+    
+    # Calculate total number of months to fetch
+    total_months = (end_year - start_year) * 12 + end_month - start_month + 1
+    
+    # Update session state
+    st.session_state.fetch_state['total_months'] = total_months
+    
+    # Try to load checkpoint data if resume is True
+    checkpoint_data = None
+    initial_month_count = 0
+    
+    if resume:
+        checkpoint_result = load_checkpoint(ticker, interval)
+        if checkpoint_result:
+            checkpoint_data, checkpoint_progress = checkpoint_result
+            initial_month_count = checkpoint_progress.get("month_count", 0)
+            
+            if initial_month_count > 0:
+                status_text.info(f"Resuming from checkpoint: {initial_month_count}/{total_months} months already fetched")
+                
+                # Calculate the starting point for resuming
+                months_elapsed = initial_month_count
+                current_year = start_year
+                current_month = start_month
+                
+                while months_elapsed > 0:
+                    if current_month == 12:
+                        current_year += 1
+                        current_month = 1
+                    else:
+                        current_month += 1
+                    months_elapsed -= 1
+                
+                # Update start point
+                start_year = current_year
+                start_month = current_month
+    
+    # Initialize with checkpoint data or empty list
+    all_data = [checkpoint_data] if checkpoint_data is not None else []
+    
+    # Create progress bar
+    with progress_container:
+        progress_bar = st.progress(initial_month_count / total_months if total_months > 0 else 0)
+    
+    # Get current date for calculating slice parameters
+    current_date = datetime.now()
+    current_year = current_date.year
+    current_month = current_date.month
+    
+    # Process each month
+    month_count = initial_month_count
+    
+    # Loop through each year and month
+    try:
+        for year in range(start_year, end_year + 1):
+            # Determine start/end months for this year
+            if year == start_year:
+                first_month = start_month
+            else:
+                first_month = 1
+                
+            if year == end_year:
+                last_month = end_month
+            else:
+                last_month = 12
+                
+            for month in range(first_month, last_month + 1):
+                month_count += 1
+                st.session_state.fetch_state['current_month'] = month_count
+                
+                # Update progress
+                progress_percentage = min(1.0, month_count / total_months) if total_months > 0 else 1.0
+                progress_bar.progress(progress_percentage)
+                
+                # Update status with active fetching indicator
+                status_container.markdown(f"""
+                <div class='active-fetching'>
+                    <h4>📊 Fetching Data: Month {month_count} of {total_months}</h4>
+                    <p>Currently processing: <strong>{month_names[month-1]} {year}</strong></p>
+                    <p>Progress: {month_count}/{total_months} months ({(progress_percentage * 100):.1f}%)</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Calculate months ago from current date
+                months_ago = (current_year - year) * 12 + (current_month - month)
+                
+                # Calculate slice parameter
+                # AlphaVantage uses: year1month1 (most recent), year1month2 (month before), etc.
+                if months_ago <= 11:
+                    slice_year = 1
+                    slice_month = months_ago + 1  # +1 because current month is month1
+                else:
+                    slice_year = 2
+                    slice_month = months_ago - 11
+                    
+                # Skip if out of range (AlphaVantage only supports 2 years)
+                if slice_year > 2 or (slice_year == 2 and slice_month > 12):
+                    status_text.warning(f"Skipping {month_names[month-1]} {year} - beyond 2 year AlphaVantage limit")
+                    continue
+                    
+                slice_param = f"year{slice_year}month{slice_month}"
+                
+                # Check rate limit and wait if necessary
+                rate_status = get_rate_limit_status()
+                retry_attempt = 1
+                
+                while rate_status["calls_remaining"] == 0:
+                    if not handle_rate_limit(status_container, status_text, wait_container, retry_attempt):
+                        # Save checkpoint before exiting if rate limit handling fails
+                        if use_checkpoint and len(all_data) > 0:
+                            combined_df = pd.concat(all_data, ignore_index=True)
+                            save_checkpoint(combined_df, ticker, interval, {"month_count": month_count - 1})
+                            status_text.info(f"Checkpoint saved with {len(combined_df)} data points")
+                        
+                        # Reset fetching state
+                        st.session_state.fetch_state['is_fetching'] = False
+                        return None
+                    
+                    # Update rate status
+                    rate_status = get_rate_limit_status()
+                    retry_attempt += 1
+                
+                # Fetch data for this month with retries
+                max_api_attempts = 3
+                api_attempt = 1
+                month_data = None
+                
+                while api_attempt <= max_api_attempts and month_data is None:
+                    try:
+                        # Make API call
+                        track_api_call("intraday_extended")
+                        url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={ticker}&interval={interval}&slice={slice_param}&apikey={api_key}'
+                        
+                        # Add logging for debugging
+                        status_text.info(f"API Call ({api_attempt}/{max_api_attempts}): {ticker}, {interval}, {slice_param}")
+                        
+                        # Update last status update time
+                        st.session_state.fetch_state['last_status_update'] = time.time()
+                        
+                        response = requests.get(url, timeout=30)  # Add timeout
+                        
+                        if response.status_code != 200:
+                            status_text.error(f"Error fetching data: HTTP {response.status_code}")
+                            api_attempt += 1
+                            time.sleep(5)  # Wait before retry
+                            continue
+                        
+                        csv_data = response.text
+                        
+                        # Check for API limit messages
+                        if "Thank you for using Alpha Vantage" in csv_data and "Our standard API" in csv_data:
+                            # This is likely a rate limit or API limit message
+                            status_container.markdown(f"""
+                            <div class='api-waiting'>
+                                <h4>⚠️ API Limit Message Received</h4>
+                                <p>{csv_data}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Check if it's a daily limit message
+                            if "standard API call frequency is" in csv_data:
+                                status_container.markdown(f"""
+                                <div class='api-waiting'>
+                                    <h4>⚠️ Daily API Limit Reached</h4>
+                                    <p>This appears to be a daily API limit message. The application will wait 60 seconds before retrying.</p>
+                                    <p>If this continues, you may need to wait until tomorrow or use a different API key.</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Wait with animated countdown
+                                wait_time = 60
+                                for i in range(wait_time, 0, -1):
+                                    status_container.markdown(f"""
+                                    <div class='api-waiting'>
+                                        <h4>⚠️ Daily API Limit Reached</h4>
+                                        <p>Waiting to retry: {i} seconds remaining</p>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    time.sleep(1)
+                            else:
+                                # Likely a per-minute limit
+                                if not handle_rate_limit(status_container, status_text, wait_container, api_attempt, max_api_attempts):
+                                    # Save checkpoint before exiting
+                                    if use_checkpoint and len(all_data) > 0:
+                                        combined_df = pd.concat(all_data, ignore_index=True)
+                                        save_checkpoint(combined_df, ticker, interval, {"month_count": month_count - 1})
+                                        status_text.info(f"Checkpoint saved with {len(combined_df)} data points")
+                                    
+                                    # Reset fetching state
+                                    st.session_state.fetch_state['is_fetching'] = False
+                                    return None
+                            
+                            api_attempt += 1
+                            continue
+                        
+                        # Parse the CSV data
+                        try:
+                            month_df = pd.read_csv(StringIO(csv_data))
+                            
+                            # Skip if no data or just headers
+                            if len(month_df) <= 1:
+                                status_text.info(f"No data available for {month_names[month-1]} {year}")
+                                month_data = pd.DataFrame()  # Empty but valid DataFrame
+                                continue
+                            
+                            # Rename columns to match our standard format
+                            month_df = month_df.rename(columns={
+                                'time': 'Date',
+                                'open': 'Open',
+                                'high': 'High',
+                                'low': 'Low',
+                                'close': 'Close',
+                                'volume': 'Volume'
+                            })
+                            
+                            # Convert time to datetime
+                            month_df['Date'] = pd.to_datetime(month_df['Date'])
+                            
+                            # Data validation
+                            if not all(col in month_df.columns for col in ['Date', 'Open', 'High', 'Low', 'Close']):
+                                status_text.warning(f"Invalid data format for {month_names[month-1]} {year}. Retrying...")
+                                api_attempt += 1
+                                time.sleep(5)
+                                continue
+                            
+                            month_data = month_df
+                            
+                        except Exception as e:
+                            status_text.error(f"Error parsing CSV data: {str(e)}")
+                            api_attempt += 1
+                            time.sleep(5)  # Wait before retry
+                            continue
+                        
+                    except Exception as e:
+                        status_text.error(f"Error during API request: {str(e)}")
+                        api_attempt += 1
+                        time.sleep(5)  # Wait before retry
+                        continue
+                
+                # Check if we got data after all retries
+                if month_data is None or api_attempt > max_api_attempts:
+                    status_text.error(f"Failed to fetch data for {month_names[month-1]} {year} after {max_api_attempts} attempts")
+                    
+                    # Save checkpoint before continuing
+                    if use_checkpoint and len(all_data) > 0:
+                        combined_df = pd.concat(all_data, ignore_index=True)
+                        save_checkpoint(combined_df, ticker, interval, {"month_count": month_count - 1})
+                        status_text.info(f"Checkpoint saved with {len(combined_df)} data points")
+                    
+                    # Continue to next month
+                    continue
+                
+                # Append to our data collection if we have data
+                if len(month_data) > 0:
+                    all_data.append(month_data)
+                    
+                    # Show data count and preview
+                    status_container.markdown(f"""
+                    <div class='active-fetching'>
+                        <h4>✅ Data Received: {month_names[month-1]} {year}</h4>
+                        <p>Added {len(month_data)} data points</p>
+                        <p>Total data points so far: {sum(len(df) for df in all_data if df is not None)}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Show a small preview of the latest data
+                    with data_preview_container:
+                        with st.expander(f"Preview data for {month_names[month-1]} {year}", expanded=False):
+                            st.dataframe(month_data.head())
+                    
+                    # Save checkpoint every 3 months
+                    if use_checkpoint and month_count % 3 == 0:
+                        combined_checkpoint = pd.concat(all_data, ignore_index=True)
+                        save_checkpoint(combined_checkpoint, ticker, interval, {"month_count": month_count})
+                        status_text.info(f"Checkpoint saved with {len(combined_checkpoint)} data points")
+                
+                # Add slight delay between calls to avoid overwhelming the API
+                # Only delay if we're not at the end
+                if not (year == end_year and month == last_month):
+                    delay_seconds = 1  # Base delay
+                    
+                    status_container.markdown(f"""
+                    <div class='active-fetching'>
+                        <h4>🕒 Preparing for next month</h4>
+                        <p>Waiting {delay_seconds} seconds before making the next API call...</p>
+                        <p>This helps prevent overwhelming the API and improves reliability.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    time.sleep(delay_seconds)
+    
+    except Exception as e:
+        status_text.error(f"Unexpected error: {str(e)}")
+        
+        # Save checkpoint before exiting
+        if use_checkpoint and len(all_data) > 0:
+            try:
+                combined_df = pd.concat(all_data, ignore_index=True)
+                save_checkpoint(combined_df, ticker, interval, {"month_count": month_count})
+                status_text.info(f"Emergency checkpoint saved with {len(combined_df)} data points")
+            except Exception as save_err:
+                status_text.error(f"Error saving checkpoint: {str(save_err)}")
+        
+        # Reset fetching state
+        st.session_state.fetch_state['is_fetching'] = False
+        return None
+    
+    # Combine all the monthly data
+    if len(all_data) > 0:
+        try:
+            # Show processing status
+            status_container.markdown(f"""
+            <div class='active-fetching'>
+                <h4>🔄 Processing Data</h4>
+                <p>Combining {len(all_data)} months of data...</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Combine all the data frames
+            valid_data = [df for df in all_data if df is not None and not df.empty]
+            
+            if not valid_data:
+                status_text.error("No valid data collected during the operation.")
+                st.session_state.fetch_state['is_fetching'] = False
+                return None
+                
+            combined_df = pd.concat(valid_data, ignore_index=True)
+            combined_df = combined_df.sort_values('Date').reset_index(drop=True)
+            
+            # Remove duplicates that might occur at month boundaries
+            original_count = len(combined_df)
+            combined_df = combined_df.drop_duplicates(subset='Date', keep='first')
+            deduped_count = len(combined_df)
+            
+            if original_count > deduped_count:
+                status_text.info(f"Removed {original_count - deduped_count} duplicate data points")
+            
+            # Cleanup checkpoint if successful
+            if use_checkpoint:
+                checkpoint_key = f"{ticker}_{interval}"
+                if 'checkpoints' in st.session_state and checkpoint_key in st.session_state.checkpoints:
+                    # Keep checkpoint but mark as complete
+                    st.session_state.checkpoints[checkpoint_key]["complete"] = True
+            
+            # Final status update
+            status_container.markdown(f"""
+            <div class='active-fetching' style='background-color: #d4edda; color: #155724; border-left-color: #c3e6cb;'>
+                <h4>✅ Data Fetch Complete!</h4>
+                <p>Successfully fetched data from {len(valid_data)} months with {len(combined_df)} total data points</p>
+                <p>Date range: {combined_df['Date'].min().strftime('%Y-%m-%d %H:%M')} to {combined_df['Date'].max().strftime('%Y-%m-%d %H:%M')}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Reset fetching state
+            st.session_state.fetch_state['is_fetching'] = False
+            
+            return combined_df
+        except Exception as e:
+            status_text.error(f"Error combining data: {str(e)}")
+            st.session_state.fetch_state['is_fetching'] = False
+            return None
+    else:
+        status_text.error("No data was retrieved. Please check your selections and try again.")
+        st.session_state.fetch_state['is_fetching'] = False
+        return None
+
 # Function to add a sidebar fetch status indicator
 def render_fetch_status_sidebar():
     if 'fetch_state' in st.session_state and st.session_state.fetch_state['is_fetching']:
