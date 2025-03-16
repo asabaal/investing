@@ -8,10 +8,12 @@ from prophet.plot import plot_plotly, plot_components_plotly
 import os.path
 from datetime import datetime, timedelta
 import base64
-from io import BytesIO
+from io import BytesIO, StringIO
 import requests
 import json
 import time
+import math  # Added missing import for math.ceil
+import random  # For jitter in exponential backoff
 
 # Set page configuration
 st.set_page_config(
@@ -63,10 +65,83 @@ st.markdown("""
         font-size: 14px;
         color: #7f8c8d;
     }
+    /* New styles for waiting animations */
+    .api-waiting {
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+        border-left: 5px solid #ffeeba;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 0.8; }
+        50% { opacity: 1; }
+        100% { opacity: 0.8; }
+    }
+    .rate-limit-counter {
+        font-family: monospace;
+        font-size: 1.2em;
+        font-weight: bold;
+    }
+    .active-fetching {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+        border-left: 5px solid #bee5eb;
+    }
+    .animate-ellipsis::after {
+        content: '';
+        animation: ellipsis 1.5s infinite;
+    }
+    @keyframes ellipsis {
+        0% { content: '.'; }
+        33% { content: '..'; }
+        66% { content: '...'; }
+        100% { content: ''; }
+    }
+    .data-preview-box {
+        background-color: white;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 15px;
+        margin: 10px 0;
+    }
+    .preview-header {
+        color: #2c3e50;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    .stat-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    .stat-box {
+        background-color: #f1f8ff;
+        border-radius: 4px;
+        padding: 8px 12px;
+        flex-grow: 1;
+        min-width: 100px;
+        text-align: center;
+    }
+    .stat-value {
+        font-weight: bold;
+        font-size: 16px;
+    }
+    .stat-label {
+        font-size: 12px;
+        color: #666;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Function to prepare stock data for Prophet
+# Function to prepare stock data for Prophet (original function, unchanged)
 def prepare_stock_data_for_prophet(data_source, date_col='Date', open_col='Open', 
                                   high_col='High', low_col='Low', close_col='Close',
                                   volume_col=None, window_sizes=[5, 10, 20]):
@@ -173,6 +248,20 @@ def prepare_stock_data_for_prophet(data_source, date_col='Date', open_col='Open'
 # Store API call tracking data in session state
 if 'api_calls' not in st.session_state:
     st.session_state.api_calls = []
+
+# Initialize session state for tracking the API fetch state
+if 'fetch_state' not in st.session_state:
+    st.session_state.fetch_state = {
+        'is_fetching': False,
+        'current_month': 0,
+        'total_months': 0,
+        'waiting_for_rate_limit': False,
+        'waiting_until': None,
+        'retry_count': 0,
+        'last_status_update': None,
+        'preview_data': None,  # To store accumulating data for preview
+        'last_preview_update': None  # Timestamp of last preview update
+    }
     
 # Function to track API calls for rate limit management
 def track_api_call(endpoint="intraday"):
@@ -213,19 +302,167 @@ def get_csv_download_link(df, filename, text):
     href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">{text}</a>'
     return href
 
+# Calculate exponential backoff wait time with jitter
+def get_backoff_wait_time(retry_count, base_seconds=5, max_seconds=120):
+    """Calculate exponential backoff wait time with jitter
+    
+    Parameters:
+    -----------
+    retry_count : int
+        Number of retries so far
+    base_seconds : int, default 5
+        Base wait time in seconds
+    max_seconds : int, default 120
+        Maximum wait time in seconds
+        
+    Returns:
+    --------
+    int
+        Wait time in seconds with some random jitter
+    """
+    # Exponential backoff formula: base * 2^retry with jitter
+    wait_time = min(base_seconds * (2 ** retry_count), max_seconds)
+    
+    # Add jitter (±10%) to avoid thundering herd problem
+    jitter = random.uniform(-0.1, 0.1) * wait_time
+    wait_time = max(1, wait_time + jitter)  # Ensure wait time is at least 1 second
+    
+    return math.ceil(wait_time)  # Round up to nearest second
+
+# Function to create a mini chart of the data
+def create_mini_preview_chart(data, title="Data Preview", height=200):
+    """Create a small Plotly chart from the data for preview"""
+    if data is None or len(data) == 0:
+        return None
+    
+    fig = go.Figure()
+    
+    # Add closing price line
+    fig.add_trace(go.Scatter(
+        x=data['Date'],
+        y=data['Close'],
+        mode='lines',
+        name='Close Price',
+        line=dict(color='blue', width=1)
+    ))
+    
+    # Simplify the layout for a smaller preview
+    fig.update_layout(
+        title=title,
+        height=height,
+        margin=dict(l=0, r=0, t=40, b=0),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(title='Price')
+    )
+    
+    return fig
+
+# Function to display data statistics and preview
+def display_data_preview(data, ticker="", interval=""):
+    """Display statistics and preview of the data collected so far"""
+    if data is None or len(data) == 0:
+        return
+    
+    st.markdown("""
+    <div class="data-preview-box">
+        <div class="preview-header">🔍 Live Data Preview</div>
+    """, unsafe_allow_html=True)
+    
+    # Calculate some basic statistics
+    data_points = len(data)
+    
+    # Sort data to ensure chronological order
+    data = data.sort_values('Date')
+    
+    earliest_date = data['Date'].min()
+    latest_date = data['Date'].max()
+    date_range = (latest_date - earliest_date).days
+    
+    # Price statistics
+    current_price = data['Close'].iloc[-1]
+    price_change = data['Close'].iloc[-1] - data['Close'].iloc[0] if len(data) > 1 else 0
+    price_change_pct = (price_change / data['Close'].iloc[0] * 100) if len(data) > 1 else 0
+    
+    # Calculate trading days represented
+    trading_days = data['Date'].dt.date.nunique()
+    
+    # Display statistics in flex containers
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="stat-container">
+            <div class="stat-box">
+                <div class="stat-value">{data_points:,}</div>
+                <div class="stat-label">Data Points</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{trading_days}</div>
+                <div class="stat-label">Trading Days</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{date_range} days</div>
+                <div class="stat-label">Date Range</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        # Current price and change
+        color = "green" if price_change >= 0 else "red"
+        st.markdown(f"""
+        <div class="stat-container">
+            <div class="stat-box">
+                <div class="stat-value">${current_price:.2f}</div>
+                <div class="stat-label">Latest Price</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" style="color: {color}">{price_change:+.2f}</div>
+                <div class="stat-label">Price Change</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" style="color: {color}">{price_change_pct:+.2f}%</div>
+                <div class="stat-label">% Change</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Create mini chart
+    fig = create_mini_preview_chart(data, f"Price Chart: {ticker} ({interval})")
+    if fig:
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # Show data sample
+    with st.expander("View Data Sample"):
+        st.dataframe(data.tail(10))
+    
+    st.markdown("</div>", unsafe_allow_html=True)  # Close the preview box
+
 # Function to fetch multi-month intraday data in batches
 def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_month, end_year, end_month):
     """
     Fetch multiple months of intraday data by making sequential API calls
     while respecting rate limits
     """
+    # Update the session state to indicate fetching has started
+    st.session_state.fetch_state['is_fetching'] = True
+    
     # Create a progress bar
     st.info(f"Fetching historical intraday data from {start_month}/{start_year} to {end_month}/{end_year}")
     progress_bar = st.progress(0)
     status_text = st.empty()
     
+    # Initialize containers for data preview
+    preview_container = st.empty()
+    
     # Calculate total number of months to fetch
     total_months = (end_year - start_year) * 12 + end_month - start_month + 1
+    
+    # Update session state with total months
+    st.session_state.fetch_state['total_months'] = total_months
+    st.session_state.fetch_state['current_month'] = 0
+    st.session_state.fetch_state['retry_count'] = 0  # Reset retry counter
+    st.session_state.fetch_state['preview_data'] = None  # Reset preview data
     
     # Initialize list to store data from each month
     all_data = []
@@ -239,142 +476,255 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
     if isinstance(end_month, str) and end_month in month_names:
         end_month = month_names.index(end_month) + 1
     
-    # Current year and month for calculating slice parameters
-    current_year = datetime.now().year
-    current_month = datetime.now().month
-    
-    # Process each month
-    month_count = 0
-    
     # Get current date for calculating slice parameters
     current_date = datetime.now()
     current_year = current_date.year
     current_month = current_date.month
     
-    # Loop through each year and month
-    for year in range(start_year, end_year + 1):
-        # Determine start/end months for this year
-        if year == start_year:
-            first_month = start_month
-        else:
-            first_month = 1
-            
-        if year == end_year:
-            last_month = end_month
-        else:
-            last_month = 12
-            
-        for month in range(first_month, last_month + 1):
-            month_count += 1
-            
-            # Update progress
-            progress_percentage = min(1.0, month_count / total_months)
-            progress_bar.progress(progress_percentage)
-            
-            status_text.info(f"Fetching data for {month_names[month-1]} {year} ({month_count}/{total_months})")
-            
-            # Calculate months ago from current date
-            months_ago = (current_year - year) * 12 + (current_month - month)
-            
-            # Calculate slice parameter
-            # AlphaVantage uses: year1month1 (most recent), year1month2 (month before), etc.
-            if months_ago <= 11:
-                slice_year = 1
-                slice_month = months_ago + 1  # +1 because current month is month1
-            else:
-                slice_year = 2
-                slice_month = months_ago - 11
-                
-            # Skip if out of range (AlphaVantage only supports 2 years)
-            if slice_year > 2 or (slice_year == 2 and slice_month > 12):
-                status_text.warning(f"Skipping {month_names[month-1]} {year} - beyond 2 year AlphaVantage limit")
-                continue
-                
-            slice_param = f"year{slice_year}month{slice_month}"
-            
-            # Check rate limit and wait if necessary
-            rate_status = get_rate_limit_status()
-            if rate_status["calls_remaining"] == 0:
-                wait_time = math.ceil(rate_status["reset_in"])
-                waiting_bar = st.progress(0)
-                
-                status_text.warning(f"Rate limit reached. Waiting {wait_time} seconds for reset...")
-                
-                for i in range(wait_time):
-                    time.sleep(1)
-                    waiting_bar.progress((i + 1) / wait_time)
-                
-                waiting_bar.empty()
-            
-            # Fetch data for this month
-            try:
-                # Make API call
-                track_api_call("intraday_extended")
-                url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={ticker}&interval={interval}&slice={slice_param}&apikey={api_key}'
-                response = requests.get(url)
-                
-                if response.status_code != 200:
-                    status_text.error(f"Error fetching data: HTTP {response.status_code}")
-                    continue
-                
-                csv_data = response.text
-                
-                # Check for API limit messages
-                if "Thank you for using Alpha Vantage" in csv_data and "Our standard API" in csv_data:
-                    status_text.warning(f"API Limit reached: {csv_data}")
-                    # Wait longer for API daily limit reset (if that's the issue)
-                    status_text.warning("API daily limit may have been reached. Waiting 60 seconds...")
-                    time.sleep(60)
-                    continue
-                
-                # Parse the CSV data
-                from io import StringIO
-                month_df = pd.read_csv(StringIO(csv_data))
-                
-                # Skip if no data or just headers
-                if len(month_df) <= 1:
-                    status_text.info(f"No data available for {month_names[month-1]} {year}")
-                    continue
-                
-                # Rename columns to match our standard format
-                month_df = month_df.rename(columns={
-                    'time': 'Date',
-                    'open': 'Open',
-                    'high': 'High',
-                    'low': 'Low',
-                    'close': 'Close',
-                    'volume': 'Volume'
-                })
-                
-                # Convert time to datetime
-                month_df['Date'] = pd.to_datetime(month_df['Date'])
-                
-                # Append to our data collection
-                all_data.append(month_df)
-                
-                # Show data count
-                if len(month_df) > 0:
-                    status_text.info(f"Added {len(month_df)} data points for {month_names[month-1]} {year}")
-                
-                # Add slight delay between calls to avoid overwhelming the API
-                time.sleep(0.5)
-                
-            except Exception as e:
-                status_text.error(f"Error processing data for {month_names[month-1]} {year}: {str(e)}")
-                continue
+    # Process each month
+    month_count = 0
     
-    # Combine all the monthly data
-    if len(all_data) > 0:
-        combined_df = pd.concat(all_data, ignore_index=True)
-        combined_df = combined_df.sort_values('Date').reset_index(drop=True)
+    try:
+        # Loop through each year and month
+        for year in range(start_year, end_year + 1):
+            # Determine start/end months for this year
+            if year == start_year:
+                first_month = start_month
+            else:
+                first_month = 1
+                
+            if year == end_year:
+                last_month = end_month
+            else:
+                last_month = 12
+                
+            for month in range(first_month, last_month + 1):
+                month_count += 1
+                
+                # Update session state with current month
+                st.session_state.fetch_state['current_month'] = month_count
+                
+                # Update progress
+                progress_percentage = min(1.0, month_count / total_months)
+                progress_bar.progress(progress_percentage)
+                
+                status_text.info(f"Fetching data for {month_names[month-1]} {year} ({month_count}/{total_months})")
+                
+                # Update status in session state
+                st.session_state.fetch_state['last_status_update'] = f"Fetching {month_names[month-1]} {year}"
+                
+                # Calculate months ago from current date
+                months_ago = (current_year - year) * 12 + (current_month - month)
+                
+                # Calculate slice parameter
+                # AlphaVantage uses: year1month1 (most recent), year1month2 (month before), etc.
+                if months_ago <= 11:
+                    slice_year = 1
+                    slice_month = months_ago + 1  # +1 because current month is month1
+                else:
+                    slice_year = 2
+                    slice_month = months_ago - 11
+                    
+                # Skip if out of range (AlphaVantage only supports 2 years)
+                if slice_year > 2 or (slice_year == 2 and slice_month > 12):
+                    status_text.warning(f"Skipping {month_names[month-1]} {year} - beyond 2 year AlphaVantage limit")
+                    continue
+                    
+                slice_param = f"year{slice_year}month{slice_month}"
+                
+                # Check rate limit and wait if necessary
+                rate_status = get_rate_limit_status()
+                if rate_status["calls_remaining"] == 0:
+                    # Use exponential backoff for wait time calculation
+                    wait_time = get_backoff_wait_time(st.session_state.fetch_state['retry_count'])
+                    
+                    # Increment retry counter for exponential backoff
+                    st.session_state.fetch_state['retry_count'] += 1
+                    
+                    waiting_bar = st.progress(0)
+                    
+                    # Update session state to indicate waiting for rate limit
+                    st.session_state.fetch_state['waiting_for_rate_limit'] = True
+                    st.session_state.fetch_state['waiting_until'] = time.time() + wait_time
+                    
+                    status_text.warning(f"Rate limit reached. Waiting {wait_time} seconds with exponential backoff (retry #{st.session_state.fetch_state['retry_count']})...")
+                    
+                    for i in range(wait_time):
+                        time.sleep(1)
+                        waiting_bar.progress((i + 1) / wait_time)
+                    
+                    waiting_bar.empty()
+                    
+                    # Reset waiting status
+                    st.session_state.fetch_state['waiting_for_rate_limit'] = False
+                    st.session_state.fetch_state['waiting_until'] = None
+                
+                # Fetch data for this month
+                try:
+                    # Make API call
+                    track_api_call("intraday_extended")
+                    url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={ticker}&interval={interval}&slice={slice_param}&apikey={api_key}'
+                    response = requests.get(url)
+                    
+                    if response.status_code != 200:
+                        status_text.error(f"Error fetching data: HTTP {response.status_code}")
+                        # Increment retry count on failure
+                        st.session_state.fetch_state['retry_count'] += 1
+                        continue
+                    
+                    csv_data = response.text
+                    
+                    # Check for API limit messages
+                    if "Thank you for using Alpha Vantage" in csv_data and "Our standard API" in csv_data:
+                        status_text.warning(f"API Limit reached: {csv_data}")
+                        
+                        # Use exponential backoff for API daily limit
+                        wait_time = get_backoff_wait_time(st.session_state.fetch_state['retry_count'], 
+                                                          base_seconds=15, 
+                                                          max_seconds=300)
+                        
+                        # Increment retry counter for exponential backoff
+                        st.session_state.fetch_state['retry_count'] += 1
+                        
+                        # Update session state to indicate waiting for rate limit
+                        st.session_state.fetch_state['waiting_for_rate_limit'] = True
+                        st.session_state.fetch_state['waiting_until'] = time.time() + wait_time
+                        
+                        status_text.warning(f"API daily limit may have been reached. Waiting {wait_time} seconds with exponential backoff (retry #{st.session_state.fetch_state['retry_count']})...")
+                        time.sleep(wait_time)
+                        
+                        # Reset waiting status
+                        st.session_state.fetch_state['waiting_for_rate_limit'] = False
+                        st.session_state.fetch_state['waiting_until'] = None
+                        
+                        continue
+                    
+                    # Parse the CSV data
+                    month_df = pd.read_csv(StringIO(csv_data))
+                    
+                    # Skip if no data or just headers
+                    if len(month_df) <= 1:
+                        status_text.info(f"No data available for {month_names[month-1]} {year}")
+                        continue
+                    
+                    # Rename columns to match our standard format
+                    month_df = month_df.rename(columns={
+                        'time': 'Date',
+                        'open': 'Open',
+                        'high': 'High',
+                        'low': 'Low',
+                        'close': 'Close',
+                        'volume': 'Volume'
+                    })
+                    
+                    # Convert time to datetime
+                    month_df['Date'] = pd.to_datetime(month_df['Date'])
+                    
+                    # Append to our data collection
+                    all_data.append(month_df)
+                    
+                    # Update the preview data
+                    if st.session_state.fetch_state['preview_data'] is None:
+                        st.session_state.fetch_state['preview_data'] = month_df.copy()
+                    else:
+                        st.session_state.fetch_state['preview_data'] = pd.concat(
+                            [st.session_state.fetch_state['preview_data'], month_df], 
+                            ignore_index=True
+                        )
+                    
+                    # Update data preview 
+                    preview_container.empty()
+                    with preview_container.container():
+                        display_data_preview(
+                            st.session_state.fetch_state['preview_data'],
+                            ticker=ticker,
+                            interval=interval
+                        )
+                    
+                    # Show data count
+                    if len(month_df) > 0:
+                        status_text.info(f"Added {len(month_df)} data points for {month_names[month-1]} {year}")
+                        
+                        # Update last preview update timestamp
+                        st.session_state.fetch_state['last_preview_update'] = time.time()
+                    
+                    # Reset retry counter on success
+                    st.session_state.fetch_state['retry_count'] = 0
+                    
+                    # Add slight delay between calls to avoid overwhelming the API
+                    time.sleep(0.5)
+                    
+                except Exception as e:
+                    status_text.error(f"Error processing data for {month_names[month-1]} {year}: {str(e)}")
+                    # Increment retry count on failure
+                    st.session_state.fetch_state['retry_count'] += 1
+                    continue
+    
+        # Combine all the monthly data
+        if len(all_data) > 0:
+            combined_df = pd.concat(all_data, ignore_index=True)
+            combined_df = combined_df.sort_values('Date').reset_index(drop=True)
+            
+            # Final status update
+            status_text.success(f"✅ Completed! Fetched data from {len(all_data)} months with {len(combined_df)} total data points")
+            
+            # Reset session state
+            st.session_state.fetch_state['is_fetching'] = False
+            st.session_state.fetch_state['retry_count'] = 0
+            
+            return combined_df
+        else:
+            status_text.error("No data was retrieved. Please check your selections and try again.")
+            
+            # Reset session state
+            st.session_state.fetch_state['is_fetching'] = False
+            st.session_state.fetch_state['retry_count'] = 0
+            
+            return None
+            
+    except Exception as e:
+        # Handle any unexpected exceptions
+        status_text.error(f"Unexpected error during data fetch: {str(e)}")
         
-        # Final status update
-        status_text.success(f"✅ Completed! Fetched data from {len(all_data)} months with {len(combined_df)} total data points")
+        # Reset session state in case of error
+        st.session_state.fetch_state['is_fetching'] = False
+        st.session_state.fetch_state['retry_count'] = 0
         
-        return combined_df
-    else:
-        status_text.error("No data was retrieved. Please check your selections and try again.")
         return None
+
+# Function to add a sidebar fetch status indicator
+def render_fetch_status_sidebar():
+    if 'fetch_state' in st.session_state and st.session_state.fetch_state['is_fetching']:
+        st.sidebar.markdown("""
+        <div style="background-color: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 5px; margin: 10px 0;">
+            <h4>📊 Active Data Fetch</h4>
+            <p>Currently fetching historical data...</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Show progress
+        current = st.session_state.fetch_state['current_month']
+        total = st.session_state.fetch_state['total_months']
+        if total > 0:
+            progress = current / total
+            st.sidebar.progress(progress)
+            st.sidebar.text(f"Month {current} of {total} ({progress*100:.1f}%)")
+        
+        # Show waiting status if applicable
+        if st.session_state.fetch_state['waiting_for_rate_limit']:
+            waiting_until = st.session_state.fetch_state['waiting_until']
+            if waiting_until is not None:
+                seconds_left = max(0, int(waiting_until - time.time()))
+                st.sidebar.warning(f"Waiting for API limit reset: {seconds_left}s")
+        
+        # Show data statistics in sidebar
+        if st.session_state.fetch_state['preview_data'] is not None:
+            data = st.session_state.fetch_state['preview_data']
+            if len(data) > 0:
+                st.sidebar.markdown("### Data Stats")
+                st.sidebar.markdown(f"**Points collected:** {len(data):,}")
+                st.sidebar.markdown(f"**Date range:** {data['Date'].min().date()} to {data['Date'].max().date()}")
+                st.sidebar.markdown(f"**Trading days:** {data['Date'].dt.date.nunique()}")
 
 # Function to fetch stock data from AlphaVantage
 def fetch_stock_data(ticker, api_key, data_type='daily', interval='5min', output_size='full', start_date=None, end_date=None, slice_option=None):
@@ -838,7 +1188,7 @@ with st.sidebar:
                 # Set a default value for multi_month_params
                 multi_month_params = None
                 
-            else:  # Monthly slice
+            elif intraday_range == "Monthly slice":
                 st.info("""
                 AlphaVantage provides historical intraday data in monthly slices.
                 Select a specific year and month to analyze.
@@ -888,23 +1238,169 @@ with st.sidebar:
                 output_size = "full"
                 
                 st.info(f"Will fetch data for {selected_month_name} {selected_year}")
-            
-            # Add time pickers for more granular control
-            st.subheader("Time Range (Optional)")
-            use_time_filter = st.checkbox("Filter by specific times", value=False)
-            
-            if use_time_filter:
+                
+                # Set slice option
+                slice_param = f"year{1 if selected_year == current_year else 2}month{abs(current_month - selected_month) + 1}"
+                
+            else:  # Multi-month historical data
+                st.info("""
+                This option allows fetching data spanning multiple months by making sequential API calls.
+                For long date ranges, this may take some time due to API rate limits.
+                """)
+                
+                # Date range selection for multi-month
                 col1, col2 = st.columns(2)
+                
+                # Current date for reference
+                current_year = datetime.now().year
+                current_month = datetime.now().month
+                
+                # Start date selection
                 with col1:
-                    start_time = st.time_input("Start Time", datetime.strptime("09:30", "%H:%M").time())
+                    st.subheader("Start Period")
+                    
+                    # Only allow up to 2 years back due to API limitations
+                    start_year_options = list(range(current_year - 2, current_year + 1))
+                    start_year = st.selectbox("Start Year", options=start_year_options, 
+                                             index=0, key="start_year")
+                    
+                    # Month options depend on year
+                    if start_year == current_year:
+                        start_month_options = list(range(1, current_month + 1))
+                        start_month_index = 0
+                    else:
+                        start_month_options = list(range(1, 13))
+                        start_month_index = 0
+                    
+                    start_month = st.selectbox("Start Month", 
+                                              options=start_month_options,
+                                              index=start_month_index,
+                                              format_func=lambda m: month_names[m-1],
+                                              key="start_month")
+                
+                # End date selection
                 with col2:
-                    end_time = st.time_input("End Time", datetime.strptime("16:00", "%H:%M").time())
-            else:
-                start_time = None
-                end_time = None
+                    st.subheader("End Period")
+                    
+                    # End year options depend on start year
+                    end_year_options = list(range(start_year, current_year + 1))
+                    end_year = st.selectbox("End Year", options=end_year_options, 
+                                           index=len(end_year_options)-1, key="end_year")
+                    
+                    # Month options depend on year
+                    if end_year == current_year:
+                        end_month_options = list(range(1, current_month + 1))
+                        end_month_index = len(end_month_options) - 1
+                    else:
+                        end_month_options = list(range(1, 13))
+                        end_month_index = len(end_month_options) - 1
+                    
+                    # If same year as start, limit months to >= start_month
+                    if end_year == start_year:
+                        end_month_options = [m for m in end_month_options if m >= start_month]
+                        end_month_index = min(len(end_month_options) - 1, 0)
+                    
+                    end_month = st.selectbox("End Month", 
+                                            options=end_month_options,
+                                            index=end_month_index,
+                                            format_func=lambda m: month_names[m-1],
+                                            key="end_month")
+                
+                # Calculate and display the number of months
+                total_months = (end_year - start_year) * 12 + (end_month - start_month) + 1
+                st.info(f"Selected range: {total_months} months ({month_names[start_month-1]} {start_year} to {month_names[end_month-1]} {end_year})")
+                
+                # Warning for large ranges
+                if total_months > 12:
+                    st.warning(f"""
+                    You've selected {total_months} months of data. This will require {total_months} API calls,
+                    which may take some time due to rate limits. Consider selecting a shorter range if possible.
+                    """)
+                    
+                # Additional filtering options
+                with st.expander("Post-Fetch Filtering Options"):
+                    st.info("These options let you filter the data after fetching to focus on specific dates/times.")
+                    
+                    use_date_filter = st.checkbox("Filter by specific dates", value=False)
+                    
+                    if use_date_filter:
+                        filter_col1, filter_col2 = st.columns(2)
+                        with filter_col1:
+                            filter_start_date = st.date_input("Filter Start Date", 
+                                                            value=datetime(start_year, start_month, 1).date())
+                        with filter_col2:
+                            filter_end_date = st.date_input("Filter End Date", 
+                                                          value=datetime(end_year, end_month, 28).date())
+                    else:
+                        filter_start_date = datetime(start_year, start_month, 1).date()
+                        
+                        # Calculate end date (last day of end month)
+                        if end_month == 12:
+                            next_month = datetime(end_year + 1, 1, 1).date()
+                        else:
+                            next_month = datetime(end_year, end_month + 1, 1).date()
+                        
+                        filter_end_date = next_month - timedelta(days=1)
+                    
+                    # Time filtering
+                    use_time_filter = st.checkbox("Filter by specific times", value=False)
+                    
+                    if use_time_filter:
+                        time_col1, time_col2 = st.columns(2)
+                        with time_col1:
+                            start_time = st.time_input("Start Time", 
+                                                      datetime.strptime("09:30", "%H:%M").time())
+                        with time_col2:
+                            end_time = st.time_input("End Time", 
+                                                    datetime.strptime("16:00", "%H:%M").time())
+                    else:
+                        start_time = None
+                        end_time = None
+                
+                # Store parameters for multi-month fetching
+                multi_month_params = {
+                    "start_year": start_year,
+                    "start_month": start_month,
+                    "end_year": end_year,
+                    "end_month": end_month,
+                    "post_filter": use_date_filter or use_time_filter,
+                    "filter_start_date": filter_start_date,
+                    "filter_end_date": filter_end_date,
+                    "start_time": start_time,
+                    "end_time": end_time
+                }
+                
+                # Special settings for multi-month
+                output_size = "full"
+                
+                # Set date range for display
+                start_date = datetime(start_year, start_month, 1).date()
+                
+                # Calculate last day of end month
+                if end_month == 12:
+                    next_month = datetime(end_year + 1, 1, 1).date()
+                else:
+                    next_month = datetime(end_year, end_month + 1, 1).date()
+                
+                end_date = next_month - timedelta(days=1)
             
-            time_filter_msg = f" between {start_time.strftime('%H:%M')} and {end_time.strftime('%H:%M')}" if use_time_filter else ""
-            st.info(f"Will fetch {interval} intraday data from {start_date} to {end_date}{time_filter_msg}")
+            # Add time pickers for more granular control (for non-multi-month options)
+            if intraday_range != "Multi-month historical data":
+                st.subheader("Time Range (Optional)")
+                use_time_filter = st.checkbox("Filter by specific times", value=False)
+                
+                if use_time_filter:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        start_time = st.time_input("Start Time", datetime.strptime("09:30", "%H:%M").time())
+                    with col2:
+                        end_time = st.time_input("End Time", datetime.strptime("16:00", "%H:%M").time())
+                else:
+                    start_time = None
+                    end_time = None
+                
+                time_filter_msg = f" between {start_time.strftime('%H:%M')} and {end_time.strftime('%H:%M')}" if use_time_filter else ""
+                st.info(f"Will fetch {interval} intraday data from {start_date} to {end_date}{time_filter_msg}")
         else:
             interval = "5min"  # Default, won't be used for daily data
             data_amount = st.radio("Amount of Data", ["Full History (20+ years)", "Recent (100 days)"], index=1)
@@ -937,6 +1433,9 @@ with st.sidebar:
     use_daily_range = st.checkbox("Daily price range", True)
     use_close_position = st.checkbox("Close position in range", True)
     use_rsi = st.checkbox("RSI indicators", False)
+
+# Render fetch status indicator in sidebar
+render_fetch_status_sidebar()
 
 # Main content area
 stock_data = None
