@@ -1,81 +1,51 @@
-# Market Analysis Engine
+# Improved Intraday Data Pull Implementation
 
-A comprehensive market analysis engine for technical analysis and options prediction. This package provides tools for pattern recognition, regime analysis, risk assessment, and market relationship analysis.
+This branch contains improvements to the app's intraday data pull functionality, especially for handling large amounts of data (like 24 months of intraday data).
 
-## Features
+## Key Changes
 
-- Technical Pattern Recognition
-  - Head and Shoulders
-  - Double Bottom
-  - Volume-Price Patterns
-  - Support/Resistance Analysis
+1. **Enhanced Rate Limit Handling**
+   - Added exponential backoff with jitter for rate limit waits
+   - Better detection of both per-minute and daily API limits
+   - Visual animations during waiting periods
 
-- Market Regime Analysis
-  - Hidden Markov Models
-  - Volatility Regimes
-  - Structural Breaks
+2. **Checkpoint System**
+   - Automatic saving of progress during long data pulls
+   - Resume capability after interruptions
+   - Checkpoint saving every 3 months
 
-- Risk Analysis
-  - Value at Risk (VaR)
-  - Expected Shortfall
-  - Stress Testing
-  - Volatility Analysis
+3. **Improved User Experience**
+   - Visual status updates in sidebar
+   - Detailed progress information
+   - Data preview during fetching
+   - Animated waiting indicators
 
-- Market Relationships
-  - Lead-Lag Analysis
-  - Cross-correlations
-  - Network Analysis
-  - Granger Causality
+4. **Robust Error Handling**
+   - Multiple retries for API failures
+   - Better status messages
+   - Graceful recovery from interruptions
 
-## Installation
+## Implementation Guide
 
-```bash
-pip install market_analyzer
-```
+The changes should be implemented in this order:
 
-For development installation:
+1. First import these changes to app.py:
+   - Add missing imports (math, random)
+   - Add animation CSS
+   - Add fetch state tracking
 
-```bash
-git clone https://github.com/yourusername/investing.git
-cd investing
-pip install -e ".[dev]"
-```
+2. Then integrate these functions:
+   - Enhanced rate limit handling
+   - Checkpoint saving/loading
+   - Status sidebar rendering
 
-## Quick Start
+3. Next, replace the fetch_multi_month_intraday function with the improved version
 
-```python
-from market_analyzer import MarketAnalyzer
+4. Finally, update the main UI integration points with the status elements
 
-# Initialize analyzer with your data
-analyzer = MarketAnalyzer(data={
-    'AAPL': apple_data_df,
-    '^GSPC': sp500_data_df
-})
+## How To Test
 
-# Detect patterns
-patterns = analyzer.analyze_patterns('AAPL')
-
-# Analyze regimes
-regimes = analyzer.analyze_regimes('AAPL')
-
-# Calculate risk metrics
-risk = analyzer.analyze_risk('AAPL')
-```
-
-## Documentation
-
-Full documentation is available at [readthedocs link].
-
-## Development
-
-To contribute to the project:
-
-1. Fork the repository
-2. Create a virtual environment
-3. Install development dependencies: `pip install -e ".[dev]"`
-4. Run tests: `pytest`
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+1. Choose "Multi-month historical data" in the intraday options
+2. Select a reasonably large time frame (6+ months)
+3. Observe how the app shows status during API rate limits
+4. Try interrupting and resuming the operation
