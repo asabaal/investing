@@ -103,6 +103,41 @@ st.markdown("""
         66% { content: '...'; }
         100% { content: ''; }
     }
+    .data-preview-box {
+        background-color: white;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 15px;
+        margin: 10px 0;
+    }
+    .preview-header {
+        color: #2c3e50;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    .stat-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    .stat-box {
+        background-color: #f1f8ff;
+        border-radius: 4px;
+        padding: 8px 12px;
+        flex-grow: 1;
+        min-width: 100px;
+        text-align: center;
+    }
+    .stat-value {
+        font-weight: bold;
+        font-size: 16px;
+    }
+    .stat-label {
+        font-size: 12px;
+        color: #666;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -223,7 +258,9 @@ if 'fetch_state' not in st.session_state:
         'waiting_for_rate_limit': False,
         'waiting_until': None,
         'retry_count': 0,
-        'last_status_update': None
+        'last_status_update': None,
+        'preview_data': None,  # To store accumulating data for preview
+        'last_preview_update': None  # Timestamp of last preview update
     }
     
 # Function to track API calls for rate limit management
@@ -292,6 +329,115 @@ def get_backoff_wait_time(retry_count, base_seconds=5, max_seconds=120):
     
     return math.ceil(wait_time)  # Round up to nearest second
 
+# Function to create a mini chart of the data
+def create_mini_preview_chart(data, title="Data Preview", height=200):
+    """Create a small Plotly chart from the data for preview"""
+    if data is None or len(data) == 0:
+        return None
+    
+    fig = go.Figure()
+    
+    # Add closing price line
+    fig.add_trace(go.Scatter(
+        x=data['Date'],
+        y=data['Close'],
+        mode='lines',
+        name='Close Price',
+        line=dict(color='blue', width=1)
+    ))
+    
+    # Simplify the layout for a smaller preview
+    fig.update_layout(
+        title=title,
+        height=height,
+        margin=dict(l=0, r=0, t=40, b=0),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(title='Price')
+    )
+    
+    return fig
+
+# Function to display data statistics and preview
+def display_data_preview(data, ticker="", interval=""):
+    """Display statistics and preview of the data collected so far"""
+    if data is None or len(data) == 0:
+        return
+    
+    st.markdown("""
+    <div class="data-preview-box">
+        <div class="preview-header">🔍 Live Data Preview</div>
+    """, unsafe_allow_html=True)
+    
+    # Calculate some basic statistics
+    data_points = len(data)
+    
+    # Sort data to ensure chronological order
+    data = data.sort_values('Date')
+    
+    earliest_date = data['Date'].min()
+    latest_date = data['Date'].max()
+    date_range = (latest_date - earliest_date).days
+    
+    # Price statistics
+    current_price = data['Close'].iloc[-1]
+    price_change = data['Close'].iloc[-1] - data['Close'].iloc[0] if len(data) > 1 else 0
+    price_change_pct = (price_change / data['Close'].iloc[0] * 100) if len(data) > 1 else 0
+    
+    # Calculate trading days represented
+    trading_days = data['Date'].dt.date.nunique()
+    
+    # Display statistics in flex containers
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="stat-container">
+            <div class="stat-box">
+                <div class="stat-value">{data_points:,}</div>
+                <div class="stat-label">Data Points</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{trading_days}</div>
+                <div class="stat-label">Trading Days</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{date_range} days</div>
+                <div class="stat-label">Date Range</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        # Current price and change
+        color = "green" if price_change >= 0 else "red"
+        st.markdown(f"""
+        <div class="stat-container">
+            <div class="stat-box">
+                <div class="stat-value">${current_price:.2f}</div>
+                <div class="stat-label">Latest Price</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" style="color: {color}">{price_change:+.2f}</div>
+                <div class="stat-label">Price Change</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" style="color: {color}">{price_change_pct:+.2f}%</div>
+                <div class="stat-label">% Change</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Create mini chart
+    fig = create_mini_preview_chart(data, f"Price Chart: {ticker} ({interval})")
+    if fig:
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # Show data sample
+    with st.expander("View Data Sample"):
+        st.dataframe(data.tail(10))
+    
+    st.markdown("</div>", unsafe_allow_html=True)  # Close the preview box
+
 # Function to fetch multi-month intraday data in batches
 def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_month, end_year, end_month):
     """
@@ -306,6 +452,9 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
     progress_bar = st.progress(0)
     status_text = st.empty()
     
+    # Initialize containers for data preview
+    preview_container = st.empty()
+    
     # Calculate total number of months to fetch
     total_months = (end_year - start_year) * 12 + end_month - start_month + 1
     
@@ -313,6 +462,7 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
     st.session_state.fetch_state['total_months'] = total_months
     st.session_state.fetch_state['current_month'] = 0
     st.session_state.fetch_state['retry_count'] = 0  # Reset retry counter
+    st.session_state.fetch_state['preview_data'] = None  # Reset preview data
     
     # Initialize list to store data from each month
     all_data = []
@@ -473,9 +623,30 @@ def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_mont
                     # Append to our data collection
                     all_data.append(month_df)
                     
+                    # Update the preview data
+                    if st.session_state.fetch_state['preview_data'] is None:
+                        st.session_state.fetch_state['preview_data'] = month_df.copy()
+                    else:
+                        st.session_state.fetch_state['preview_data'] = pd.concat(
+                            [st.session_state.fetch_state['preview_data'], month_df], 
+                            ignore_index=True
+                        )
+                    
+                    # Update data preview 
+                    preview_container.empty()
+                    with preview_container.container():
+                        display_data_preview(
+                            st.session_state.fetch_state['preview_data'],
+                            ticker=ticker,
+                            interval=interval
+                        )
+                    
                     # Show data count
                     if len(month_df) > 0:
                         status_text.info(f"Added {len(month_df)} data points for {month_names[month-1]} {year}")
+                        
+                        # Update last preview update timestamp
+                        st.session_state.fetch_state['last_preview_update'] = time.time()
                     
                     # Reset retry counter on success
                     st.session_state.fetch_state['retry_count'] = 0
@@ -545,6 +716,15 @@ def render_fetch_status_sidebar():
             if waiting_until is not None:
                 seconds_left = max(0, int(waiting_until - time.time()))
                 st.sidebar.warning(f"Waiting for API limit reset: {seconds_left}s")
+        
+        # Show data statistics in sidebar
+        if st.session_state.fetch_state['preview_data'] is not None:
+            data = st.session_state.fetch_state['preview_data']
+            if len(data) > 0:
+                st.sidebar.markdown("### Data Stats")
+                st.sidebar.markdown(f"**Points collected:** {len(data):,}")
+                st.sidebar.markdown(f"**Date range:** {data['Date'].min().date()} to {data['Date'].max().date()}")
+                st.sidebar.markdown(f"**Trading days:** {data['Date'].dt.date.nunique()}")
 
 # Function to fetch stock data from AlphaVantage
 def fetch_stock_data(ticker, api_key, data_type='daily', interval='5min', output_size='full', start_date=None, end_date=None, slice_option=None):
