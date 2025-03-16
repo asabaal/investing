@@ -170,6 +170,42 @@ def prepare_stock_data_for_prophet(data_source, date_col='Date', open_col='Open'
     
     return prophet_df
 
+# Store API call tracking data in session state
+if 'api_calls' not in st.session_state:
+    st.session_state.api_calls = []
+    
+# Function to track API calls for rate limit management
+def track_api_call(endpoint="intraday"):
+    """Record API call timing to manage rate limits"""
+    now = time.time()
+    st.session_state.api_calls.append({"time": now, "endpoint": endpoint})
+    
+    # Remove calls older than 1 minute (AlphaVantage typically has a 5 calls per minute limit)
+    st.session_state.api_calls = [call for call in st.session_state.api_calls 
+                                  if now - call["time"] < 60]
+    
+def get_rate_limit_status():
+    """Return estimated rate limit status"""
+    if len(st.session_state.api_calls) == 0:
+        return {"calls_made": 0, "calls_remaining": 5, "reset_in": 0}
+    
+    now = time.time()
+    # Count calls in the last minute
+    calls_in_last_minute = len(st.session_state.api_calls)
+    
+    # Estimate time until a slot frees up (when oldest call is more than 1 minute old)
+    if calls_in_last_minute >= 5:  # Assuming 5 calls per minute limit
+        oldest_call = min([call["time"] for call in st.session_state.api_calls])
+        reset_in = max(0, 60 - (now - oldest_call))
+    else:
+        reset_in = 0
+        
+    return {
+        "calls_made": calls_in_last_minute,
+        "calls_remaining": max(0, 5 - calls_in_last_minute),
+        "reset_in": reset_in
+    }
+
 # Function to get CSV download link
 def get_csv_download_link(df, filename, text):
     csv = df.to_csv(index=False)
@@ -177,8 +213,171 @@ def get_csv_download_link(df, filename, text):
     href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">{text}</a>'
     return href
 
+# Function to fetch multi-month intraday data in batches
+def fetch_multi_month_intraday(ticker, api_key, interval, start_year, start_month, end_year, end_month):
+    """
+    Fetch multiple months of intraday data by making sequential API calls
+    while respecting rate limits
+    """
+    # Create a progress bar
+    st.info(f"Fetching historical intraday data from {start_month}/{start_year} to {end_month}/{end_year}")
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    # Calculate total number of months to fetch
+    total_months = (end_year - start_year) * 12 + end_month - start_month + 1
+    
+    # Initialize list to store data from each month
+    all_data = []
+    
+    # Convert month names to numbers if needed
+    month_names = ["January", "February", "March", "April", "May", "June", 
+                   "July", "August", "September", "October", "November", "December"]
+                   
+    if isinstance(start_month, str) and start_month in month_names:
+        start_month = month_names.index(start_month) + 1
+    if isinstance(end_month, str) and end_month in month_names:
+        end_month = month_names.index(end_month) + 1
+    
+    # Current year and month for calculating slice parameters
+    current_year = datetime.now().year
+    current_month = datetime.now().month
+    
+    # Process each month
+    month_count = 0
+    
+    # Get current date for calculating slice parameters
+    current_date = datetime.now()
+    current_year = current_date.year
+    current_month = current_date.month
+    
+    # Loop through each year and month
+    for year in range(start_year, end_year + 1):
+        # Determine start/end months for this year
+        if year == start_year:
+            first_month = start_month
+        else:
+            first_month = 1
+            
+        if year == end_year:
+            last_month = end_month
+        else:
+            last_month = 12
+            
+        for month in range(first_month, last_month + 1):
+            month_count += 1
+            
+            # Update progress
+            progress_percentage = min(1.0, month_count / total_months)
+            progress_bar.progress(progress_percentage)
+            
+            status_text.info(f"Fetching data for {month_names[month-1]} {year} ({month_count}/{total_months})")
+            
+            # Calculate months ago from current date
+            months_ago = (current_year - year) * 12 + (current_month - month)
+            
+            # Calculate slice parameter
+            # AlphaVantage uses: year1month1 (most recent), year1month2 (month before), etc.
+            if months_ago <= 11:
+                slice_year = 1
+                slice_month = months_ago + 1  # +1 because current month is month1
+            else:
+                slice_year = 2
+                slice_month = months_ago - 11
+                
+            # Skip if out of range (AlphaVantage only supports 2 years)
+            if slice_year > 2 or (slice_year == 2 and slice_month > 12):
+                status_text.warning(f"Skipping {month_names[month-1]} {year} - beyond 2 year AlphaVantage limit")
+                continue
+                
+            slice_param = f"year{slice_year}month{slice_month}"
+            
+            # Check rate limit and wait if necessary
+            rate_status = get_rate_limit_status()
+            if rate_status["calls_remaining"] == 0:
+                wait_time = math.ceil(rate_status["reset_in"])
+                waiting_bar = st.progress(0)
+                
+                status_text.warning(f"Rate limit reached. Waiting {wait_time} seconds for reset...")
+                
+                for i in range(wait_time):
+                    time.sleep(1)
+                    waiting_bar.progress((i + 1) / wait_time)
+                
+                waiting_bar.empty()
+            
+            # Fetch data for this month
+            try:
+                # Make API call
+                track_api_call("intraday_extended")
+                url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={ticker}&interval={interval}&slice={slice_param}&apikey={api_key}'
+                response = requests.get(url)
+                
+                if response.status_code != 200:
+                    status_text.error(f"Error fetching data: HTTP {response.status_code}")
+                    continue
+                
+                csv_data = response.text
+                
+                # Check for API limit messages
+                if "Thank you for using Alpha Vantage" in csv_data and "Our standard API" in csv_data:
+                    status_text.warning(f"API Limit reached: {csv_data}")
+                    # Wait longer for API daily limit reset (if that's the issue)
+                    status_text.warning("API daily limit may have been reached. Waiting 60 seconds...")
+                    time.sleep(60)
+                    continue
+                
+                # Parse the CSV data
+                from io import StringIO
+                month_df = pd.read_csv(StringIO(csv_data))
+                
+                # Skip if no data or just headers
+                if len(month_df) <= 1:
+                    status_text.info(f"No data available for {month_names[month-1]} {year}")
+                    continue
+                
+                # Rename columns to match our standard format
+                month_df = month_df.rename(columns={
+                    'time': 'Date',
+                    'open': 'Open',
+                    'high': 'High',
+                    'low': 'Low',
+                    'close': 'Close',
+                    'volume': 'Volume'
+                })
+                
+                # Convert time to datetime
+                month_df['Date'] = pd.to_datetime(month_df['Date'])
+                
+                # Append to our data collection
+                all_data.append(month_df)
+                
+                # Show data count
+                if len(month_df) > 0:
+                    status_text.info(f"Added {len(month_df)} data points for {month_names[month-1]} {year}")
+                
+                # Add slight delay between calls to avoid overwhelming the API
+                time.sleep(0.5)
+                
+            except Exception as e:
+                status_text.error(f"Error processing data for {month_names[month-1]} {year}: {str(e)}")
+                continue
+    
+    # Combine all the monthly data
+    if len(all_data) > 0:
+        combined_df = pd.concat(all_data, ignore_index=True)
+        combined_df = combined_df.sort_values('Date').reset_index(drop=True)
+        
+        # Final status update
+        status_text.success(f"✅ Completed! Fetched data from {len(all_data)} months with {len(combined_df)} total data points")
+        
+        return combined_df
+    else:
+        status_text.error("No data was retrieved. Please check your selections and try again.")
+        return None
+
 # Function to fetch stock data from AlphaVantage
-def fetch_stock_data(ticker, api_key, data_type='daily', interval='5min', output_size='full', start_date=None, end_date=None):
+def fetch_stock_data(ticker, api_key, data_type='daily', interval='5min', output_size='full', start_date=None, end_date=None, slice_option=None):
     """
     Fetch stock data from AlphaVantage API
     
@@ -193,11 +392,15 @@ def fetch_stock_data(ticker, api_key, data_type='daily', interval='5min', output
     interval : str, default '5min'
         Interval for intraday data: '1min', '5min', '15min', '30min', '60min'
     output_size : str, default 'full'
-        'compact' returns the latest 100 data points, 'full' returns up to 20 years of data
+        'compact' returns the latest 100 data points
+        For daily data: 'full' returns up to 20 years of data
+        For intraday data: 'full' returns about 1-2 months of data
     start_date : datetime, default None
         Start date for filtering the data (used for post-processing)
     end_date : datetime, default None
         End date for filtering the data (used for post-processing)
+    slice_option : str, default None
+        For intraday extended history: year and month, e.g., 'year1month1'
         
     Returns:
     --------
@@ -213,8 +416,72 @@ def fetch_stock_data(ticker, api_key, data_type='daily', interval='5min', output
             url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&outputsize={output_size}&apikey={api_key}'
             time_series_key = 'Time Series (Daily)'
         else:  # intraday
-            url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={ticker}&interval={interval}&outputsize={output_size}&apikey={api_key}'
-            time_series_key = f'Time Series ({interval})'
+            # For standard intraday data (recent)
+            if slice_option is None:
+                url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={ticker}&interval={interval}&outputsize={output_size}&apikey={api_key}'
+                time_series_key = f'Time Series ({interval})'
+            else:
+                # For extended intraday data (historical monthly slices)
+                url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={ticker}&interval={interval}&slice={slice_option}&apikey={api_key}'
+                # The extended API returns CSV directly, not JSON
+                try:
+                    response = requests.get(url)
+                    
+                    # For extended intraday, we get CSV directly
+                    if response.status_code == 200:
+                        # Parse CSV data
+                        csv_data = response.text
+                        
+                        # Handle potential API error messages that come as text
+                        if "Thank you for using Alpha Vantage" in csv_data and "Our standard API" in csv_data:
+                            st.warning(f"API Limit: {csv_data}")
+                            return None
+                            
+                        if "Error Message" in csv_data:
+                            st.error(f"API Error: {csv_data}")
+                            return None
+                            
+                        # Import StringIO for parsing CSV from string
+                        from io import StringIO
+                        
+                        # Parse the CSV
+                        df = pd.read_csv(StringIO(csv_data))
+                        
+                        # Rename columns to match our standard format
+                        df = df.rename(columns={
+                            'time': 'Date',
+                            'open': 'Open',
+                            'high': 'High',
+                            'low': 'Low',
+                            'close': 'Close',
+                            'volume': 'Volume'
+                        })
+                        
+                        # Convert time to datetime
+                        df['Date'] = pd.to_datetime(df['Date'])
+                        
+                        # Sort and apply date filtering
+                        df = df.sort_values('Date').reset_index(drop=True)
+                        
+                        # Apply date filtering if start_date and/or end_date are provided
+                        if start_date is not None:
+                            df = df[df['Date'] >= pd.Timestamp(start_date)]
+                        
+                        if end_date is not None:
+                            df = df[df['Date'] <= pd.Timestamp(end_date)]
+                        
+                        # Calculate API call duration
+                        end_time = time.time()
+                        st.info(f"API call completed in {end_time - start_time:.2f} seconds")
+                        
+                        return df
+                    else:
+                        st.error(f"API request failed with status code: {response.status_code}")
+                        return None
+                        
+                except Exception as e:
+                    st.error(f"Error processing extended intraday data: {str(e)}")
+                    return None
         
         # Make the request
         response = requests.get(url)
@@ -484,25 +751,143 @@ with st.sidebar:
                 value="5min"
             )
             
-            # Add date range selection for intraday data
-            st.subheader("Intraday Date Range")
+            # Add intraday data range options
+            st.subheader("Intraday Data Range")
             
-            # Calculate default dates (last 7 trading days)
-            today = datetime.now().date()
-            default_start = today - timedelta(days=7)
+            # AlphaVantage intraday data explanation
+            st.info("""
+            **Note about AlphaVantage intraday data:**
+            - Free API typically provides recent data for standard intraday calls
+            - Historical data can be accessed via monthly slices (up to 2 years back)
+            - API is limited to 5 calls per minute and 500 calls per day
+            """)
             
-            # Add date pickers
-            start_date = st.date_input(
-                "Start Date", 
-                value=default_start,
-                help="Select the starting date for intraday data"
+            # Show current rate limit status
+            rate_status = get_rate_limit_status()
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("API Calls Available", f"{rate_status['calls_remaining']}/5 per minute")
+            with col2:
+                if rate_status['reset_in'] > 0:
+                    st.metric("Reset In", f"{int(rate_status['reset_in'])} seconds")
+                else:
+                    st.metric("Status", "Ready")
+            
+            # Data range selector
+            intraday_range = st.radio(
+                "Select data range",
+                options=[
+                    "Recent trading days",
+                    "Custom date range",
+                    "Monthly slice",
+                    "Multi-month historical data"
+                ],
+                index=0
             )
             
-            end_date = st.date_input(
-                "End Date",
-                value=today,
-                help="Select the ending date for intraday data"
-            )
+            if intraday_range == "Recent trading days":
+                # Calculate default dates
+                today = datetime.now().date()
+                
+                # Select number of days
+                days_back = st.slider("Number of trading days", 1, 30, 5, 
+                                     help="Select 1-30 recent trading days")
+                
+                start_date = today - timedelta(days=days_back + 2)  # Add weekend buffer
+                end_date = today
+                
+                st.info(f"Will fetch approximately {days_back} trading days of data")
+                
+                # Use compact for small ranges
+                output_size = "compact" if days_back <= 7 else "full"
+                
+                # Set a default value for multi_month_params
+                multi_month_params = None
+                
+            elif intraday_range == "Custom date range":
+                # Calculate default dates (last 7 trading days)
+                today = datetime.now().date()
+                default_start = today - timedelta(days=7)
+                
+                # Add date pickers
+                col1, col2 = st.columns(2)
+                with col1:
+                    start_date = st.date_input(
+                        "Start Date", 
+                        value=default_start,
+                        help="Select the starting date for intraday data"
+                    )
+                with col2:
+                    end_date = st.date_input(
+                        "End Date",
+                        value=today,
+                        help="Select the ending date for intraday data"
+                    )
+                
+                # Calculate date difference
+                date_diff = (end_date - start_date).days
+                
+                if date_diff > 30:
+                    st.warning(f"""
+                    Selected range is {date_diff} days. AlphaVantage may limit intraday data to about 1 month.
+                    Consider using 'Multi-month historical data' for longer historical periods.
+                    """)
+                
+                output_size = "compact" if date_diff <= 7 else "full"
+                
+                # Set a default value for multi_month_params
+                multi_month_params = None
+                
+            else:  # Monthly slice
+                st.info("""
+                AlphaVantage provides historical intraday data in monthly slices.
+                Select a specific year and month to analyze.
+                """)
+                
+                # Year and month selectors
+                current_year = datetime.now().year
+                current_month = datetime.now().month
+                
+                # Create year options (current year and 2 years back)
+                year_options = list(range(current_year - 2, current_year + 1))
+                selected_year = st.selectbox("Year", options=year_options, index=len(year_options)-1)
+                
+                # Create month options
+                month_names = ["January", "February", "March", "April", "May", "June", 
+                             "July", "August", "September", "October", "November", "December"]
+                
+                # Limit current year to current month
+                if selected_year == current_year:
+                    month_options = month_names[:current_month]
+                    month_index = min(current_month - 1, len(month_options) - 1)
+                else:
+                    month_options = month_names
+                    month_index = 0
+                
+                selected_month_name = st.selectbox("Month", options=month_options, index=month_index)
+                selected_month = month_names.index(selected_month_name) + 1
+                
+                # Set date range based on selected month
+                if selected_year == current_year and selected_month == current_month:
+                    # For current month, use days up to today
+                    start_date = datetime(selected_year, selected_month, 1).date()
+                    end_date = datetime.now().date()
+                else:
+                    # For other months, use full month
+                    start_date = datetime(selected_year, selected_month, 1).date()
+                    
+                    # Calculate last day of month
+                    if selected_month == 12:
+                        next_month = datetime(selected_year + 1, 1, 1).date()
+                    else:
+                        next_month = datetime(selected_year, selected_month + 1, 1).date()
+                    
+                    end_date = next_month - timedelta(days=1)
+                
+                # For monthly slice, always use full
+                output_size = "full"
+                
+                st.info(f"Will fetch data for {selected_month_name} {selected_year}")
             
             # Add time pickers for more granular control
             st.subheader("Time Range (Optional)")
@@ -518,10 +903,8 @@ with st.sidebar:
                 start_time = None
                 end_time = None
             
-            st.info(f"Will fetch {interval} intraday data from {start_date} to {end_date}.")
-            
-            # Use compact output size for intraday since we'll filter by date anyway
-            output_size = "full"  # Using full to get more data that we can filter
+            time_filter_msg = f" between {start_time.strftime('%H:%M')} and {end_time.strftime('%H:%M')}" if use_time_filter else ""
+            st.info(f"Will fetch {interval} intraday data from {start_date} to {end_date}{time_filter_msg}")
         else:
             interval = "5min"  # Default, won't be used for daily data
             data_amount = st.radio("Amount of Data", ["Full History (20+ years)", "Recent (100 days)"], index=1)
@@ -581,39 +964,89 @@ elif data_source == "AlphaVantage API" and load_data:
             # Create a container for API status updates
             api_status = st.empty()
             
-            # Prepare date parameters
-            if av_data_type == "intraday":
-                # Convert date inputs to datetime objects
-                fetch_start_date = datetime.combine(start_date, datetime.min.time())
-                fetch_end_date = datetime.combine(end_date, datetime.max.time())
+            # Prepare slice parameter
+            slice_param = None
+            
+            # For multi-month historical data
+            if av_data_type == "intraday" and intraday_range == "Multi-month historical data":
+                # Create a container for the multi-month fetching status
+                multi_month_status = st.empty()
+                multi_month_status.info("Ready to fetch multi-month historical data")
                 
-                # Apply time filters if specified
-                if use_time_filter:
-                    # Create proper datetime objects combining the date and time
-                    fetch_start_date = datetime.combine(start_date, start_time)
-                    fetch_end_date = datetime.combine(end_date, end_time)
+                # Fetch data using the special multi-month function
+                stock_data = fetch_multi_month_intraday(
+                    ticker, 
+                    api_key, 
+                    interval,
+                    multi_month_params['start_year'],
+                    multi_month_params['start_month'],
+                    multi_month_params['end_year'],
+                    multi_month_params['end_month']
+                )
                 
-                date_range_str = f" from {fetch_start_date.strftime('%Y-%m-%d')} to {fetch_end_date.strftime('%Y-%m-%d')}"
-                if use_time_filter:
-                    date_range_str += f" between {start_time.strftime('%H:%M')} and {end_time.strftime('%H:%M')}"
+                # Apply post-filtering if requested
+                if stock_data is not None and multi_month_params['post_filter']:
+                    original_count = len(stock_data)
+                    
+                    # Filter by date
+                    stock_data = stock_data[
+                        (stock_data['Date'].dt.date >= multi_month_params['filter_start_date']) & 
+                        (stock_data['Date'].dt.date <= multi_month_params['filter_end_date'])
+                    ]
+                    
+                    # Filter by time if requested
+                    if multi_month_params['start_time'] is not None and multi_month_params['end_time'] is not None:
+                        stock_data['time'] = stock_data['Date'].dt.time
+                        stock_data = stock_data[
+                            (stock_data['time'] >= multi_month_params['start_time']) & 
+                            (stock_data['time'] <= multi_month_params['end_time'])
+                        ]
+                        stock_data.drop('time', axis=1, inplace=True)
+                    
+                    filtered_count = len(stock_data)
+                    st.info(f"Applied post-filtering: {original_count} → {filtered_count} data points")
             else:
-                fetch_start_date = None
-                fetch_end_date = None
-                date_range_str = ""
-            
-            # Display the API call details
-            api_status.info(f"Fetching {av_data_type} data for {ticker} {'with ' + interval + ' interval' if av_data_type == 'intraday' else ''}{date_range_str}")
-            
-            # Fetch the data
-            stock_data = fetch_stock_data(
-                ticker, 
-                api_key, 
-                av_data_type, 
-                interval, 
-                output_size,
-                fetch_start_date if av_data_type == "intraday" else None,
-                fetch_end_date if av_data_type == "intraday" else None
-            )
+                # For regular data fetching with other options
+                if av_data_type == "intraday":
+                    # Convert date inputs to datetime objects
+                    fetch_start_date = datetime.combine(start_date, datetime.min.time())
+                    fetch_end_date = datetime.combine(end_date, datetime.max.time())
+                    
+                    # Apply time filters if specified
+                    if use_time_filter:
+                        # Create proper datetime objects combining the date and time
+                        fetch_start_date = datetime.combine(start_date, start_time)
+                        fetch_end_date = datetime.combine(end_date, end_time)
+                    
+                    date_range_str = f" from {fetch_start_date.strftime('%Y-%m-%d')} to {fetch_end_date.strftime('%Y-%m-%d')}"
+                    if use_time_filter:
+                        date_range_str += f" between {start_time.strftime('%H:%M')} and {end_time.strftime('%H:%M')}"
+                    
+                    # Set slice parameter for monthly slice option
+                    if intraday_range == "Monthly slice":
+                        date_range_str += f" (using slice: {slice_param})"
+                else:
+                    fetch_start_date = None
+                    fetch_end_date = None
+                    date_range_str = ""
+                
+                # Display the API call details
+                api_status.info(f"Fetching {av_data_type} data for {ticker} {'with ' + interval + ' interval' if av_data_type == 'intraday' else ''}{date_range_str}")
+                
+                # Track this API call
+                track_api_call(av_data_type)
+                
+                # Fetch the data
+                stock_data = fetch_stock_data(
+                    ticker, 
+                    api_key, 
+                    av_data_type, 
+                    interval, 
+                    output_size,
+                    fetch_start_date if av_data_type == "intraday" else None,
+                    fetch_end_date if av_data_type == "intraday" else None,
+                    slice_param
+                )
             
             # Apply additional time filtering if needed
             if stock_data is not None and av_data_type == "intraday" and use_time_filter:
