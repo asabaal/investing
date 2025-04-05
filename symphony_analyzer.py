@@ -22,7 +22,6 @@ from scipy import stats
 from composer_symphony import Symphony, SymphonyBacktester, SymbolList
 from prophet_forecasting import StockForecast, ProphetEnsemble
 from alpha_vantage_api import AlphaVantageClient
-from trading_system import TradingAnalytics
 from compare_benchmarks import compare_portfolio_to_benchmark
 
 # Configure logging
@@ -197,6 +196,38 @@ class SymphonyAnalyzer:
         
         # Store backtest results
         self.backtest_results = None
+        
+        # Create Symphony object for backtesting
+        self.symphony = self._create_symphony_object()
+    
+    def _create_symphony_object(self):
+        """Create a Symphony object from the loaded JSON data"""
+        try:
+            # Extract universe symbols
+            symbols = self.symphony_data.get('universe', {}).get('symbols', [])
+            
+            # Create SymbolList
+            universe = SymbolList(symbols)
+            
+            # Create Symphony
+            symphony = Symphony(
+                name=self.symphony_data.get('name', 'Unnamed Symphony'),
+                description=self.symphony_data.get('description', ''),
+                universe=universe
+            )
+            
+            # TODO: Add operators and allocator if needed
+            
+            return symphony
+        except Exception as e:
+            logger.error(f"Error creating Symphony object: {str(e)}")
+            # Return a minimal Symphony object with just the symbols
+            symbols = self.get_symbols()
+            return Symphony(
+                name=self.symphony_name,
+                description="Extracted from JSON",
+                universe=SymbolList(symbols)
+            )
     
     def _initialize_default_scenarios(self):
         """Initialize default market scenarios for testing."""
@@ -280,9 +311,9 @@ class SymphonyAnalyzer:
             # Default to 1 year lookback
             start_date = (datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=365)).strftime('%Y-%m-%d')
         
-        # Run backtest
+        # Run backtest using the Symphony object instead of the raw dictionary
         results = self.backtester.backtest(
-            self.symphony_data,
+            self.symphony,  # Use Symphony object instead of dictionary
             start_date,
             end_date,
             rebalance_frequency=rebalance_frequency
