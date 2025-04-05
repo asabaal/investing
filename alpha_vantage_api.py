@@ -199,6 +199,38 @@ class AlphaVantageClient:
         if wait_time > 0:
             logger.info(f"Rate limit applied: waited {wait_time:.2f} seconds")
     
+    def clean_data(self, data):
+        """
+        Clean data frame by handling missing values.
+        
+        Parameters:
+        data (pandas.DataFrame): DataFrame to clean
+        
+        Returns:
+        pandas.DataFrame: Cleaned DataFrame
+        """
+        if data is None or data.empty:
+            logger.warning("Empty data provided for cleaning")
+            return data
+        
+        cleaned = data.copy()
+        
+        # Handle missing volume data
+        if 'volume' in cleaned.columns and cleaned['volume'].isna().any():
+            # Log the issue
+            logger.info(f"Fixing {cleaned['volume'].isna().sum()} missing volume values")
+            
+            # First try forward/backward fill
+            cleaned['volume'] = cleaned['volume'].fillna(method='ffill').fillna(method='bfill')
+            
+            # If still have NaNs, use median of non-NaN values
+            if cleaned['volume'].isna().any():
+                median_volume = cleaned['volume'].median()
+                cleaned['volume'] = cleaned['volume'].fillna(median_volume)
+                logger.info(f"Used median volume {median_volume} to fill remaining NaNs")
+        
+        return cleaned
+    
     def _make_request(self, params: Dict[str, str]) -> Dict:
         """
         Make a request to the Alpha Vantage API.
@@ -215,6 +247,9 @@ class AlphaVantageClient:
         # Add API key to params
         params['apikey'] = self.api_key
         
+        # Debug log to verify API key usage
+        logger.debug(f"Making request with API key: {params['apikey'][:4]}...")
+        
         # Log the request
         logger.info(f"Making API request for {params.get('symbol', '')}, function {params.get('function', '')}")
         
@@ -222,35 +257,46 @@ class AlphaVantageClient:
         self._rate_limit()
         
         # Make the request
-        response = requests.get(self.base_url, params=params)
-        
-        # Handle errors
-        if response.status_code != 200:
-            error_msg = f"API request failed with status code {response.status_code}"
-            logger.error(error_msg)
-            raise Exception(error_msg)
-        
-        # Parse response
-        data = response.json()
-        
-        # Check for error messages
-        if 'Error Message' in data:
-            error_msg = f"API returned error: {data['Error Message']}"
-            logger.error(error_msg)
-            raise Exception(error_msg)
-        
-        if 'Information' in data:
-            error_msg = f"Unexpected response format: {data}"
-            logger.error(error_msg)
-            raise Exception(error_msg)
-        
-        # Check for empty response
-        if not data:
-            error_msg = "API returned empty response"
-            logger.error(error_msg)
-            raise Exception(error_msg)
-        
-        return data
+        try:
+            response = requests.get(self.base_url, params=params)
+            
+            # Handle errors
+            if response.status_code != 200:
+                error_msg = f"API request failed with status code {response.status_code}"
+                logger.error(error_msg)
+                raise Exception(error_msg)
+            
+            # Parse response
+            data = response.json()
+            
+            # Check for error messages
+            if 'Error Message' in data:
+                error_msg = f"API returned error: {data['Error Message']}"
+                logger.error(error_msg)
+                raise Exception(error_msg)
+            
+            # Check for premium endpoint error
+            if isinstance(data, dict) and 'Information' in data and 'premium endpoint' in data['Information']:
+                error_msg = f"Premium endpoint required: {data['Information']}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            
+            # Check for other information messages
+            if 'Information' in data:
+                error_msg = f"Unexpected response format: {data}"
+                logger.error(error_msg)
+                raise Exception(error_msg)
+            
+            # Check for empty response
+            if not data:
+                error_msg = "API returned empty response"
+                logger.error(error_msg)
+                raise Exception(error_msg)
+            
+            return data
+        except Exception as e:
+            logger.error(f"API request failed: {str(e)}")
+            raise
     
     def get_daily(
         self,
@@ -269,6 +315,14 @@ class AlphaVantageClient:
         Returns:
             DataFrame with daily OHLCV data
         """
+        # Check cache first
+        cache_key = f"{symbol}_TIME_SERIES_DAILY_ADJUSTED"
+        cached_data = self._check_cache(cache_key) if hasattr(self, '_check_cache') else None
+        if cached_data is not None:
+            logger.info(f"Retrieved cached data for {symbol}, function TIME_SERIES_DAILY_ADJUSTED")
+            # Even if we use cached data, still clean it
+            return self.clean_data(cached_data)
+        
         params = {
             'function': 'TIME_SERIES_DAILY_ADJUSTED',
             'symbol': symbol,
@@ -276,35 +330,44 @@ class AlphaVantageClient:
             'datatype': datatype
         }
         
-        data = self._make_request(params)
-        
-        # Extract time series data
-        if 'Time Series (Daily)' not in data:
-            error_msg = f"Unexpected response format: {data}"
-            logger.error(error_msg)
-            raise Exception(error_msg)
-        
-        time_series = data['Time Series (Daily)']
-        
-        # Convert to DataFrame
-        df = pd.DataFrame.from_dict(time_series, orient='index')
-        
-        # Convert column names
-        df.columns = [
-            'open', 'high', 'low', 'close', 'adjusted_close', 
-            'volume', 'dividend_amount', 'split_coefficient'
-        ]
-        
-        # Convert to numeric
-        df = df.apply(pd.to_numeric)
-        
-        # Convert index to datetime
-        df.index = pd.to_datetime(df.index)
-        
-        # Sort by date
-        df = df.sort_index()
-        
-        return df
+        try:
+            data = self._make_request(params)
+            
+            # Extract time series data
+            if 'Time Series (Daily)' not in data:
+                error_msg = f"Unexpected response format: {data}"
+                logger.error(error_msg)
+                raise Exception(error_msg)
+            
+            time_series = data['Time Series (Daily)']
+            
+            # Convert to DataFrame
+            df = pd.DataFrame.from_dict(time_series, orient='index')
+            
+            # Convert column names
+            df.columns = [
+                'open', 'high', 'low', 'close', 'adjusted_close', 
+                'volume', 'dividend_amount', 'split_coefficient'
+            ]
+            
+            # Convert to numeric
+            df = df.apply(pd.to_numeric)
+            
+            # Convert index to datetime
+            df.index = pd.to_datetime(df.index)
+            
+            # Sort by date
+            df = df.sort_index()
+            
+            # Cache the data if caching is available
+            if hasattr(self, '_cache_data'):
+                self._cache_data(cache_key, df)
+            
+            # Clean the data before returning
+            return self.clean_data(df)
+        except Exception as e:
+            logger.error(f"Failed to get daily data for {symbol}: {str(e)}")
+            raise
     
     def get_quote(self, symbol: str) -> Dict:
         """
@@ -397,7 +460,8 @@ class AlphaVantageClient:
         # Sort by date
         df = df.sort_index()
         
-        return df
+        # Clean data before returning
+        return self.clean_data(df)
     
     def get_macd(
         self,
@@ -457,7 +521,8 @@ class AlphaVantageClient:
         # Sort by date
         df = df.sort_index()
         
-        return df
+        # Clean data before returning
+        return self.clean_data(df)
     
     def get_sma(
         self,
@@ -511,7 +576,8 @@ class AlphaVantageClient:
         # Sort by date
         df = df.sort_index()
         
-        return df
+        # Clean data before returning
+        return self.clean_data(df)
     
     def get_sector_performance(self) -> Dict:
         """
