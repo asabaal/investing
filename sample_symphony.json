@@ -1,0 +1,44 @@
+{
+  "name": "Momentum ETF Rotation",
+  "description": "A strategy that rotates into top performing ETFs with momentum filtering",
+  "universe": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "EEM",
+    "GLD",
+    "TLT",
+    "LQD",
+    "VNQ",
+    "XLE",
+    "XLF",
+    "XLV",
+    "XLK",
+    "XLY",
+    "SOXX"
+  ],
+  "operators": [
+    {
+      "type": "Momentum",
+      "name": "Momentum Filter",
+      "condition": {
+        "lookback_days": 90,
+        "top_n": 3
+      }
+    },
+    {
+      "type": "RSIFilter",
+      "name": "RSI Oversold",
+      "condition": {
+        "threshold": 30,
+        "condition": "below"
+      }
+    }
+  ],
+  "allocator": {
+    "type": "InverseVolatilityAllocator",
+    "name": "Inverse Volatility",
+    "method": "inverse_volatility",
+    "lookback_days": 30
+  }
+}
