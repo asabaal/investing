@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Now import local modules
 from symphony_analyzer import SymphonyAnalyzer
-from prophet_forecasting import ProphetForecaster
+from prophet_forecasting import StockForecast
 from alpha_vantage_api import AlphaVantageClient
 
 # Configure logging

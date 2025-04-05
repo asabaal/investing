@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Now import local modules
-from prophet_forecasting import ProphetForecaster, StockForecast, ProphetEnsemble
+from prophet_forecasting import StockForecast, ProphetEnsemble
 from alpha_vantage_api import AlphaVantageClient
 
 # Configure logging
@@ -43,7 +43,7 @@ def test_single_symbol_forecast():
     
     # Initialize client and forecaster
     client = AlphaVantageClient(api_key=api_key)
-    forecaster = ProphetForecaster(client=client)
+    forecaster = StockForecast(client=client)
     
     # Forecast for SPY
     symbol = "SPY"
@@ -163,7 +163,7 @@ def test_multi_symbol_forecast():
     
     # Initialize client and forecaster
     client = AlphaVantageClient(api_key=api_key)
-    forecaster = ProphetForecaster(client=client)
+    forecaster = StockForecast(client=client)
     
     # Create a sample portfolio
     symbols = ["SPY", "QQQ", "IWM"]
