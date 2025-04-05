@@ -124,10 +124,28 @@ class StockForecast:
         Returns:
             DataFrame formatted for Prophet
         """
+        # Make a copy to avoid modifying the original
+        df_copy = df.copy()
+        
+        # Check for NaN values in volume and clean them if present
+        if 'volume' in df_copy.columns and df_copy['volume'].isna().any():
+            logger.info(f"Cleaning NaN values in volume column")
+            
+            # Try forward/backward fill first
+            df_copy['volume'] = df_copy['volume'].fillna(method='ffill').fillna(method='bfill')
+            
+            # If still have NaNs, use median
+            if df_copy['volume'].isna().any():
+                median_volume = df_copy['volume'].median()
+                if np.isnan(median_volume):  # If median is also NaN, use a default value
+                    median_volume = 1000000  # Arbitrary default value
+                df_copy['volume'] = df_copy['volume'].fillna(median_volume)
+                logger.info(f"Used median volume {median_volume} to fill remaining NaNs")
+        
         # Prophet requires columns named 'ds' (date) and 'y' (target variable)
         prophet_df = pd.DataFrame({
-            'ds': df.index,
-            'y': df[target_column]
+            'ds': df_copy.index,
+            'y': df_copy[target_column]
         })
         
         # Add day-of-week feature
@@ -137,9 +155,18 @@ class StockForecast:
         prophet_df['month'] = prophet_df['ds'].dt.month
         
         # Add volume as a regressor if available
-        if 'volume' in df.columns:
+        if 'volume' in df_copy.columns:
+            # Ensure volume is clean and positive before log transform
+            volume = df_copy['volume'].copy()
+            volume = volume.clip(lower=1)  # Ensure all values are at least 1 for log transform
+            
             # Normalize volume to reduce impact of extreme values
-            prophet_df['volume'] = np.log1p(df['volume'])
+            prophet_df['volume'] = np.log1p(volume)
+            
+            # Double-check for NaN values
+            if prophet_df['volume'].isna().any():
+                logger.warning(f"Still found NaN values in volume after cleaning, replacing with mean")
+                prophet_df['volume'] = prophet_df['volume'].fillna(prophet_df['volume'].mean())
         
         return prophet_df
     
@@ -179,6 +206,11 @@ class StockForecast:
         
         # Add volume regressor if available and requested
         if include_volume and 'volume' in df.columns:
+            # Double-check for any NaN values
+            if df['volume'].isna().any():
+                logger.warning("Found NaN in volume column, replacing with mean")
+                df['volume'] = df['volume'].fillna(df['volume'].mean())
+            
             model.add_regressor('volume')
         
         # Add day of week and month as additional regressors
@@ -712,39 +744,47 @@ class ProphetEnsemble:
         forecasts = []
         
         for i in range(num_models):
-            changepoint_prior_scale = changepoint_prior_scales[i % len(changepoint_prior_scales)]
-            seasonality_prior_scale = seasonality_prior_scales[i % len(seasonality_prior_scales)]
-            
-            # Fit Prophet model with different hyperparameters
-            model = self.forecaster.fit_prophet_model(
-                prophet_df,
-                changepoint_prior_scale=changepoint_prior_scale,
-                seasonality_prior_scale=seasonality_prior_scale
-            )
-            
-            # Prepare future dataframe for prediction
-            future = model.make_future_dataframe(periods=days)
-            
-            # Add regressor columns
-            future['day_of_week'] = future['ds'].dt.dayofweek
-            future['month'] = future['ds'].dt.month
-            
-            # Add volume to future dataframe if included
-            if 'volume' in prophet_df.columns:
-                # For future dates, use the average of recent volume
-                recent_volume = prophet_df['volume'].iloc[-30:].mean()
+            try:
+                changepoint_prior_scale = changepoint_prior_scales[i % len(changepoint_prior_scales)]
+                seasonality_prior_scale = seasonality_prior_scales[i % len(seasonality_prior_scales)]
                 
-                # Set known volumes for historical dates
-                future.loc[future['ds'].isin(prophet_df['ds']), 'volume'] = prophet_df.set_index('ds')['volume']
+                # Fit Prophet model with different hyperparameters
+                model = self.forecaster.fit_prophet_model(
+                    prophet_df,
+                    changepoint_prior_scale=changepoint_prior_scale,
+                    seasonality_prior_scale=seasonality_prior_scale
+                )
                 
-                # Set average volume for future dates
-                future.loc[~future['ds'].isin(prophet_df['ds']), 'volume'] = recent_volume
-            
-            # Generate forecast
-            forecast = model.predict(future)
-            
-            models.append(model)
-            forecasts.append(forecast)
+                # Prepare future dataframe for prediction
+                future = model.make_future_dataframe(periods=days)
+                
+                # Add regressor columns
+                future['day_of_week'] = future['ds'].dt.dayofweek
+                future['month'] = future['ds'].dt.month
+                
+                # Add volume to future dataframe if included
+                if 'volume' in prophet_df.columns:
+                    # For future dates, use the average of recent volume
+                    recent_volume = prophet_df['volume'].iloc[-30:].mean()
+                    
+                    # Set known volumes for historical dates
+                    future.loc[future['ds'].isin(prophet_df['ds']), 'volume'] = prophet_df.set_index('ds')['volume']
+                    
+                    # Set average volume for future dates
+                    future.loc[~future['ds'].isin(prophet_df['ds']), 'volume'] = recent_volume
+                
+                # Generate forecast
+                forecast = model.predict(future)
+                
+                models.append(model)
+                forecasts.append(forecast)
+            except Exception as e:
+                logger.warning(f"Model {i} failed: {str(e)}")
+                continue
+        
+        # If no models were successfully fit, raise exception
+        if not models or not forecasts:
+            raise ValueError(f"Failed to fit any models for {symbol}")
         
         # Combine forecasts
         ensemble_forecast = pd.DataFrame({'ds': forecasts[0]['ds']})
@@ -765,8 +805,8 @@ class ProphetEnsemble:
             'models': models,
             'individual_forecasts': forecasts,
             'hyperparameters': {
-                'changepoint_prior_scales': changepoint_prior_scales[:num_models],
-                'seasonality_prior_scales': seasonality_prior_scales[:num_models]
+                'changepoint_prior_scales': changepoint_prior_scales[:len(models)],
+                'seasonality_prior_scales': seasonality_prior_scales[:len(models)]
             }
         }
         
