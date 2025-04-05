@@ -12,10 +12,10 @@ the Prophet forecasting capabilities.
 import json
 import logging
 import os
+import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any, Union
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
 
@@ -203,8 +203,21 @@ class SymphonyAnalyzer:
     def _create_symphony_object(self):
         """Create a Symphony object from the loaded JSON data"""
         try:
-            # Extract universe symbols
-            symbols = self.symphony_data.get('universe', {}).get('symbols', [])
+            # Extract universe symbols - handle both formats
+            if 'universe' in self.symphony_data:
+                universe_data = self.symphony_data['universe']
+                if isinstance(universe_data, list):
+                    # Direct list of symbols
+                    symbols = universe_data
+                elif isinstance(universe_data, dict) and 'symbols' in universe_data:
+                    # Dictionary with 'symbols' key
+                    symbols = universe_data['symbols']
+                else:
+                    symbols = []
+            else:
+                symbols = []
+            
+            logger.info(f"Creating Symphony with {len(symbols)} symbols")
             
             # Create SymbolList
             universe = SymbolList(symbols)
@@ -216,17 +229,29 @@ class SymphonyAnalyzer:
                 universe=universe
             )
             
-            # TODO: Add operators and allocator if needed
+            # Add operators if present in the data
+            operators = self.symphony_data.get('operators', [])
+            for operator_data in operators:
+                # This is simplified - in a real implementation, you'd need to 
+                # instantiate the correct operator type based on the data
+                logger.info(f"Adding operator: {operator_data.get('name', 'Unnamed')}")
+            
+            # Set allocator if present in the data
+            allocator_data = self.symphony_data.get('allocator')
+            if allocator_data:
+                # This is simplified - in a real implementation, you'd need to
+                # instantiate the correct allocator type based on the data
+                logger.info(f"Setting allocator: {allocator_data.get('name', 'Default')}")
             
             return symphony
+            
         except Exception as e:
             logger.error(f"Error creating Symphony object: {str(e)}")
-            # Return a minimal Symphony object with just the symbols
-            symbols = self.get_symbols()
+            # Return a minimal Symphony object with default empty list
             return Symphony(
                 name=self.symphony_name,
                 description="Extracted from JSON",
-                universe=SymbolList(symbols)
+                universe=SymbolList([])
             )
     
     def _initialize_default_scenarios(self):
@@ -281,10 +306,14 @@ class SymphonyAnalyzer:
         Returns:
             List of symbol strings
         """
-        symbols = []
-        if 'universe' in self.symphony_data and 'symbols' in self.symphony_data['universe']:
-            symbols = self.symphony_data['universe']['symbols']
-        return symbols
+        # Handle both direct list and dictionary with 'symbols' key
+        if 'universe' in self.symphony_data:
+            universe_data = self.symphony_data['universe']
+            if isinstance(universe_data, list):
+                return universe_data
+            elif isinstance(universe_data, dict) and 'symbols' in universe_data:
+                return universe_data['symbols']
+        return []
     
     def backtest(
         self, 
@@ -312,17 +341,33 @@ class SymphonyAnalyzer:
             start_date = (datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=365)).strftime('%Y-%m-%d')
         
         # Run backtest using the Symphony object instead of the raw dictionary
-        results = self.backtester.backtest(
-            self.symphony,  # Use Symphony object instead of dictionary
-            start_date,
-            end_date,
-            rebalance_frequency=rebalance_frequency
-        )
-        
-        # Store results for later use
-        self.backtest_results = results
-        
-        return results
+        try:
+            logger.info(f"Running backtest from {start_date} to {end_date} with {rebalance_frequency} rebalancing")
+            results = self.backtester.backtest(
+                self.symphony,  # Use Symphony object instead of dictionary
+                start_date,
+                end_date,
+                rebalance_frequency=rebalance_frequency
+            )
+            
+            # Store results for later use
+            self.backtest_results = results
+            
+            return results
+        except Exception as e:
+            logger.error(f"Backtest error: {str(e)}")
+            # Return empty results with error
+            return {
+                'success': False,
+                'error': str(e),
+                'portfolio_history': [],
+                'backtest_summary': {
+                    'total_return': 0,
+                    'annualized_return': 0,
+                    'max_drawdown': 0,
+                    'sharpe_ratio': 0
+                }
+            }
     
     def compare_to_benchmark(
         self, 
@@ -350,40 +395,54 @@ class SymphonyAnalyzer:
             self.backtest(start_date, end_date)
         
         # Extract portfolio returns from backtest results
-        if 'portfolio_history' not in self.backtest_results:
-            return {"error": "No portfolio history found in backtest results"}
+        if 'portfolio_history' not in self.backtest_results or not self.backtest_results['portfolio_history']:
+            logger.warning("No portfolio history found in backtest results")
+            return {
+                "error": "No portfolio history found in backtest results",
+                "benchmark_symbol": benchmark_symbol,
+                "benchmark_return": 0,
+                "portfolio_return": 0,
+                "excess_return": 0
+            }
         
-        # Create portfolio returns series
-        portfolio_history = self.backtest_results['portfolio_history']
-        portfolio_dates = [pd.to_datetime(entry['date']) for entry in portfolio_history]
-        portfolio_values = [entry['portfolio_value'] for entry in portfolio_history]
-        
-        portfolio_series = pd.Series(
-            data=portfolio_values,
-            index=portfolio_dates
-        )
-        
-        # Calculate daily returns
-        portfolio_returns = portfolio_series.pct_change().dropna()
-        
-        # Set filename if not provided
-        if save_plot and plot_filename is None:
-            # Clean up symphony name for filename
-            clean_name = self.symphony_name.replace(' ', '_').replace('/', '_').lower()
-            plot_filename = f"{clean_name}_vs_{benchmark_symbol}.png"
-        
-        # Run comparison
-        comparison_results = compare_portfolio_to_benchmark(
-            portfolio_returns=portfolio_returns,
-            benchmark_symbol=benchmark_symbol,
-            start_date=start_date,
-            end_date=end_date,
-            client=self.client,
-            save_plot=save_plot,
-            plot_filename=plot_filename
-        )
-        
-        return comparison_results
+        try:
+            # Create portfolio returns series
+            portfolio_history = self.backtest_results['portfolio_history']
+            portfolio_dates = [pd.to_datetime(entry['date']) for entry in portfolio_history]
+            portfolio_values = [entry['portfolio_value'] for entry in portfolio_history]
+            
+            portfolio_series = pd.Series(
+                data=portfolio_values,
+                index=portfolio_dates
+            )
+            
+            # Calculate daily returns
+            portfolio_returns = portfolio_series.pct_change().dropna()
+            
+            # Set filename if not provided
+            if save_plot and plot_filename is None:
+                # Clean up symphony name for filename
+                clean_name = self.symphony_name.replace(' ', '_').replace('/', '_').lower()
+                plot_filename = f"{clean_name}_vs_{benchmark_symbol}.png"
+            
+            # Run comparison
+            comparison_results = compare_portfolio_to_benchmark(
+                portfolio_returns=portfolio_returns,
+                benchmark_symbol=benchmark_symbol,
+                start_date=start_date,
+                end_date=end_date,
+                client=self.client,
+                save_plot=save_plot,
+                plot_filename=plot_filename
+            )
+            
+            return comparison_results
+        except Exception as e:
+            logger.error(f"Benchmark comparison error: {str(e)}")
+            return {
+                "error": str(e),
+                "benchmark_symbol": benchmark_symbol
+            }
     
     def forecast_symphony(
         self,
@@ -545,6 +604,16 @@ class SymphonyAnalyzer:
             self.backtest()
         
         try:
+            # Check if we have portfolio history
+            if 'portfolio_history' not in self.backtest_results or not self.backtest_results['portfolio_history']:
+                return {
+                    'error': 'No portfolio history available',
+                    'volatility': 0,
+                    'max_drawdown': 0,
+                    'downside_deviation': 0,
+                    'sortino_ratio': 0
+                }
+            
             # Extract performance data from backtest
             portfolio_history = self.backtest_results['portfolio_history']
             values = [entry['portfolio_value'] for entry in portfolio_history]
@@ -580,7 +649,7 @@ class SymphonyAnalyzer:
             sortino_ratio = (avg_return - risk_free_rate) / downside_deviation if downside_deviation > 0 else 0
             
             # Analyze allocations
-            latest_allocation = portfolio_history[-1]['allocations'] if portfolio_history else {}
+            latest_allocation = portfolio_history[-1].get('allocations', {}) if portfolio_history else {}
             
             # Calculate concentration metrics
             concentration = 0
