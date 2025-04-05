@@ -1,0 +1,21 @@
+{
+  "symphony_info": {
+    "name": "Momentum ETF Rotation",
+    "file": "sample_symphony.json",
+    "symbols": []
+  },
+  "backtest_results": {
+    "success": false,
+    "error": "No historical data available for backtest"
+  },
+  "benchmark_comparison": {
+    "error": "No portfolio history found in backtest results"
+  },
+  "forecasts": {
+    "error": "No symbols found in symphony"
+  },
+  "risk_analysis": {
+    "error": "'portfolio_history'"
+  },
+  "scenario_results": {}
+}
