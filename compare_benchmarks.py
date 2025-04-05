@@ -23,6 +23,175 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def compare_portfolio_to_benchmark(
+    portfolio_returns,
+    benchmark_symbol="SPY",
+    start_date=None,
+    end_date=None,
+    client=None,
+    save_plot=False,
+    plot_filename=None
+):
+    """
+    Compare portfolio returns to a benchmark.
+    
+    Args:
+        portfolio_returns (pd.Series): Portfolio returns series
+        benchmark_symbol (str): Symbol for benchmark
+        start_date (str): Start date (optional)
+        end_date (str): End date (optional)
+        client (AlphaVantageClient): Alpha Vantage client (optional)
+        save_plot (bool): Whether to save the plot to file
+        plot_filename (str): Filename to save the plot (default: benchmark_comparison.png)
+        
+    Returns:
+        dict: Comparison metrics between portfolio and benchmark
+    """
+    # Initialize API client if not provided
+    if client is None:
+        api_key = os.environ.get('ALPHA_VANTAGE_API_KEY')
+        if not api_key:
+            return {'error': 'No API key provided or found in environment'}
+        client = AlphaVantageClient(api_key=api_key)
+    
+    try:
+        # Get benchmark data
+        benchmark_data = client.get_daily(benchmark_symbol)
+        
+        # Filter by date range if provided
+        if start_date and end_date:
+            start_date_pd = pd.to_datetime(start_date)
+            end_date_pd = pd.to_datetime(end_date)
+            benchmark_data = benchmark_data.loc[(benchmark_data.index >= start_date_pd) & 
+                                             (benchmark_data.index <= end_date_pd)]
+        
+        # Calculate benchmark returns
+        benchmark_returns = benchmark_data['adjusted_close'].pct_change().dropna()
+        
+        # Ensure portfolio_returns is a pandas Series with datetime index
+        if not isinstance(portfolio_returns, pd.Series):
+            try:
+                portfolio_returns = pd.Series(portfolio_returns)
+            except:
+                return {'error': 'Portfolio returns must be a pandas Series or convertible to one'}
+        
+        # Create DataFrames for alignment
+        returns_df = pd.DataFrame({
+            'portfolio': portfolio_returns,
+            'benchmark': benchmark_returns
+        })
+        
+        # Debug prints to help diagnose alignment issues
+        logger.debug(f"Portfolio returns shape: {portfolio_returns.shape}")
+        logger.debug(f"Benchmark returns shape: {benchmark_returns.shape}")
+        logger.debug(f"Portfolio returns index: {portfolio_returns.index}")
+        logger.debug(f"Benchmark returns index: {benchmark_returns.index}")
+        
+        # Only use dates that are in both series
+        common_returns = returns_df.dropna()
+        
+        # Debug prints for aligned data
+        logger.debug(f"Common dates count: {len(common_returns)}")
+        
+        if len(common_returns) == 0:
+            return {'error': 'No common dates between portfolio and benchmark returns'}
+        
+        # Calculate cumulative returns
+        portfolio_cumulative = (1 + common_returns['portfolio']).cumprod()
+        benchmark_cumulative = (1 + common_returns['benchmark']).cumprod()
+        
+        # Calculate total returns
+        portfolio_return = portfolio_cumulative.iloc[-1] - 1
+        benchmark_return = benchmark_cumulative.iloc[-1] - 1
+        
+        # Calculate excess return
+        excess_return = portfolio_return - benchmark_return
+        
+        # Calculate correlation
+        correlation = common_returns['portfolio'].corr(common_returns['benchmark'])
+        
+        # Calculate beta
+        cov_matrix = common_returns.cov()
+        beta = cov_matrix.loc['portfolio', 'benchmark'] / cov_matrix.loc['benchmark', 'benchmark']
+        
+        # Calculate tracking error and information ratio
+        active_returns = common_returns['portfolio'] - beta * common_returns['benchmark']
+        tracking_error = np.std(active_returns) * np.sqrt(252)  # Annualize
+        
+        if tracking_error > 0:
+            information_ratio = excess_return / tracking_error
+        else:
+            information_ratio = 0
+        
+        # Calculate risk-adjusted metrics
+        # Assuming 3% annual risk-free rate
+        risk_free_rate = 0.03 / 252  # Daily rate
+        
+        # Portfolio Sharpe
+        portfolio_excess_return = common_returns['portfolio'] - risk_free_rate
+        sharpe_ratio = (portfolio_excess_return.mean() / portfolio_excess_return.std()) * np.sqrt(252)
+        
+        # Benchmark Sharpe
+        benchmark_excess_return = common_returns['benchmark'] - risk_free_rate
+        benchmark_sharpe = (benchmark_excess_return.mean() / benchmark_excess_return.std()) * np.sqrt(252)
+        
+        # Generate visualization
+        plot_comparison(portfolio_cumulative, benchmark_cumulative, benchmark_symbol, 
+                      save_plot=save_plot, plot_filename=plot_filename)
+        
+        return {
+            'benchmark_symbol': benchmark_symbol,
+            'benchmark_return': benchmark_return,
+            'portfolio_return': portfolio_return,
+            'excess_return': excess_return,
+            'correlation': correlation,
+            'beta': beta,
+            'sharpe_ratio': sharpe_ratio,
+            'benchmark_sharpe': benchmark_sharpe,
+            'information_ratio': information_ratio,
+            'common_data_points': len(common_returns)
+        }
+    
+    except Exception as e:
+        logger.error(f"Benchmark comparison error: {str(e)}")
+        return {'error': str(e)}
+
+def plot_comparison(
+    portfolio_cumulative, 
+    benchmark_cumulative, 
+    benchmark_symbol, 
+    save_plot=False, 
+    plot_filename=None
+):
+    """
+    Plot the portfolio vs benchmark performance.
+    
+    Args:
+        portfolio_cumulative (pd.Series): Portfolio cumulative returns
+        benchmark_cumulative (pd.Series): Benchmark cumulative returns
+        benchmark_symbol (str): Symbol of the benchmark
+        save_plot (bool): Whether to save the plot to file
+        plot_filename (str): Filename to save the plot (default: benchmark_comparison.png)
+    """
+    plt.figure(figsize=(12, 6))
+    plt.plot(portfolio_cumulative, label='Portfolio')
+    plt.plot(benchmark_cumulative, label=f'Benchmark ({benchmark_symbol})')
+    plt.title('Portfolio vs Benchmark Performance')
+    plt.xlabel('Date')
+    plt.ylabel('Cumulative Return')
+    plt.legend()
+    plt.grid(True)
+    
+    if save_plot:
+        filename = plot_filename or "benchmark_comparison.png"
+        plt.savefig(filename)
+        logger.info(f"Saved benchmark comparison plot to {filename}")
+    else:
+        try:
+            plt.show()
+        except Exception as e:
+            logger.warning(f"Could not display plot: {e}. Try using save_plot=True instead.")
+
 def compare_to_benchmark(
     portfolio_history: list,
     benchmark_symbol: str,
@@ -180,14 +349,14 @@ def compare_to_benchmark(
         logger.error(f"Benchmark comparison error: {str(e)}")
         return {'error': str(e)}
 
-def plot_comparison(
+def plot_comparison_interactive(
     portfolio_history: list,
     benchmark_data: pd.DataFrame,
     benchmark_symbol: str,
     title: str = None
 ):
     """
-    Plot portfolio performance against benchmark.
+    Plot portfolio performance against benchmark with Plotly.
     
     Args:
         portfolio_history: List of portfolio snapshots
@@ -195,6 +364,14 @@ def plot_comparison(
         benchmark_symbol: Benchmark symbol
         title: Plot title
     """
+    try:
+        import plotly.graph_objs as go
+        from plotly.subplots import make_subplots
+    except ImportError:
+        logger.warning("Plotly not installed. Using static plot instead.")
+        plot_comparison(portfolio_history, benchmark_data, benchmark_symbol, title)
+        return
+    
     # Extract portfolio dates and values
     portfolio_dates = [pd.to_datetime(entry['date']) for entry in portfolio_history]
     portfolio_values = [entry['portfolio_value'] for entry in portfolio_history]
@@ -209,20 +386,33 @@ def plot_comparison(
     portfolio_normalized = portfolio_series / portfolio_series.iloc[0] * 100
     benchmark_normalized = benchmark_data['adjusted_close'] / benchmark_data['adjusted_close'].iloc[0] * 100
     
-    # Plot
-    plt.figure(figsize=(12, 6))
+    # Create the figure
+    fig = make_subplots(specs=[[{"secondary_y": False}]])
     
-    plt.plot(portfolio_normalized.index, portfolio_normalized.values, label='Portfolio')
-    plt.plot(benchmark_normalized.index, benchmark_normalized.values, label=benchmark_symbol)
+    # Add traces
+    fig.add_trace(
+        go.Scatter(x=portfolio_normalized.index, y=portfolio_normalized.values,
+                 name='Portfolio'),
+        secondary_y=False,
+    )
     
-    plt.title(title or f'Portfolio vs {benchmark_symbol}')
-    plt.xlabel('Date')
-    plt.ylabel('Normalized Value (Start = 100)')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
+    fig.add_trace(
+        go.Scatter(x=benchmark_normalized.index, y=benchmark_normalized.values,
+                 name=benchmark_symbol),
+        secondary_y=False,
+    )
     
-    plt.tight_layout()
-    plt.show()
+    # Set x-axis title
+    fig.update_xaxes(title_text="Date")
+    
+    # Set y-axes titles
+    fig.update_yaxes(title_text="Normalized Value (Start = 100)", secondary_y=False)
+    
+    # Set title
+    fig.update_layout(title_text=title or f'Portfolio vs {benchmark_symbol}')
+    
+    # Show the figure
+    fig.show()
 
 def main():
     """Main function to test benchmark comparison."""
@@ -257,26 +447,17 @@ def main():
             print(f"No benchmark data available for {benchmark_symbol}")
             return
         
-        # Create a portfolio that outperforms the benchmark by 5%
+        # Create a portfolio that equals the benchmark (identical performance)
         benchmark_dates = benchmark_data.index
         benchmark_prices = benchmark_data['adjusted_close']
         
-        # Generate some portfolio values that follow the benchmark plus some alpha
+        # Generate portfolio values that exactly match the benchmark
         portfolio_values = []
         
         for date, price in zip(benchmark_dates, benchmark_prices):
-            # Start with benchmark price
-            value = price
-            
-            # Add some alpha (outperformance)
-            # This is very simplified and just for testing
-            alpha_factor = 1.05  # 5% outperformance
-            value = value * alpha_factor
-            
-            # Add to list
             portfolio_values.append({
                 'date': date.strftime('%Y-%m-%d'),
-                'portfolio_value': value
+                'portfolio_value': price
             })
         
         # Run comparison
@@ -297,11 +478,32 @@ def main():
         
         # Plot comparison
         plot_comparison(
-            portfolio_values,
-            benchmark_data,
-            benchmark_symbol,
-            'Sample Portfolio vs S&P 500 ETF'
+            pd.Series([v['portfolio_value'] for v in portfolio_values], index=benchmark_dates),
+            benchmark_data['adjusted_close'],
+            benchmark_symbol
         )
+        
+        # Try the new portfolio comparison function
+        portfolio_returns = pd.Series(
+            data=[0.001] * len(benchmark_data.index),  # 0.1% daily returns
+            index=benchmark_data.index
+        )
+        
+        results2 = compare_portfolio_to_benchmark(
+            portfolio_returns=portfolio_returns,
+            benchmark_symbol=benchmark_symbol,
+            start_date=start_date,
+            end_date=end_date,
+            client=client,
+            save_plot=True,
+            plot_filename="test_benchmark_comparison.png"
+        )
+        
+        print("\nNew Benchmark Comparison Results:")
+        print(json.dumps(
+            {k: v if not isinstance(v, float) else round(v, 4) for k, v in results2.items()},
+            indent=2
+        ))
     
     except Exception as e:
         print(f"Error during test: {str(e)}")
