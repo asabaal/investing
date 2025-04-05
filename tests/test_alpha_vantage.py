@@ -9,14 +9,14 @@ from pathlib import Path
 
 # Import your module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from alpha_vantage_api import AlphaVantageAPI
+from alpha_vantage_api import AlphaVantageClient
 
 class TestAlphaVantageAPI(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures."""
         self.test_api_key = "test_key"
-        self.api = AlphaVantageAPI(api_key=self.test_api_key)
+        self.api = AlphaVantageClient(api_key=self.test_api_key)
         
         # Create sample data fixtures
         dates = pd.date_range(start='2024-01-01', periods=10)
