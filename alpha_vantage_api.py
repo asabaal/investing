@@ -15,6 +15,13 @@ from typing import Dict, Optional, Any, List
 
 import pandas as pd
 
+# Try to import fallback functions
+try:
+    from alpha_vantage_api_fallback import fallback_daily_adjusted
+    HAS_FALLBACKS = True
+except ImportError:
+    HAS_FALLBACKS = False
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -169,7 +176,8 @@ class AlphaVantageClient:
         self,
         api_key: str,
         base_url: str = 'https://www.alphavantage.co/query',
-        premium: bool = True
+        premium: bool = True,
+        use_fallbacks: bool = True
     ):
         """
         Initialize Alpha Vantage client.
@@ -178,9 +186,11 @@ class AlphaVantageClient:
             api_key: Your Alpha Vantage API key
             base_url: Base URL for Alpha Vantage API
             premium: Whether you have a premium subscription
+            use_fallbacks: Use fallback methods for premium endpoints
         """
         self.api_key = api_key
         self.base_url = base_url
+        self.use_fallbacks = use_fallbacks and HAS_FALLBACKS
         
         # Set appropriate limits based on subscription
         if premium:
@@ -192,6 +202,9 @@ class AlphaVantageClient:
         
         # Keep track of last request time
         self.last_request_time = 0
+        
+        # Initialize cache
+        self.cache = {}
     
     def _rate_limit(self):
         """Apply rate limiting before making a request."""
@@ -250,10 +263,7 @@ class AlphaVantageClient:
         # Debug log to verify API key usage
         logger.debug(f"Making request with API key: {params['apikey'][:4]}...")
         
-        # Log the request
-        logger.info(f"Making API request for {params.get('symbol', '')}, function {params.get('function', '')}")
-        
-        # Apply rate limiting
+        # Rate limit API calls
         self._rate_limit()
         
         # Make the request
@@ -298,6 +308,81 @@ class AlphaVantageClient:
             logger.error(f"API request failed: {str(e)}")
             raise
     
+    def _check_cache(self, cache_key: str) -> Optional[pd.DataFrame]:
+        """
+        Check if data is in cache.
+        
+        Args:
+            cache_key: Key to check in cache
+            
+        Returns:
+            Cached DataFrame or None if not in cache
+        """
+        if cache_key in self.cache:
+            return self.cache[cache_key].copy()
+        return None
+    
+    def _cache_data(self, cache_key: str, data: pd.DataFrame):
+        """
+        Cache data for future use.
+        
+        Args:
+            cache_key: Key to store in cache
+            data: DataFrame to cache
+        """
+        self.cache[cache_key] = data.copy()
+    
+    def _parse_time_series(self, data: Dict, time_series_key: str) -> pd.DataFrame:
+        """
+        Parse time series data from Alpha Vantage response.
+        
+        Args:
+            data: Response data from Alpha Vantage
+            time_series_key: Key for time series data in response
+            
+        Returns:
+            DataFrame with parsed time series data
+        """
+        if time_series_key not in data:
+            error_msg = f"Expected {time_series_key} in response"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        time_series = data[time_series_key]
+        
+        # Convert to DataFrame
+        df = pd.DataFrame.from_dict(time_series, orient='index')
+        
+        # Convert column names (remove number prefixes)
+        df.columns = [col.split('. ')[1] for col in df.columns]
+        
+        # Convert to numeric
+        df = df.apply(pd.to_numeric)
+        
+        # Convert index to datetime
+        df.index = pd.to_datetime(df.index)
+        
+        # Sort by date
+        df = df.sort_index()
+        
+        # Rename columns to match our expected format
+        column_map = {
+            'open': 'open',
+            'high': 'high',
+            'low': 'low',
+            'close': 'close',
+            'adjusted close': 'adjusted_close',
+            'volume': 'volume',
+            'dividend amount': 'dividend_amount',
+            'split coefficient': 'split_coefficient'
+        }
+        
+        # Only rename columns that exist
+        rename_map = {col: column_map[col] for col in df.columns if col in column_map}
+        df = df.rename(columns=rename_map)
+        
+        return df
+    
     def get_daily(
         self,
         symbol: str,
@@ -317,7 +402,7 @@ class AlphaVantageClient:
         """
         # Check cache first
         cache_key = f"{symbol}_TIME_SERIES_DAILY_ADJUSTED"
-        cached_data = self._check_cache(cache_key) if hasattr(self, '_check_cache') else None
+        cached_data = self._check_cache(cache_key)
         if cached_data is not None:
             logger.info(f"Retrieved cached data for {symbol}, function TIME_SERIES_DAILY_ADJUSTED")
             # Even if we use cached data, still clean it
@@ -331,40 +416,33 @@ class AlphaVantageClient:
         }
         
         try:
+            logger.info(f"Making API request for {symbol}, function TIME_SERIES_DAILY_ADJUSTED")
             data = self._make_request(params)
+            df = self._parse_time_series(data, 'Time Series (Daily)')
             
-            # Extract time series data
-            if 'Time Series (Daily)' not in data:
-                error_msg = f"Unexpected response format: {data}"
-                logger.error(error_msg)
-                raise Exception(error_msg)
-            
-            time_series = data['Time Series (Daily)']
-            
-            # Convert to DataFrame
-            df = pd.DataFrame.from_dict(time_series, orient='index')
-            
-            # Convert column names
-            df.columns = [
-                'open', 'high', 'low', 'close', 'adjusted_close', 
-                'volume', 'dividend_amount', 'split_coefficient'
-            ]
-            
-            # Convert to numeric
-            df = df.apply(pd.to_numeric)
-            
-            # Convert index to datetime
-            df.index = pd.to_datetime(df.index)
-            
-            # Sort by date
-            df = df.sort_index()
-            
-            # Cache the data if caching is available
-            if hasattr(self, '_cache_data'):
-                self._cache_data(cache_key, df)
+            # Cache the data
+            self._cache_data(cache_key, df)
             
             # Clean the data before returning
             return self.clean_data(df)
+        except ValueError as e:
+            # Check if this is a premium endpoint error and fallbacks are enabled
+            if "premium endpoint" in str(e) and self.use_fallbacks:
+                logger.warning(f"Using fallback for {symbol} due to premium endpoint restriction")
+                try:
+                    # Try fallback method
+                    fallback_data = fallback_daily_adjusted(self, symbol, outputsize)
+                    
+                    # Cache the fallback data
+                    self._cache_data(cache_key, fallback_data)
+                    
+                    # Clean and return the data
+                    return self.clean_data(fallback_data)
+                except Exception as fallback_error:
+                    logger.error(f"Fallback failed for {symbol}: {str(fallback_error)}")
+                    raise e
+            else:
+                raise
         except Exception as e:
             logger.error(f"Failed to get daily data for {symbol}: {str(e)}")
             raise
