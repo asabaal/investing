@@ -583,9 +583,12 @@ class SymphonyAnalyzer:
         try:
             # Get benchmark data for the same period
             benchmark_data = self.client.get_daily(benchmark_symbol)
+            
+            # Parse date strings to datetime
             start_date_pd = pd.to_datetime(start_date)
             end_date_pd = pd.to_datetime(end_date)
             
+            # Extract benchmark data for the period
             benchmark_data = benchmark_data.loc[
                 (benchmark_data.index >= start_date_pd) & 
                 (benchmark_data.index <= end_date_pd)
@@ -602,81 +605,93 @@ class SymphonyAnalyzer:
             # Calculate benchmark daily returns
             benchmark_returns = benchmark_data['adjusted_close'].pct_change().dropna()
             
-            # Get symphony performance
-            summary = backtest_results['backtest_summary']
-            symphony_return = summary['total_return']
-            
-            # Get symphony equity curve
+            # Get portfolio history
             portfolio_history = backtest_results['portfolio_history']
-            symphony_dates = [entry['date'] for entry in portfolio_history]
-            symphony_values = [entry['portfolio_value'] for entry in portfolio_history]
+            
+            # Get portfolio values and dates
+            portfolio_dates = [entry['date'] for entry in portfolio_history]
+            portfolio_values = [entry['portfolio_value'] for entry in portfolio_history]
+            
+            # Calculate portfolio returns
+            portfolio_returns = []
+            for i in range(1, len(portfolio_values)):
+                portfolio_returns.append((portfolio_values[i] - portfolio_values[i-1]) / portfolio_values[i-1])
+            
+            # Only use dates that have both portfolio and benchmark returns
+            # Convert portfolio returns to pandas series
+            portfolio_dates_series = pd.DatetimeIndex([pd.Timestamp(d) for d in portfolio_dates[1:]])
+            portfolio_returns_series = pd.Series(portfolio_returns, index=portfolio_dates_series)
+            
+            # Create a DataFrame with both return series
+            returns_df = pd.DataFrame({
+                'portfolio': portfolio_returns_series,
+                'benchmark': benchmark_returns
+            })
+            
+            # Only use dates that are in both series
+            common_returns = returns_df.dropna()
+            
+            # Calculate portfolio performance
+            portfolio_start = portfolio_values[0]
+            portfolio_end = portfolio_values[-1]
+            portfolio_return = (portfolio_end - portfolio_start) / portfolio_start
             
             # Calculate excess return
-            excess_return = symphony_return - benchmark_return
+            excess_return = portfolio_return - benchmark_return
             
-            # Calculate correlation if possible
+            # Initialize correlation and beta
             correlation = None
             beta = None
-            
-            if len(symphony_values) > 1:
-                # Calculate symphony returns
-                symphony_returns = np.diff(symphony_values) / symphony_values[:-1]
-                
-                # Create dataframe of symphony and benchmark returns
-                symphony_index = pd.DatetimeIndex([pd.Timestamp(d) for d in symphony_dates[1:]])
-                symphony_returns_series = pd.Series(symphony_returns, index=symphony_index)
-                
-                # Align benchmark returns with symphony dates
-                aligned_returns = pd.DataFrame({
-                    'symphony': symphony_returns_series,
-                    'benchmark': benchmark_returns
-                })
-                aligned_returns = aligned_returns.dropna()
-                
-                # Make sure both series have the same length after alignment
-                if len(aligned_returns) > 1:
-                    correlation = aligned_returns['symphony'].corr(aligned_returns['benchmark'])
-                    # Calculate beta (symphony return to benchmark return)
-                    cov_matrix = aligned_returns.cov()
-                    beta = cov_matrix.loc['symphony', 'benchmark'] / cov_matrix.loc['benchmark', 'benchmark']
-            
-            # Calculate risk-adjusted metrics
-            sharpe_ratio = summary.get('sharpe_ratio', 0)
-            
-            # Calculate benchmark Sharpe
-            benchmark_sharpe = None
-            if len(benchmark_returns) > 1:
-                risk_free_rate = 0.03 / 252  # Assuming 3% annual risk-free rate
-                benchmark_excess_return = benchmark_returns - risk_free_rate
-                benchmark_sharpe = (benchmark_excess_return.mean() / benchmark_excess_return.std()) * np.sqrt(252)
-            
-            # Information ratio
             information_ratio = None
-            if correlation is not None and beta is not None and len(symphony_returns) > 0 and len(benchmark_returns) > 0:
-                # Need to re-align the returns again for accurate tracking error calculation
-                aligned_returns = pd.DataFrame({
-                    'symphony': symphony_returns_series,
-                    'benchmark': benchmark_returns
-                }).dropna()
+            
+            # Calculate correlation and beta if we have enough common data points
+            if len(common_returns) > 1:
+                correlation = common_returns['portfolio'].corr(common_returns['benchmark'])
                 
-                if len(aligned_returns) > 1:
-                    symphony_aligned = aligned_returns['symphony'].values
-                    benchmark_aligned = aligned_returns['benchmark'].values
+                # Calculate beta (portfolio return to benchmark return)
+                cov_matrix = common_returns.cov()
+                if cov_matrix.loc['benchmark', 'benchmark'] > 0:
+                    beta = cov_matrix.loc['portfolio', 'benchmark'] / cov_matrix.loc['benchmark', 'benchmark']
+                else:
+                    beta = 0
+                
+                # Calculate tracking error and information ratio
+                if beta is not None:
+                    # Tracking error is the standard deviation of the active returns
+                    active_returns = common_returns['portfolio'] - beta * common_returns['benchmark']
+                    tracking_error = np.std(active_returns) * np.sqrt(252)  # Annualize
                     
-                    tracking_error = np.std(symphony_aligned - (beta * benchmark_aligned)) * np.sqrt(252)
                     if tracking_error > 0:
                         information_ratio = excess_return / tracking_error
+            
+            # Calculate risk-adjusted metrics
+            sharpe_ratio = None
+            benchmark_sharpe = None
+            
+            if len(portfolio_returns) > 1:
+                # Assuming 3% annual risk-free rate
+                risk_free_rate = 0.03 / 252  # Daily rate
+                
+                # Portfolio Sharpe
+                portfolio_excess_return = np.array(portfolio_returns) - risk_free_rate
+                sharpe_ratio = (np.mean(portfolio_excess_return) / np.std(portfolio_excess_return)) * np.sqrt(252)
+                
+                # Benchmark Sharpe
+                if len(benchmark_returns) > 1:
+                    benchmark_excess_return = benchmark_returns - risk_free_rate
+                    benchmark_sharpe = (benchmark_excess_return.mean() / benchmark_excess_return.std()) * np.sqrt(252)
             
             return {
                 'benchmark_symbol': benchmark_symbol,
                 'benchmark_return': benchmark_return,
-                'symphony_return': symphony_return,
+                'portfolio_return': portfolio_return,
                 'excess_return': excess_return,
                 'correlation': correlation,
                 'beta': beta,
                 'sharpe_ratio': sharpe_ratio,
                 'benchmark_sharpe': benchmark_sharpe,
-                'information_ratio': information_ratio
+                'information_ratio': information_ratio,
+                'common_data_points': len(common_returns) if common_returns is not None else 0
             }
             
         except Exception as e:
