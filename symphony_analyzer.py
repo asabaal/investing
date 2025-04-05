@@ -630,8 +630,10 @@ class SymphonyAnalyzer:
                 aligned_returns = pd.DataFrame({
                     'symphony': symphony_returns_series,
                     'benchmark': benchmark_returns
-                }).dropna()
+                })
+                aligned_returns = aligned_returns.dropna()
                 
+                # Make sure both series have the same length after alignment
                 if len(aligned_returns) > 1:
                     correlation = aligned_returns['symphony'].corr(aligned_returns['benchmark'])
                     # Calculate beta (symphony return to benchmark return)
@@ -650,10 +652,20 @@ class SymphonyAnalyzer:
             
             # Information ratio
             information_ratio = None
-            if correlation is not None and beta is not None:
-                tracking_error = np.std(symphony_returns - beta * benchmark_returns) * np.sqrt(252)
-                if tracking_error > 0:
-                    information_ratio = excess_return / tracking_error
+            if correlation is not None and beta is not None and len(symphony_returns) > 0 and len(benchmark_returns) > 0:
+                # Need to re-align the returns again for accurate tracking error calculation
+                aligned_returns = pd.DataFrame({
+                    'symphony': symphony_returns_series,
+                    'benchmark': benchmark_returns
+                }).dropna()
+                
+                if len(aligned_returns) > 1:
+                    symphony_aligned = aligned_returns['symphony'].values
+                    benchmark_aligned = aligned_returns['benchmark'].values
+                    
+                    tracking_error = np.std(symphony_aligned - (beta * benchmark_aligned)) * np.sqrt(252)
+                    if tracking_error > 0:
+                        information_ratio = excess_return / tracking_error
             
             return {
                 'benchmark_symbol': benchmark_symbol,
