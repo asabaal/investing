@@ -16,11 +16,16 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import argparse
 
+# Add the current directory to Python's path to find local modules
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Now import local modules
 from symphony_analyzer import SymphonyAnalyzer
 from prophet_forecasting import ProphetForecaster
 from alpha_vantage_api import AlphaVantageClient
 
 # Configure logging
+os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
