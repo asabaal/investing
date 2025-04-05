@@ -11,8 +11,8 @@ import os
 import sys
 import json
 import logging
-import numpy as np
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import argparse
@@ -98,24 +98,39 @@ def run_full_analysis(
     results_file = os.path.join(output_dir, f"{symphony_name}_analysis.json")
     with open(results_file, 'w') as f:
         # Convert numpy values to Python native types for JSON serialization
-        def clean_for_json(obj):
-            if isinstance(obj, dict):
-                return {k: clean_for_json(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [clean_for_json(item) for item in obj]
-            elif isinstance(obj, (np.int64, np.int32, np.int16, np.int8)):
-                return int(obj)
-            elif isinstance(obj, (np.float64, np.float32, np.float16)):
-                return float(obj)
-            elif isinstance(obj, np.ndarray):
-                return clean_for_json(obj.tolist())
-            else:
-                return obj
-        
         json.dump(clean_for_json(results), f, indent=2)
     
     logger.info(f"Analysis complete. Results saved to {results_file}")
     return results
+
+def clean_for_json(obj):
+    """
+    Convert objects to JSON-serializable types.
+    
+    Args:
+        obj: Object to convert
+        
+    Returns:
+        JSON-serializable object
+    """
+    if isinstance(obj, dict):
+        return {k: clean_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_for_json(item) for item in obj]
+    elif isinstance(obj, (np.int64, np.int32, np.int16, np.int8)):
+        return int(obj)
+    elif isinstance(obj, (np.float64, np.float32, np.float16)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return clean_for_json(obj.tolist())
+    elif isinstance(obj, (pd.Timestamp, datetime)):
+        return obj.isoformat()
+    elif pd and hasattr(pd, 'Series') and isinstance(obj, pd.Series):
+        return clean_for_json(obj.to_dict())
+    elif pd and hasattr(pd, 'DataFrame') and isinstance(obj, pd.DataFrame):
+        return clean_for_json(obj.to_dict(orient='records'))
+    else:
+        return obj
 
 def generate_html_report(results, output_dir="symphony_analysis_results"):
     """
