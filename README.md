@@ -11,18 +11,21 @@ This system provides tools for:
 3. **Monitoring** the health of symphonies with a watchlist dashboard
 4. **Testing** symphonies under different market scenarios
 5. **Forecasting** security prices using Prophet models
+6. **Logging & Debugging** with robust log analysis tools
 
 ## Components
 
 The system consists of several modules:
 
-- **alpha_vantage_api.py**: Client for fetching market data
+- **alpha_vantage_api.py**: Client for fetching market data with premium tier rate limiting
 - **composer_symphony.py**: Core functionality for parsing and executing symphonies
 - **prophet_forecasting.py**: Time series forecasting using Prophet
 - **symphony_analyzer.py**: Comprehensive symphony analysis
 - **symphony_simulation.py**: Testing symphonies under different scenarios
 - **symphony_watchlist.py**: GUI for monitoring symphonies and their components
 - **symphony_cli.py**: Command-line interface for the system
+- **symphony_backtester.py**: Backtesting and analysis utility with advanced reporting
+- **log_analyzer.py**: Tool for analyzing log files and identifying patterns
 
 ## Prerequisites
 
@@ -76,6 +79,52 @@ Available commands:
 - **forecast**: Generate price forecasts for symbols
 - **create**: Create a new symphony configuration
 - **watchlist**: Launch the Symphony Watchlist GUI
+
+#### Backtesting with Symphony Backtester
+
+The symphony backtester provides comprehensive analysis of trading strategies:
+
+```
+python symphony_backtester.py symphony_file.json [options]
+```
+
+Options:
+- `--benchmark, -b`: Benchmark symbol (default: SPY)
+- `--forecast, -f`: Number of days to forecast (default: 30)
+- `--start-date, -s`: Start date for backtest (YYYY-MM-DD)
+- `--end-date, -e`: End date for backtest (YYYY-MM-DD)
+- `--output-dir, -o`: Output directory for results
+- `--html-report, -r`: Generate HTML report
+- `--debug, -d`: Enable debug logging
+
+For improved logging, use the fixed version:
+
+```
+python symphony_backtester_fix.py symphony_file.json [options]
+```
+
+#### Log Analysis
+
+The system includes a log analyzer tool for diagnosing issues:
+
+```
+python log_analyzer.py [options]
+```
+
+Options:
+- `--file, -f`: Path to log file (default: most recent log)
+- `--dir, -d`: Directory containing log files (default: logs)
+- `--prefix, -p`: Prefix to filter log files
+- `--examples, -e`: Maximum examples per message type (default: 3)
+- `--min-count, -m`: Minimum count to include a message type (default: 1)
+- `--level, -l`: Filter by log level (INFO, ERROR, etc.)
+- `--module`: Filter by module name
+
+To test logging functionality:
+
+```
+python test_logging.py
+```
 
 #### Sample Commands
 
@@ -174,6 +223,45 @@ Use multiple Prophet models for more robust forecasts:
 
 ```
 python symphony_cli.py forecast --symbols SPY --ensemble --models 5
+```
+
+### Alpha Vantage API Rate Limiting
+
+The system includes sophisticated rate limiting for the Alpha Vantage API:
+
+- Standard tier: 5 calls/minute and 500 calls/day
+- Premium tier: 75 calls/minute (configurable) with no daily limit
+
+Set your API tier in the environment:
+```
+export ALPHA_VANTAGE_API_TIER=premium
+export ALPHA_VANTAGE_API_CALLS_PER_MINUTE=75
+```
+
+## Debugging and Troubleshooting
+
+### Common Issues
+
+1. **Empty Log Files**: If log files are being created but are empty (0 bytes), use the fixed backtester version:
+   ```
+   python symphony_backtester_fix.py
+   ```
+
+2. **API Rate Limiting**: If you're hitting API rate limits, check your tier settings:
+   ```
+   python check_api_access.py
+   ```
+
+3. **Log Analysis**: To diagnose complex issues, use the log analyzer:
+   ```
+   python log_analyzer.py --level ERROR
+   ```
+
+### Testing Logging
+
+To verify logging functionality:
+```
+python test_logging.py
 ```
 
 ## Examples
