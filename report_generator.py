@@ -318,11 +318,14 @@ class ReportGenerator:
     def _generate_backtest_section(self, backtest_results):
         """Generate the backtest results section"""
         summary = backtest_results['backtest_summary']
-        total_return = summary.get('total_return', 0) * 100
-        annual_return = summary.get('annualized_return', 0) * 100
-        max_drawdown = summary.get('max_drawdown', 0) * 100
-        sharpe = summary.get('sharpe_ratio', 0)
-        volatility = summary.get('volatility', 0) * 100 if 'volatility' in summary else 0
+        
+        # Ensure values are properly extracted and converted to float
+        total_return = self._ensure_float(summary.get('total_return', 0)) * 100
+        annual_return = self._ensure_float(summary.get('annualized_return', 0)) * 100
+        max_drawdown = self._ensure_float(summary.get('max_drawdown', 0)) * 100
+        sharpe = self._ensure_float(summary.get('sharpe_ratio', 0))
+        volatility = self._ensure_float(summary.get('volatility', 0)) * 100
+        win_rate = self._ensure_float(summary.get('win_rate', 0)) * 100
         
         html = f"""
         <div class="section">
@@ -363,7 +366,7 @@ class ReportGenerator:
                 <div class="col-md-4">
                     <div class="metric">
                         <div class="label">Win Rate</div>
-                        <div class="value {self._get_color_class(summary.get('win_rate', 0) * 100 - 50)}>{summary.get('win_rate', 0) * 100:.1f}%</div>
+                        <div class="value {self._get_color_class(win_rate - 50)}">{win_rate:.1f}%</div>
                     </div>
                 </div>
             </div>
@@ -374,12 +377,14 @@ class ReportGenerator:
     def _generate_benchmark_section(self, benchmark_comparison):
         """Generate the benchmark comparison section"""
         benchmark_symbol = benchmark_comparison['benchmark_symbol']
-        benchmark_return = benchmark_comparison.get('benchmark_return', 0) * 100
-        portfolio_return = benchmark_comparison.get('portfolio_return', 0) * 100
-        excess_return = benchmark_comparison.get('excess_return', 0) * 100
-        beta = benchmark_comparison.get('beta', 0)
-        correlation = benchmark_comparison.get('correlation', 0)
-        info_ratio = benchmark_comparison.get('information_ratio', 0)
+        
+        # Ensure values are properly extracted and converted to float
+        benchmark_return = self._ensure_float(benchmark_comparison.get('benchmark_return', 0)) * 100
+        portfolio_return = self._ensure_float(benchmark_comparison.get('portfolio_return', 0)) * 100
+        excess_return = self._ensure_float(benchmark_comparison.get('excess_return', 0)) * 100
+        beta = self._ensure_float(benchmark_comparison.get('beta', 0))
+        correlation = self._ensure_float(benchmark_comparison.get('correlation', 0))
+        info_ratio = self._ensure_float(benchmark_comparison.get('information_ratio', 0))
         
         html = f"""
         <div class="section">
@@ -430,20 +435,37 @@ class ReportGenerator:
     
     def _generate_forecast_section(self, forecasts, symphony_info):
         """Generate the forecast section"""
-        forecast_30d = forecasts.get('average_30d_forecast', 0)
+        # Ensure we have forecast data
+        if not forecasts:
+            return f"""
+            <div class="section">
+                <h2>Forecast</h2>
+                <p>No forecast data available</p>
+            </div>
+            """
+            
+        # Extract forecast averages and sentiment
+        forecast_30d = self._ensure_float(forecasts.get('average_30d_forecast', 0))
+        forecast_7d = self._ensure_float(forecasts.get('average_7d_forecast', 0))
         sentiment = forecasts.get('forecast_sentiment', 'unknown')
         
         html = f"""
         <div class="section">
             <h2>Forecast</h2>
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <div class="metric">
+                        <div class="label">7-Day Average Forecast</div>
+                        <div class="value {self._get_color_class(forecast_7d)}">{forecast_7d:.2f}%</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
                     <div class="metric">
                         <div class="label">30-Day Average Forecast</div>
                         <div class="value {self._get_color_class(forecast_30d)}">{forecast_30d:.2f}%</div>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="metric">
                         <div class="label">Forecast Sentiment</div>
                         <div class="value {sentiment}">{sentiment.title()}</div>
@@ -467,9 +489,15 @@ class ReportGenerator:
         for symbol in symphony_info['symbols']:
             if symbol in forecasts:
                 symbol_forecast = forecasts[symbol]
-                forecast_7d = symbol_forecast.get('7_day', {}).get('percent_change', 0)
-                forecast_30d = symbol_forecast.get('30_day', {}).get('percent_change', 0)
-                confidence = symbol_forecast.get('confidence', 0.5) * 100
+                
+                # Skip symbols with errors
+                if 'error' in symbol_forecast:
+                    continue
+                
+                # Extract forecast data with proper conversion to float
+                forecast_7d = self._get_nested_value(symbol_forecast, ['7_day', 'percent_change'], 0.0)
+                forecast_30d = self._get_nested_value(symbol_forecast, ['30_day', 'percent_change'], 0.0)
+                confidence = self._ensure_float(symbol_forecast.get('confidence', 0.5)) * 100
                 
                 html += f"""
                     <tr>
@@ -490,10 +518,11 @@ class ReportGenerator:
     
     def _generate_risk_section(self, risk_analysis):
         """Generate the risk analysis section"""
-        volatility = risk_analysis.get('volatility', 0) * 100
-        max_drawdown = risk_analysis.get('max_drawdown', 0) * 100
-        sortino = risk_analysis.get('sortino_ratio', 0)
-        downside_dev = risk_analysis.get('downside_deviation', 0) * 100
+        # Ensure values are properly extracted and converted to float
+        volatility = self._ensure_float(risk_analysis.get('volatility', 0)) * 100
+        max_drawdown = self._ensure_float(risk_analysis.get('max_drawdown', 0)) * 100
+        sortino = self._ensure_float(risk_analysis.get('sortino_ratio', 0))
+        downside_dev = self._ensure_float(risk_analysis.get('downside_deviation', 0)) * 100
         
         html = f"""
         <div class="section">
@@ -557,13 +586,18 @@ class ReportGenerator:
                 
                 for year, months in sorted(monthly_returns.items()):
                     if isinstance(months, dict):
-                        ytd = sum([float(v) for v in months.values() if isinstance(v, (int, float))])
+                        # Convert values to float and calculate YTD
+                        month_values = {}
+                        for month_key, month_val in months.items():
+                            month_values[month_key] = self._ensure_float(month_val)
+                            
+                        ytd = sum(month_values.values())
                         html += f"<tr><td><strong>{year}</strong></td>"
                         
                         for month in range(1, 13):
                             month_str = str(month)
-                            if month_str in months:
-                                value = float(months[month_str]) * 100
+                            if month_str in month_values:
+                                value = month_values[month_str] * 100
                                 html += f'<td class="{self._get_color_class(value)}">{value:.1f}%</td>'
                             else:
                                 html += "<td>-</td>"
@@ -594,7 +628,7 @@ class ReportGenerator:
             # If we have a dictionary with dates
             if isinstance(portfolio_values, dict):
                 dates = list(portfolio_values.keys())
-                values = list(portfolio_values.values())
+                values = [self._ensure_float(v) for v in portfolio_values.values()]
                 
                 # Try to parse dates
                 try:
@@ -605,7 +639,8 @@ class ReportGenerator:
                 except:
                     plt.plot(values, 'b-', linewidth=2)
             else:
-                plt.plot(portfolio_values, 'b-', linewidth=2)
+                values = [self._ensure_float(v) for v in portfolio_values]
+                plt.plot(values, 'b-', linewidth=2)
             
             plt.title('Portfolio Equity Curve')
             plt.ylabel('Portfolio Value')
@@ -652,7 +687,7 @@ class ReportGenerator:
             # If we have a dictionary with dates
             if isinstance(drawdowns, dict):
                 dates = list(drawdowns.keys())
-                values = [float(v) * 100 for v in drawdowns.values()]
+                values = [self._ensure_float(v) * 100 for v in drawdowns.values()]
                 
                 # Try to parse dates
                 try:
@@ -665,7 +700,7 @@ class ReportGenerator:
                     plt.fill_between(range(len(values)), values, 0, color='r', alpha=0.3)
                     plt.plot(values, 'r-', linewidth=1)
             else:
-                values = [float(v) * 100 for v in drawdowns]
+                values = [self._ensure_float(v) * 100 for v in drawdowns]
                 plt.fill_between(range(len(values)), values, 0, color='r', alpha=0.3)
                 plt.plot(values, 'r-', linewidth=1)
             
@@ -721,11 +756,11 @@ class ReportGenerator:
                 
                 if common_dates:
                     # Normalize both series to start at 100
-                    port_start = float(portfolio_values[common_dates[0]])
-                    bench_start = float(benchmark_values[common_dates[0]])
+                    port_start = self._ensure_float(portfolio_values[common_dates[0]])
+                    bench_start = self._ensure_float(benchmark_values[common_dates[0]])
                     
-                    port_norm = [float(portfolio_values[d]) / port_start * 100 for d in common_dates]
-                    bench_norm = [float(benchmark_values[d]) / bench_start * 100 for d in common_dates]
+                    port_norm = [self._ensure_float(portfolio_values[d]) / port_start * 100 for d in common_dates]
+                    bench_norm = [self._ensure_float(benchmark_values[d]) / bench_start * 100 for d in common_dates]
                     
                     # Try to parse dates
                     try:
@@ -785,6 +820,11 @@ class ReportGenerator:
                 # Get the forecast data for this symbol
                 symbol_forecast = forecasts[symbol]
                 
+                # Skip symbols with errors
+                if 'error' in symbol_forecast:
+                    continue
+                
+                # Check for forecast values
                 if not ('forecast_values' in symbol_forecast and symbol_forecast['forecast_values']):
                     continue
                     
@@ -797,7 +837,7 @@ class ReportGenerator:
                 if isinstance(forecast_data, dict):
                     # Split into history and forecast
                     dates = list(forecast_data.keys())
-                    values = list(forecast_data.values())
+                    values = [self._ensure_float(v) for v in forecast_data.values()]
                     
                     # Find where forecast starts
                     forecast_start_idx = -1
@@ -851,6 +891,10 @@ class ReportGenerator:
                 # Encode the image to base64
                 encoded = base64.b64encode(img_data.read()).decode('utf-8')
                 
+                # Get forecast percent changes
+                forecast_7d = self._get_nested_value(symbol_forecast, ['7_day', 'percent_change'], 0.0)
+                forecast_30d = self._get_nested_value(symbol_forecast, ['30_day', 'percent_change'], 0.0)
+                
                 # Add this symbol's chart to the HTML
                 all_charts_html += f"""
                 <div class="chart mt-4">
@@ -858,8 +902,8 @@ class ReportGenerator:
                     <img src="data:image/png;base64,{encoded}" class="img-fluid" alt="{symbol} Forecast">
                     <div class="mt-3">
                         <small>
-                            7-Day Forecast: <span class="{self._get_color_class(symbol_forecast.get('7_day', {}).get('percent_change', 0))}">{symbol_forecast.get('7_day', {}).get('percent_change', 0):.2f}%</span>
-                            | 30-Day Forecast: <span class="{self._get_color_class(symbol_forecast.get('30_day', {}).get('percent_change', 0))}">{symbol_forecast.get('30_day', {}).get('percent_change', 0):.2f}%</span>
+                            7-Day Forecast: <span class="{self._get_color_class(forecast_7d)}">{forecast_7d:.2f}%</span>
+                            | 30-Day Forecast: <span class="{self._get_color_class(forecast_30d)}">{forecast_30d:.2f}%</span>
                         </small>
                     </div>
                 </div>
@@ -892,12 +936,12 @@ class ReportGenerator:
             
             # Get values (original values, not normalized)
             values = [
-                risk_analysis.get('sharpe_ratio', 0),
-                risk_analysis.get('sortino_ratio', 0),
-                risk_analysis.get('calmar_ratio', 0),
-                risk_analysis.get('max_drawdown', 0) * 100,  # Convert to percentage
-                risk_analysis.get('volatility', 0) * 100,    # Convert to percentage
-                risk_analysis.get('downside_deviation', 0) * 100  # Convert to percentage
+                self._ensure_float(risk_analysis.get('sharpe_ratio', 0)),
+                self._ensure_float(risk_analysis.get('sortino_ratio', 0)),
+                self._ensure_float(risk_analysis.get('calmar_ratio', 0)),
+                self._ensure_float(risk_analysis.get('max_drawdown', 0)) * 100,  # Convert to percentage
+                self._ensure_float(risk_analysis.get('volatility', 0)) * 100,    # Convert to percentage
+                self._ensure_float(risk_analysis.get('downside_deviation', 0)) * 100  # Convert to percentage
             ]
             
             # Define colors based on what's good vs bad
@@ -1050,12 +1094,12 @@ class ReportGenerator:
             if isinstance(portfolio_values, dict):
                 portfolio_data = {
                     'labels': list(portfolio_values.keys()),
-                    'values': list(portfolio_values.values())
+                    'values': [self._ensure_float(v) for v in portfolio_values.values()]
                 }
             else:
                 portfolio_data = {
                     'labels': list(range(len(portfolio_values))),
-                    'values': portfolio_values
+                    'values': [self._ensure_float(v) for v in portfolio_values]
                 }
             
             # Add drawdown data if available
@@ -1065,12 +1109,12 @@ class ReportGenerator:
                 if isinstance(drawdowns, dict):
                     drawdown_data = {
                         'labels': list(drawdowns.keys()),
-                        'values': [float(v) * 100 for v in drawdowns.values()]
+                        'values': [self._ensure_float(v) * 100 for v in drawdowns.values()]
                     }
                 else:
                     drawdown_data = {
                         'labels': list(range(len(drawdowns))),
-                        'values': [float(v) * 100 for v in drawdowns]
+                        'values': [self._ensure_float(v) * 100 for v in drawdowns]
                     }
             
             # Add benchmark data if available
@@ -1084,12 +1128,12 @@ class ReportGenerator:
                 if isinstance(benchmark_values, dict):
                     benchmark_data = {
                         'labels': list(benchmark_values.keys()),
-                        'values': list(benchmark_values.values())
+                        'values': [self._ensure_float(v) for v in benchmark_values.values()]
                     }
                 else:
                     benchmark_data = {
                         'labels': list(range(len(benchmark_values))),
-                        'values': benchmark_values
+                        'values': [self._ensure_float(v) for v in benchmark_values]
                     }
             
             # Add JavaScript to initialize charts
@@ -1278,12 +1322,46 @@ class ReportGenerator:
     
     def _get_color_class(self, value):
         """Helper function to determine CSS class based on value"""
+        value = self._ensure_float(value)
         if value > 0:
             return "positive"
         elif value < 0:
             return "negative"
         else:
             return "neutral"
+    
+    def _ensure_float(self, value):
+        """
+        Convert value to float safely.
+        
+        This handles various numeric types and converts them to native Python float.
+        """
+        try:
+            if value is None:
+                return 0.0
+            return float(value)
+        except (ValueError, TypeError):
+            return 0.0
+    
+    def _get_nested_value(self, dictionary, keys, default=0.0):
+        """
+        Safely extract a nested value from a dictionary.
+        
+        Args:
+            dictionary: The dictionary to extract from
+            keys: List of keys to navigate the nested structure
+            default: Default value if the path doesn't exist
+            
+        Returns:
+            The extracted value or the default
+        """
+        try:
+            result = dictionary
+            for key in keys:
+                result = result[key]
+            return self._ensure_float(result)
+        except (KeyError, TypeError):
+            return default
 
 def main():
     """
