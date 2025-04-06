@@ -363,7 +363,7 @@ class ReportGenerator:
                 <div class="col-md-4">
                     <div class="metric">
                         <div class="label">Win Rate</div>
-                        <div class="value {self._get_color_class(summary.get('win_rate', 0) * 100 - 50)}">{summary.get('win_rate', 0) * 100:.1f}%</div>
+                        <div class="value {self._get_color_class(summary.get('win_rate', 0) * 100 - 50)}>{summary.get('win_rate', 0) * 100:.1f}%</div>
                     </div>
                 </div>
             </div>
@@ -872,63 +872,77 @@ class ReportGenerator:
             return ""
     
     def _generate_risk_chart(self, risk_analysis):
-        """Generate risk visualization chart"""
+        """Generate risk visualization chart as a horizontal bar chart"""
         if not risk_analysis:
             return ""
         
         try:
-            # Create a radar chart for risk metrics
-            plt.figure(figsize=(8, 8))
+            # Create a horizontal bar chart for risk metrics
+            plt.figure(figsize=(10, 6))
             
             # Define risk metrics to show
-            metrics = ['Sharpe Ratio', 'Sortino Ratio', 'Calmar Ratio', 
-                    'Max Drawdown', 'Volatility', 'Downside Deviation']
+            metrics = [
+                'Sharpe Ratio', 
+                'Sortino Ratio', 
+                'Calmar Ratio', 
+                'Max Drawdown (%)', 
+                'Volatility (%)', 
+                'Downside Deviation (%)'
+            ]
             
-            # Get values, handling the negative ones specially
+            # Get values (original values, not normalized)
             values = [
                 risk_analysis.get('sharpe_ratio', 0),
                 risk_analysis.get('sortino_ratio', 0),
                 risk_analysis.get('calmar_ratio', 0),
-                -risk_analysis.get('max_drawdown', 0) * 10,  # Scale and invert (higher is better)
-                -risk_analysis.get('volatility', 0) * 10,    # Scale and invert (higher is better)
-                -risk_analysis.get('downside_deviation', 0) * 10  # Scale and invert (higher is better)
+                risk_analysis.get('max_drawdown', 0) * 100,  # Convert to percentage
+                risk_analysis.get('volatility', 0) * 100,    # Convert to percentage
+                risk_analysis.get('downside_deviation', 0) * 100  # Convert to percentage
             ]
             
-            # Normalize values to 0-1 range for the radar chart
-            # First find min/max considering all values
-            all_min = min(min(values), 0)  # Include 0 as a possible minimum
-            all_max = max(max(values), 3)  # Include 3 as a good maximum for ratios
+            # Define colors based on what's good vs bad
+            # For ratios (Sharpe, Sortino, Calmar): higher is better
+            # For risk metrics (Drawdown, Volatility, Downside Dev): lower is better
+            colors = []
+            good_color = '#28a745'  # Green
+            neutral_color = '#6c757d'  # Gray
+            bad_color = '#dc3545'  # Red
             
-            # Normalize values
-            norm_values = []
-            for v in values:
-                if v < 0:
-                    # Negative values map to 0-0.5 range
-                    norm_values.append(0.5 * (1 + v / abs(all_min) if all_min != 0 else 0))
-                else:
-                    # Positive values map to 0.5-1 range
-                    norm_values.append(0.5 + 0.5 * min(v / all_max, 1) if all_max != 0 else 0.5)
+            for i, val in enumerate(values):
+                if i < 3:  # Ratios (higher is better)
+                    if val > 1.5:
+                        colors.append(good_color)
+                    elif val > 0.5:
+                        colors.append(neutral_color)
+                    else:
+                        colors.append(bad_color)
+                else:  # Risk metrics (lower is better)
+                    if val < 10:
+                        colors.append(good_color)
+                    elif val < 20:
+                        colors.append(neutral_color)
+                    else:
+                        colors.append(bad_color)
             
-            # Convert to numpy array and close the loop for the radar chart
-            values_array = np.array(norm_values + [norm_values[0]])
-            
-            # Set up the radar chart
-            angles = np.linspace(0, 2*np.pi, len(metrics), endpoint=False).tolist()
-            angles += angles[:1]  # Close the loop
-            
-            # Plot the radar chart
-            ax = plt.subplot(111, polar=True)
-            ax.plot(angles, values_array, 'o-', linewidth=2)
-            ax.fill(angles, values_array, alpha=0.25)
-            ax.set_thetagrids(np.degrees(angles[:-1]), metrics)
+            # Create horizontal bar chart
+            y_pos = np.arange(len(metrics))
+            ax = plt.barh(y_pos, values, align='center', color=colors, alpha=0.8)
+            plt.yticks(y_pos, metrics)
             
             # Add value labels
-            for angle, value, norm in zip(angles[:-1], values, norm_values):
-                ha = 'left' if np.degrees(angle) < 180 else 'right'
-                plt.text(angle, norm + 0.1, f"{value:.2f}", 
-                        ha=ha, va='center', fontsize=9)
+            for i, v in enumerate(values):
+                plt.text(max(v + 0.1, 0.1), i, f"{v:.2f}", va='center')
             
-            plt.title('Risk Profile', size=15, y=1.1)
+            # Set chart properties
+            plt.xlabel('Value')
+            plt.title('Risk Metrics')
+            plt.grid(axis='x', alpha=0.3)
+            
+            # Different x-axis limits for ratios vs risk metrics
+            # Find max value to set appropriate x-axis limit
+            max_val = max(values) * 1.2  # Add 20% margin
+            plt.xlim(0, max_val)
+            
             plt.tight_layout()
             
             # Save figure to a BytesIO object
@@ -945,10 +959,10 @@ class ReportGenerator:
             <div class="section">
                 <h2>Risk Profile</h2>
                 <div class="chart text-center">
-                    <img src="data:image/png;base64,{encoded}" style="max-width: 600px;" alt="Risk Profile">
+                    <img src="data:image/png;base64,{encoded}" class="img-fluid" alt="Risk Profile">
                 </div>
                 <div class="mt-3">
-                    <small class="text-muted">Note: Higher values (farther from center) are better for all metrics shown in this radar chart.</small>
+                    <small class="text-muted">Note: For ratios (Sharpe, Sortino, Calmar), higher values are better. For risk metrics (Drawdown, Volatility, Downside Deviation), lower values are better.</small>
                 </div>
             </div>
             """
