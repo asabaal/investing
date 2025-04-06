@@ -524,12 +524,18 @@ class StockForecast:
         """
         summary = {}
         
-        # Get the last historical date
-        last_historical_date = forecast[forecast['ds'] <= datetime.now()]['ds'].max()
+        # Get the last historical date (up to today)
+        today = pd.Timestamp(datetime.now().date())
+        last_historical_date = forecast[forecast['ds'] <= today]['ds'].max()
+        
+        # If no historical dates found (rare case), use the earliest date
+        if pd.isnull(last_historical_date):
+            last_historical_date = forecast['ds'].min()
+            logger.warning("No historical dates found in forecast, using earliest date")
         
         for day in days:
             # Find the closest forecast date to the requested horizon
-            target_date = last_historical_date + timedelta(days=day)
+            target_date = last_historical_date + pd.Timedelta(days=day)
             forecast_index = (forecast['ds'] - target_date).abs().idxmin()
             forecast_row = forecast.iloc[forecast_index]
             
@@ -553,12 +559,19 @@ class StockForecast:
             # Add to summary
             summary[f'{day}_day'] = {
                 'date': forecast_row['ds'].strftime('%Y-%m-%d'),
-                'forecast': forecast_value,
-                'percent_change': percent_change,
-                'lower_bound': lower_bound,
-                'upper_bound': upper_bound,
-                'uncertainty_range': uncertainty_range
+                'forecast': float(forecast_value),  # Convert to native Python float
+                'percent_change': float(percent_change),  # Convert to native Python float
+                'lower_bound': float(lower_bound) if lower_bound is not None else None,
+                'upper_bound': float(upper_bound) if upper_bound is not None else None,
+                'uncertainty_range': float(uncertainty_range) if uncertainty_range is not None else None
             }
+        
+        # Add a confidence score based on uncertainty ranges (higher score = more confident)
+        if '30_day' in summary and summary['30_day'].get('uncertainty_range') is not None:
+            uncertainty = summary['30_day']['uncertainty_range']
+            # Confidence score: 1.0 (low uncertainty) to 0.0 (high uncertainty)
+            confidence = max(0.0, min(1.0, 1.0 - uncertainty / 100.0))
+            summary['confidence'] = confidence
         
         return summary
     
@@ -894,12 +907,18 @@ class ProphetEnsemble:
         forecast = result['forecast']
         summary = {}
         
-        # Get the last historical date
-        last_historical_date = forecast[forecast['ds'] <= datetime.now()]['ds'].max()
+        # Get the last historical date (up to today)
+        today = pd.Timestamp(datetime.now().date())
+        last_historical_date = forecast[forecast['ds'] <= today]['ds'].max()
+        
+        # If no historical dates found (rare case), use the earliest date
+        if pd.isnull(last_historical_date):
+            last_historical_date = forecast['ds'].min()
+            logger.warning("No historical dates found in forecast, using earliest date")
         
         for day in days:
             # Find the closest forecast date to the requested horizon
-            target_date = last_historical_date + timedelta(days=day)
+            target_date = last_historical_date + pd.Timedelta(days=day)
             forecast_index = (forecast['ds'] - target_date).abs().idxmin()
             forecast_row = forecast.iloc[forecast_index]
             
@@ -924,13 +943,20 @@ class ProphetEnsemble:
             # Add to summary
             summary[f'{day}_day'] = {
                 'date': forecast_row['ds'].strftime('%Y-%m-%d'),
-                'forecast': forecast_value,
-                'percent_change': percent_change,
-                'lower_bound': lower_bound,
-                'upper_bound': upper_bound,
-                'uncertainty_range': uncertainty_range,
-                'model_agreement': 100 - coefficient_of_variation  # Higher is better
+                'forecast': float(forecast_value),  # Convert to native Python float
+                'percent_change': float(percent_change),  # Convert to native Python float
+                'lower_bound': float(lower_bound),
+                'upper_bound': float(upper_bound),
+                'uncertainty_range': float(uncertainty_range),
+                'model_agreement': float(100 - coefficient_of_variation)  # Higher is better
             }
+        
+        # Add a confidence score based on model agreement and uncertainty
+        if '30_day' in summary:
+            model_agreement = summary['30_day']['model_agreement']
+            # Normalize to a 0.0-1.0 scale (higher is better)
+            confidence = max(0.0, min(1.0, model_agreement / 100.0))
+            summary['confidence'] = confidence
         
         return summary
 
