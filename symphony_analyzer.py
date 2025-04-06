@@ -520,6 +520,23 @@ class SymphonyAnalyzer:
                         
                         summary['plot_filename'] = filename
                     
+                    # Store forecast values for reporting and visualization
+                    forecast_values = {}
+                    
+                    # Add the historical data
+                    for date, price in zip(historical_dates[-30:], historical_prices[-30:]):
+                        date_str = date.strftime('%Y-%m-%d')
+                        forecast_values[date_str] = float(price)
+                    
+                    # Add the forecasted data
+                    forecast_dates = forecast['ds'].iloc[-days:]
+                    forecast_prices = forecast['yhat'].iloc[-days:]
+                    
+                    for date, price in zip(forecast_dates, forecast_prices):
+                        date_str = f"forecast_{date.strftime('%Y-%m-%d')}"
+                        forecast_values[date_str] = float(price)
+                    
+                    summary['forecast_values'] = forecast_values
                     results[symbol] = summary
                     
                 else:
@@ -555,6 +572,26 @@ class SymphonyAnalyzer:
                         
                         summary['plot_filename'] = filename
                     
+                    # Store forecast values for reporting and visualization
+                    forecast_values = {}
+                    
+                    # Add the historical data
+                    historical_dates = pd.to_datetime(df.index)[-30:]
+                    historical_prices = df['adjusted_close'].iloc[-30:]
+                    
+                    for date, price in zip(historical_dates, historical_prices):
+                        date_str = date.strftime('%Y-%m-%d')
+                        forecast_values[date_str] = float(price)
+                    
+                    # Add the forecasted data
+                    forecast_dates = forecast['ds'].iloc[-days:]
+                    forecast_prices = forecast['yhat'].iloc[-days:]
+                    
+                    for date, price in zip(forecast_dates, forecast_prices):
+                        date_str = f"forecast_{date.strftime('%Y-%m-%d')}"
+                        forecast_values[date_str] = float(price)
+                    
+                    summary['forecast_values'] = forecast_values
                     results[symbol] = summary
                 
             except Exception as e:
@@ -568,27 +605,40 @@ class SymphonyAnalyzer:
             forecast_30d = []
             
             for symbol, result in results.items():
+                # Skip symbols with errors
+                if 'error' in result:
+                    continue
+                    
+                # Extract percent changes from summaries
                 if '7_day' in result and 'percent_change' in result['7_day']:
-                    forecast_7d.append(result['7_day']['percent_change'])
+                    percent_change_7d = result['7_day']['percent_change']
+                    if isinstance(percent_change_7d, (int, float)):
+                        forecast_7d.append(percent_change_7d)
                 
                 if '30_day' in result and 'percent_change' in result['30_day']:
-                    forecast_30d.append(result['30_day']['percent_change'])
+                    percent_change_30d = result['30_day']['percent_change']
+                    if isinstance(percent_change_30d, (int, float)):
+                        forecast_30d.append(percent_change_30d)
             
-            # Calculate averages
+            # Calculate averages (ensure we have values to average)
             if forecast_7d:
                 results['average_7d_forecast'] = sum(forecast_7d) / len(forecast_7d)
+            else:
+                results['average_7d_forecast'] = 0.0
             
             if forecast_30d:
                 results['average_30d_forecast'] = sum(forecast_30d) / len(forecast_30d)
+            else:
+                results['average_30d_forecast'] = 0.0
             
             # Overall forecast sentiment
-            if 'average_30d_forecast' in results:
-                if results['average_30d_forecast'] > 5:
-                    results['forecast_sentiment'] = 'bullish'
-                elif results['average_30d_forecast'] < -5:
-                    results['forecast_sentiment'] = 'bearish'
-                else:
-                    results['forecast_sentiment'] = 'neutral'
+            avg_30d = results['average_30d_forecast']
+            if avg_30d > 5:
+                results['forecast_sentiment'] = 'bullish'
+            elif avg_30d < -5:
+                results['forecast_sentiment'] = 'bearish'
+            else:
+                results['forecast_sentiment'] = 'neutral'
         
         return results
     
