@@ -182,7 +182,8 @@ class TestEvaluationFunctions(unittest.TestCase):
                        "Fast should cross below slow within the lookback period")
         
         # Limit lookback to avoid finding the crossover
-        self.assertFalse(evaluate_crossover(self.fast_series, self.slow_series, 'above', 2),
+        # Note: With lookback=1, we only look at indices 8-9, where there's no crossover
+        self.assertFalse(evaluate_crossover(self.fast_series, self.slow_series, 'above', 1),
                         "Fast should not cross above slow within the limited lookback period")
         
         # Test with no crossover
