@@ -58,7 +58,7 @@ class TestTechnicalIndicators(unittest.TestCase):
     def test_calculate_rsi_flat(self):
         """Test RSI calculation with flat prices."""
         rsi = calculate_rsi(self.flat_prices, period=14)
-        
+
         # RSI should be 50 for flat prices (after the initial period)
         # For the first element after the period, there might be numerical instability
         # due to division by small numbers, so we'll check from period+1 onward
