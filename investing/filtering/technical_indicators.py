@@ -30,27 +30,30 @@ def calculate_rsi(prices: Union[pd.Series, np.ndarray], period: int = 14) -> np.
         prices = prices.values
     
     # Calculate price changes
-    price_diff = np.diff(prices, prepend=prices[0])
+    price_diff = np.diff(prices)
+    price_diff = np.append([0], price_diff)  # Add 0 at the beginning to keep same length
     
     # Separate gains and losses
     gains = np.where(price_diff > 0, price_diff, 0)
     losses = np.where(price_diff < 0, -price_diff, 0)
     
     # Initialize arrays for average gains and losses
-    avg_gains = np.zeros_like(prices)
-    avg_losses = np.zeros_like(prices)
+    avg_gains = np.zeros_like(prices, dtype=float)
+    avg_losses = np.zeros_like(prices, dtype=float)
     
     # Calculate first average gain and loss
     avg_gains[period] = np.mean(gains[1:period+1])
     avg_losses[period] = np.mean(losses[1:period+1])
     
-    # Calculate subsequent average gains and losses
+    # Calculate subsequent average gains and losses using the Wilder's smoothing method
     for i in range(period + 1, len(prices)):
         avg_gains[i] = (avg_gains[i-1] * (period-1) + gains[i]) / period
         avg_losses[i] = (avg_losses[i-1] * (period-1) + losses[i]) / period
     
     # Calculate RS and RSI
-    rs = np.divide(avg_gains, avg_losses, out=np.zeros_like(avg_gains), where=avg_losses!=0)
+    # Add a small epsilon to avg_losses to prevent division by zero for flat prices
+    epsilon = 1e-10
+    rs = avg_gains / (avg_losses + epsilon)
     rsi = 100 - (100 / (1 + rs))
     
     # Set NaN for the first period values
