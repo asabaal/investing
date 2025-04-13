@@ -506,8 +506,82 @@ class Symphony:
         
         return market_data, technical_data
         
+    def _validate_filter_inputs(self, current_symbols, market_data, technical_data):
+        """Validate inputs before filtering."""
+        if not self.operators:
+            logger.info("No operators to apply")
+            return False, current_symbols
+            
+        if not current_symbols or len(current_symbols) == 0:
+            logger.info("No symbols to filter")
+            return False, current_symbols
+            
+        return True, current_symbols
+
+    def _execute_filter(self, operator, symbols, market_data, technical_data):
+        """Execute a single filter operation."""
+        try:
+            # Apply the appropriate filter based on type
+            if isinstance(operator, RSIFilter):
+                return operator.execute(symbols, market_data, technical_data)
+            else:
+                return operator.execute(symbols, market_data)
+        except Exception as e:
+            logger.error(f"Error applying operator {operator.name}: {str(e)}")
+            # Continue with current symbols if operator fails
+            return symbols
+
+    def _validate_filter_inputs(self, current_symbols: SymbolList, market_data: Dict[str, pd.DataFrame], 
+                            technical_data: Dict[str, pd.DataFrame]) -> Tuple[bool, SymbolList]:
+        """
+        Validate inputs before filtering.
+        
+        Args:
+            current_symbols: Current set of symbols
+            market_data: Dictionary of market data by symbol
+            technical_data: Dictionary of technical data by symbol
+            
+        Returns:
+            Tuple of (should_filter, filtered_symbols)
+        """
+        if not self.operators:
+            logger.info("No operators to apply")
+            return False, current_symbols
+            
+        if not current_symbols or len(current_symbols) == 0:
+            logger.info("No symbols to filter")
+            return False, current_symbols
+            
+        return True, current_symbols
+
+    def _execute_filter(self, operator: Filter, symbols: SymbolList, 
+                    market_data: Dict[str, pd.DataFrame], 
+                    technical_data: Dict[str, pd.DataFrame]) -> SymbolList:
+        """
+        Execute a single filter operation.
+        
+        Args:
+            operator: Filter operator to execute
+            symbols: Current set of symbols
+            market_data: Dictionary of market data by symbol
+            technical_data: Dictionary of technical data by symbol
+            
+        Returns:
+            Filtered symbol list
+        """
+        try:
+            # Apply the appropriate filter based on type
+            if isinstance(operator, RSIFilter):
+                return operator.execute(symbols, market_data, technical_data)
+            else:
+                return operator.execute(symbols, market_data)
+        except Exception as e:
+            logger.error(f"Error applying operator {operator.name}: {str(e)}")
+            # Continue with current symbols if operator fails
+            return symbols
+
     def apply_filters(self, current_symbols: SymbolList, market_data: Dict[str, pd.DataFrame], 
-                     technical_data: Dict[str, pd.DataFrame]) -> SymbolList:
+                    technical_data: Dict[str, pd.DataFrame]) -> SymbolList:
         """
         Apply all filters in sequence to the symbol list.
         
@@ -522,19 +596,13 @@ class Symphony:
         Returns:
             Filtered symbol list
         """
-        if not self.operators:
-            logger.info("No operators to apply")
-            return current_symbols
+        should_filter, filtered_symbols = self._validate_filter_inputs(
+            current_symbols, market_data, technical_data)
         
-        if not current_symbols or len(current_symbols) == 0:
-            logger.info("No symbols to filter")
-            return current_symbols
-        
-        filtered_symbols = current_symbols
+        if not should_filter:
+            return filtered_symbols
         
         for operator in self.operators:
-            logger.debug(f"Applying operator: {operator}")
-            
             if not isinstance(operator, Filter):
                 logger.warning(f"Skipping non-filter operator: {operator}")
                 continue
@@ -542,25 +610,18 @@ class Symphony:
             # Track symbol count before filtering
             before_count = len(filtered_symbols)
             
-            try:
-                # Apply the appropriate filter based on type
-                if isinstance(operator, RSIFilter):
-                    filtered_symbols = operator.execute(filtered_symbols, market_data, technical_data)
-                else:
-                    filtered_symbols = operator.execute(filtered_symbols, market_data)
-                
-                # Log filtering results
-                after_count = len(filtered_symbols)
-                logger.debug(f"Operator {operator.name} filtered {before_count - after_count} symbols, {after_count} remaining")
-                
-                # Check if all symbols were filtered out
-                if after_count == 0:
-                    logger.warning(f"All symbols were filtered out by {operator.name}")
-                    break
-                    
-            except Exception as e:
-                logger.error(f"Error applying operator {operator.name}: {str(e)}")
-                # Continue with current set of symbols if an operator fails
+            # Apply filter
+            filtered_symbols = self._execute_filter(
+                operator, filtered_symbols, market_data, technical_data)
+            
+            # Log filtering results
+            after_count = len(filtered_symbols)
+            logger.debug(f"Operator {operator.name} filtered {before_count - after_count} symbols, {after_count} remaining")
+            
+            # Check if all symbols were filtered out
+            if after_count == 0:
+                logger.warning(f"All symbols were filtered out by {operator.name}")
+                break
         
         return filtered_symbols
         

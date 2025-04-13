@@ -1,0 +1,47 @@
+{
+  "SPY": {
+    "error": "Failed to fit any models for SPY"
+  },
+  "QQQ": {
+    "error": "Failed to fit any models for QQQ"
+  },
+  "IWM": {
+    "error": "Failed to fit any models for IWM"
+  },
+  "EEM": {
+    "error": "Failed to fit any models for EEM"
+  },
+  "GLD": {
+    "error": "Failed to fit any models for GLD"
+  },
+  "TLT": {
+    "error": "Failed to fit any models for TLT"
+  },
+  "LQD": {
+    "error": "Failed to fit any models for LQD"
+  },
+  "VNQ": {
+    "error": "Failed to fit any models for VNQ"
+  },
+  "XLE": {
+    "error": "Failed to fit any models for XLE"
+  },
+  "XLF": {
+    "error": "Failed to fit any models for XLF"
+  },
+  "XLV": {
+    "error": "Failed to fit any models for XLV"
+  },
+  "XLK": {
+    "error": "Failed to fit any models for XLK"
+  },
+  "XLY": {
+    "error": "Failed to fit any models for XLY"
+  },
+  "SOXX": {
+    "error": "Failed to fit any models for SOXX"
+  },
+  "average_7d_forecast": 0.0,
+  "average_30d_forecast": 0.0,
+  "forecast_sentiment": "neutral"
+}

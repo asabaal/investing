@@ -1,0 +1,6 @@
+2025-04-06 13:25:00,400 - symphony_backtester - INFO - This is a test INFO message from symphony_backtester
+2025-04-06 13:25:00,400 - symphony_backtester - INFO - This is a test INFO message from symphony_backtester
+2025-04-06 13:25:00,400 - symphony_backtester - WARNING - This is a test WARNING message from symphony_backtester
+2025-04-06 13:25:00,400 - symphony_backtester - WARNING - This is a test WARNING message from symphony_backtester
+2025-04-06 13:25:00,400 - symphony_backtester - ERROR - This is a test ERROR message from symphony_backtester
+2025-04-06 13:25:00,400 - symphony_backtester - ERROR - This is a test ERROR message from symphony_backtester

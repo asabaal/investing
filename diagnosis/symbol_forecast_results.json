@@ -1,0 +1,8 @@
+{
+  "single_model": {
+    "error": "Found NaN in column 'volume'"
+  },
+  "ensemble": {
+    "error": "Failed to fit any models for SPY"
+  }
+}

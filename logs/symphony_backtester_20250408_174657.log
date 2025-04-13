@@ -1,0 +1,3 @@
+2025-04-08 17:46:57,456 - __main__ - INFO - Symphony Backtester starting - Version 1.2.0
+2025-04-08 17:46:57,456 - __main__ - INFO - Command line arguments: Namespace(symphony_file='your_symphony.json', benchmark='SPY', forecast=30, start_date=None, end_date=None, output_dir='symphony_analysis_results', html_report=False, enhanced_report=True, debug=False)
+2025-04-08 17:46:57,456 - __main__ - ERROR - Symphony file not found: your_symphony.json

@@ -95,7 +95,89 @@ class TestSymphonyComponents(unittest.TestCase):
         
         self.mock_client.get_daily.side_effect = mock_get_daily
         self.mock_client.get_rsi.side_effect = mock_get_rsi
-    
+
+    def test_validate_filter_inputs_valid(self):
+        """Test _validate_filter_inputs with valid inputs."""
+        # Set up valid inputs
+        symbols = SymbolList(["SPY", "QQQ", "IWM"])
+        self.symphony.operators = [Momentum("Test Momentum", lookback_days=10, top_n=2)]
+        
+        # Call the method
+        should_filter, filtered_symbols = self.symphony._validate_filter_inputs(symbols, self.market_data, self.technical_data)
+        
+        # Verify results
+        self.assertTrue(should_filter)
+        self.assertEqual(filtered_symbols, symbols)
+
+    def test_validate_filter_inputs_no_operators(self):
+        """Test _validate_filter_inputs with no operators."""
+        # Set up with no operators
+        symbols = SymbolList(["SPY", "QQQ", "IWM"])
+        self.symphony.operators = []
+        
+        # Call the method
+        should_filter, filtered_symbols = self.symphony._validate_filter_inputs(symbols, self.market_data, self.technical_data)
+        
+        # Verify results
+        self.assertFalse(should_filter)
+        self.assertEqual(filtered_symbols, symbols)
+
+    def test_validate_filter_inputs_empty_symbols(self):
+        """Test _validate_filter_inputs with empty symbol list."""
+        # Set up with empty symbol list
+        symbols = SymbolList([])
+        self.symphony.operators = [Momentum("Test Momentum", lookback_days=10, top_n=2)]
+        
+        # Call the method
+        should_filter, filtered_symbols = self.symphony._validate_filter_inputs(symbols, self.market_data, self.technical_data)
+        
+        # Verify results
+        self.assertFalse(should_filter)
+        self.assertEqual(filtered_symbols, symbols)
+
+    def test_execute_filter_momentum(self):
+        """Test _execute_filter with a Momentum filter."""
+        # Set up
+        symbols = SymbolList(["SPY", "QQQ", "IWM"])
+        operator = Momentum("Test Momentum", lookback_days=10, top_n=2)
+        
+        # Call the method
+        result = self.symphony._execute_filter(operator, symbols, self.market_data, self.technical_data)
+        
+        # Verify results - should return top 2 symbols (SPY and QQQ in our test data)
+        self.assertEqual(len(result), 2)
+        self.assertIn("SPY", result.symbols)
+        self.assertIn("QQQ", result.symbols)
+
+    def test_execute_filter_rsi(self):
+        """Test _execute_filter with an RSI filter."""
+        # Set up
+        symbols = SymbolList(["SPY", "QQQ", "IWM"])
+        operator = RSIFilter("Test RSI", threshold=55, condition="above")
+        
+        # Call the method
+        result = self.symphony._execute_filter(operator, symbols, self.market_data, self.technical_data)
+        
+        # Verify results - should return only SPY based on our test data
+        self.assertEqual(len(result), 1)
+        self.assertIn("SPY", result.symbols)
+
+    def test_execute_filter_error(self):
+        """Test _execute_filter with an error occurring."""
+        # Set up
+        symbols = SymbolList(["SPY", "QQQ", "IWM"])
+        
+        # Create a basic filter that we'll make fail
+        error_filter = Momentum("Error Filter", lookback_days=10, top_n=2)
+        
+        # Use patch to make the execute method raise an exception
+        with patch.object(error_filter, 'execute', side_effect=Exception("Test error")):
+            # Call the method
+            result = self.symphony._execute_filter(error_filter, symbols, self.market_data, self.technical_data)
+            
+            # Verify results - should return original symbols
+            self.assertEqual(result, symbols)
+
     def test_fetch_market_data_success(self):
         """Test fetch_market_data with successful API calls."""
         # Call the method

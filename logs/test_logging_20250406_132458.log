@@ -1,0 +1,3 @@
+2025-04-06 13:24:58,740 - test_logging - INFO - This is an INFO message - should appear in logs
+2025-04-06 13:24:58,740 - test_logging - WARNING - This is a WARNING message - should appear in logs
+2025-04-06 13:24:58,740 - test_logging - ERROR - This is an ERROR message - should appear in logs

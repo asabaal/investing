@@ -1,0 +1,650 @@
+2025-04-06 14:14:28,873 - __main__ - INFO - Symphony Backtester starting - Version 1.2.0
+2025-04-06 14:14:28,873 - __main__ - INFO - Command line arguments: Namespace(symphony_file='sample_symphony.json', benchmark='SPY', forecast=30, start_date=None, end_date=None, output_dir='symphony_analysis_results', html_report=False, enhanced_report=True, debug=False)
+2025-04-06 14:14:28,873 - __main__ - INFO - Starting full analysis...
+2025-04-06 14:14:28,873 - __main__ - INFO - Starting full analysis for symphony: sample_symphony.json
+2025-04-06 14:14:28,873 - __main__ - INFO - Loading symphony from sample_symphony.json
+2025-04-06 14:14:28,875 - symphony_analyzer - INFO - Creating Symphony with 14 symbols
+2025-04-06 14:14:28,875 - symphony_analyzer - INFO - Adding operator: Momentum Filter
+2025-04-06 14:14:28,875 - symphony_analyzer - INFO - Adding operator: RSI Oversold
+2025-04-06 14:14:28,875 - symphony_analyzer - INFO - Setting allocator: Inverse Volatility
+2025-04-06 14:14:28,875 - __main__ - INFO - Running analysis with start date 2024-04-06 and end date 2025-04-06
+2025-04-06 14:14:28,875 - symphony_analyzer - INFO - Running backtest for symphony: Momentum ETF Rotation
+2025-04-06 14:14:28,875 - symphony_analyzer - INFO - Running backtest from 2024-04-06 to 2025-04-06 with monthly rebalancing
+2025-04-06 14:14:28,875 - alpha_vantage_api - INFO - Making API request for SPY, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:29,329 - alpha_vantage_api - INFO - Making API request for QQQ, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:29,840 - alpha_vantage_api - INFO - Making API request for IWM, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:30,386 - alpha_vantage_api - INFO - Making API request for EEM, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:30,851 - alpha_vantage_api - INFO - Making API request for GLD, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:31,156 - alpha_vantage_api - INFO - Making API request for TLT, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:31,567 - alpha_vantage_api - INFO - Making API request for LQD, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:31,978 - alpha_vantage_api - INFO - Making API request for VNQ, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:32,460 - alpha_vantage_api - INFO - Making API request for XLE, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:32,887 - alpha_vantage_api - INFO - Making API request for XLF, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:33,367 - alpha_vantage_api - INFO - Making API request for XLV, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:33,914 - alpha_vantage_api - INFO - Making API request for XLK, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:34,274 - alpha_vantage_api - INFO - Making API request for XLY, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:34,695 - alpha_vantage_api - INFO - Making API request for SOXX, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:35,159 - composer_symphony - INFO - Rebalancing on 2024-04-30
+2025-04-06 14:14:35,163 - composer_symphony - INFO - Rebalancing on 2024-05-31
+2025-04-06 14:14:35,165 - composer_symphony - INFO - Rebalancing on 2024-06-28
+2025-04-06 14:14:35,167 - composer_symphony - INFO - Rebalancing on 2024-07-31
+2025-04-06 14:14:35,169 - composer_symphony - INFO - Rebalancing on 2024-08-30
+2025-04-06 14:14:35,171 - composer_symphony - INFO - Rebalancing on 2024-09-30
+2025-04-06 14:14:35,173 - composer_symphony - INFO - Rebalancing on 2024-10-31
+2025-04-06 14:14:35,176 - composer_symphony - INFO - Rebalancing on 2024-11-29
+2025-04-06 14:14:35,178 - composer_symphony - INFO - Rebalancing on 2024-12-31
+2025-04-06 14:14:35,180 - composer_symphony - INFO - Rebalancing on 2025-01-31
+2025-04-06 14:14:35,182 - composer_symphony - INFO - Rebalancing on 2025-02-28
+2025-04-06 14:14:35,184 - composer_symphony - INFO - Rebalancing on 2025-03-31
+2025-04-06 14:14:35,186 - symphony_analyzer - INFO - Comparing symphony to benchmark: SPY
+2025-04-06 14:14:35,188 - alpha_vantage_api - INFO - Retrieved cached data for SPY, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:35,305 - compare_benchmarks - INFO - Saved benchmark comparison plot to momentum_etf_rotation_vs_SPY.png
+2025-04-06 14:14:35,305 - symphony_analyzer - INFO - Generating 30-day forecast
+2025-04-06 14:14:35,305 - symphony_analyzer - INFO - Forecasting SPY
+2025-04-06 14:14:35,305 - alpha_vantage_api - INFO - Retrieved cached data for SPY, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:35,348 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/3ykk3jo2.json
+2025-04-06 14:14:35,379 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/aydh4px1.json
+2025-04-06 14:14:35,380 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:35,380 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:35,380 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=62254', 'data', 'file=/tmp/tmp4oc_9qt4/3ykk3jo2.json', 'init=/tmp/tmp4oc_9qt4/aydh4px1.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelshpu31sb/prophet_model-20250406141435.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:35,380 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:35,522 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:35,527 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:35,539 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/ca9utrw8.json
+2025-04-06 14:14:35,570 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/i_vwav72.json
+2025-04-06 14:14:35,571 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:35,571 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:35,571 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=99382', 'data', 'file=/tmp/tmp4oc_9qt4/ca9utrw8.json', 'init=/tmp/tmp4oc_9qt4/i_vwav72.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model1tdpmlqm/prophet_model-20250406141435.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:35,571 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:35,859 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:35,864 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:35,877 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/grsn1spp.json
+2025-04-06 14:14:35,908 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/84_oohka.json
+2025-04-06 14:14:35,909 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:35,909 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:35,909 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=32224', 'data', 'file=/tmp/tmp4oc_9qt4/grsn1spp.json', 'init=/tmp/tmp4oc_9qt4/84_oohka.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model7fd1o7iq/prophet_model-20250406141435.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:35,909 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:36,353 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:36,358 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:36,371 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/s1g9va19.json
+2025-04-06 14:14:36,402 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/li3qufa8.json
+2025-04-06 14:14:36,402 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:36,402 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:36,402 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=4153', 'data', 'file=/tmp/tmp4oc_9qt4/s1g9va19.json', 'init=/tmp/tmp4oc_9qt4/li3qufa8.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelboui121c/prophet_model-20250406141436.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:36,402 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:36,937 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:36,943 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:36,955 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/sg5v50ha.json
+2025-04-06 14:14:36,986 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/fh6egcsn.json
+2025-04-06 14:14:36,986 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:36,986 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:36,986 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=83031', 'data', 'file=/tmp/tmp4oc_9qt4/sg5v50ha.json', 'init=/tmp/tmp4oc_9qt4/fh6egcsn.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model1rmuuxaq/prophet_model-20250406141436.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:36,986 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:37,505 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:37,511 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:37,511 - symphony_analyzer - ERROR - Error forecasting SPY: Failed to fit any models for SPY
+2025-04-06 14:14:37,511 - symphony_analyzer - INFO - Forecasting QQQ
+2025-04-06 14:14:37,511 - alpha_vantage_api - INFO - Retrieved cached data for QQQ, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:37,525 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/dot34m7j.json
+2025-04-06 14:14:37,557 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/ogqrac_i.json
+2025-04-06 14:14:37,558 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:37,558 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:37,558 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=10099', 'data', 'file=/tmp/tmp4oc_9qt4/dot34m7j.json', 'init=/tmp/tmp4oc_9qt4/ogqrac_i.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modeltyjgjz07/prophet_model-20250406141437.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:37,558 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:37,670 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:37,676 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:37,690 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/es8h5yh5.json
+2025-04-06 14:14:37,722 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/cr3mmwmv.json
+2025-04-06 14:14:37,722 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:37,722 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:37,722 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=51089', 'data', 'file=/tmp/tmp4oc_9qt4/es8h5yh5.json', 'init=/tmp/tmp4oc_9qt4/cr3mmwmv.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model8oi1r2iu/prophet_model-20250406141437.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:37,722 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:38,003 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:38,009 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:38,023 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/ax43v10l.json
+2025-04-06 14:14:38,054 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/feajvx78.json
+2025-04-06 14:14:38,054 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:38,054 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:38,054 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=4504', 'data', 'file=/tmp/tmp4oc_9qt4/ax43v10l.json', 'init=/tmp/tmp4oc_9qt4/feajvx78.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelgziav_yb/prophet_model-20250406141438.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:38,055 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:38,636 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:38,642 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:38,655 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/65gq_mt0.json
+2025-04-06 14:14:38,686 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/f6otw12_.json
+2025-04-06 14:14:38,687 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:38,687 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:38,687 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=14192', 'data', 'file=/tmp/tmp4oc_9qt4/65gq_mt0.json', 'init=/tmp/tmp4oc_9qt4/f6otw12_.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelm86inyue/prophet_model-20250406141438.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:38,687 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:39,177 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:39,183 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:39,196 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/l2p7x8i1.json
+2025-04-06 14:14:39,228 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/e3y3lgbh.json
+2025-04-06 14:14:39,228 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:39,229 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:39,229 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=95757', 'data', 'file=/tmp/tmp4oc_9qt4/l2p7x8i1.json', 'init=/tmp/tmp4oc_9qt4/e3y3lgbh.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelwz8kax28/prophet_model-20250406141439.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:39,229 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:39,620 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:39,626 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:39,626 - symphony_analyzer - ERROR - Error forecasting QQQ: Failed to fit any models for QQQ
+2025-04-06 14:14:39,626 - symphony_analyzer - INFO - Forecasting IWM
+2025-04-06 14:14:39,626 - alpha_vantage_api - INFO - Retrieved cached data for IWM, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:39,640 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/vy0orvnh.json
+2025-04-06 14:14:39,671 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/p5z96ad4.json
+2025-04-06 14:14:39,672 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:39,672 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:39,672 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=76542', 'data', 'file=/tmp/tmp4oc_9qt4/vy0orvnh.json', 'init=/tmp/tmp4oc_9qt4/p5z96ad4.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelo3tpy44j/prophet_model-20250406141439.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:39,672 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:39,749 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:39,754 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:39,768 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/9lo247do.json
+2025-04-06 14:14:39,799 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/7bash1iy.json
+2025-04-06 14:14:39,799 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:39,799 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:39,800 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=72890', 'data', 'file=/tmp/tmp4oc_9qt4/9lo247do.json', 'init=/tmp/tmp4oc_9qt4/7bash1iy.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model7v4vplwm/prophet_model-20250406141439.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:39,800 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:39,946 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:39,951 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:39,964 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/4h3iffg_.json
+2025-04-06 14:14:39,996 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/2at_nzyl.json
+2025-04-06 14:14:39,997 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:39,997 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:39,997 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=18437', 'data', 'file=/tmp/tmp4oc_9qt4/4h3iffg_.json', 'init=/tmp/tmp4oc_9qt4/2at_nzyl.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modeltm2gn8px/prophet_model-20250406141439.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:39,997 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:40,291 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:40,296 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:40,309 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/l_do4l3i.json
+2025-04-06 14:14:40,340 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/xazezan2.json
+2025-04-06 14:14:40,341 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:40,341 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:40,341 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=52058', 'data', 'file=/tmp/tmp4oc_9qt4/l_do4l3i.json', 'init=/tmp/tmp4oc_9qt4/xazezan2.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelxs5e0qwk/prophet_model-20250406141440.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:40,342 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:40,651 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:40,657 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:40,670 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/xz8sebtq.json
+2025-04-06 14:14:40,701 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/ekpuufob.json
+2025-04-06 14:14:40,702 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:40,702 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:40,702 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=71438', 'data', 'file=/tmp/tmp4oc_9qt4/xz8sebtq.json', 'init=/tmp/tmp4oc_9qt4/ekpuufob.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model4jvj6520/prophet_model-20250406141440.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:40,702 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:41,117 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:41,122 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:41,122 - symphony_analyzer - ERROR - Error forecasting IWM: Failed to fit any models for IWM
+2025-04-06 14:14:41,122 - symphony_analyzer - INFO - Forecasting EEM
+2025-04-06 14:14:41,122 - alpha_vantage_api - INFO - Retrieved cached data for EEM, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:41,138 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/6fin04c1.json
+2025-04-06 14:14:41,168 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/gx6nrb31.json
+2025-04-06 14:14:41,169 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:41,169 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:41,169 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=27643', 'data', 'file=/tmp/tmp4oc_9qt4/6fin04c1.json', 'init=/tmp/tmp4oc_9qt4/gx6nrb31.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modeltiullom6/prophet_model-20250406141441.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:41,169 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:41,271 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:41,277 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:41,290 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/o8vyjesq.json
+2025-04-06 14:14:41,320 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/eiws9vwb.json
+2025-04-06 14:14:41,321 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:41,321 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:41,321 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=95669', 'data', 'file=/tmp/tmp4oc_9qt4/o8vyjesq.json', 'init=/tmp/tmp4oc_9qt4/eiws9vwb.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modely_oo9ekd/prophet_model-20250406141441.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:41,321 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:41,596 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:41,602 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:41,615 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/d405azi7.json
+2025-04-06 14:14:41,646 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/3zcoqgpe.json
+2025-04-06 14:14:41,647 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:41,647 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:41,647 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=52614', 'data', 'file=/tmp/tmp4oc_9qt4/d405azi7.json', 'init=/tmp/tmp4oc_9qt4/3zcoqgpe.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelccrvn_gn/prophet_model-20250406141441.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:41,647 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:42,138 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:42,143 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:42,156 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/v_5a1ans.json
+2025-04-06 14:14:42,187 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/dbrgo4yd.json
+2025-04-06 14:14:42,187 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:42,187 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:42,188 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=82953', 'data', 'file=/tmp/tmp4oc_9qt4/v_5a1ans.json', 'init=/tmp/tmp4oc_9qt4/dbrgo4yd.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelui2ixasu/prophet_model-20250406141442.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:42,188 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:42,761 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:42,769 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:42,782 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/bayycz1i.json
+2025-04-06 14:14:42,812 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/vysf8mzj.json
+2025-04-06 14:14:42,813 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:42,813 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:42,813 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=12783', 'data', 'file=/tmp/tmp4oc_9qt4/bayycz1i.json', 'init=/tmp/tmp4oc_9qt4/vysf8mzj.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelhqc_4k__/prophet_model-20250406141442.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:42,813 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:43,380 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:43,385 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:43,385 - symphony_analyzer - ERROR - Error forecasting EEM: Failed to fit any models for EEM
+2025-04-06 14:14:43,385 - symphony_analyzer - INFO - Forecasting GLD
+2025-04-06 14:14:43,385 - alpha_vantage_api - INFO - Retrieved cached data for GLD, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:43,424 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/nyzxz2hf.json
+2025-04-06 14:14:43,455 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/m12vint1.json
+2025-04-06 14:14:43,456 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:43,456 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:43,456 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=61118', 'data', 'file=/tmp/tmp4oc_9qt4/nyzxz2hf.json', 'init=/tmp/tmp4oc_9qt4/m12vint1.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelyu0ozife/prophet_model-20250406141443.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:43,456 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:43,528 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:43,534 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:43,547 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/wvucn6f2.json
+2025-04-06 14:14:43,578 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/7t90vof6.json
+2025-04-06 14:14:43,579 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:43,579 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:43,579 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=23658', 'data', 'file=/tmp/tmp4oc_9qt4/wvucn6f2.json', 'init=/tmp/tmp4oc_9qt4/7t90vof6.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelp4_u23qe/prophet_model-20250406141443.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:43,579 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:43,868 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:43,874 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:43,887 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/h2wgt6di.json
+2025-04-06 14:14:43,918 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/24kxbjec.json
+2025-04-06 14:14:43,918 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:43,918 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:43,918 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=4382', 'data', 'file=/tmp/tmp4oc_9qt4/h2wgt6di.json', 'init=/tmp/tmp4oc_9qt4/24kxbjec.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model7i8rxpna/prophet_model-20250406141443.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:43,919 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:44,347 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:44,352 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:44,365 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/onuby52t.json
+2025-04-06 14:14:44,396 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/k_7of33l.json
+2025-04-06 14:14:44,397 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:44,397 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:44,397 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=83622', 'data', 'file=/tmp/tmp4oc_9qt4/onuby52t.json', 'init=/tmp/tmp4oc_9qt4/k_7of33l.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model58gj7mp1/prophet_model-20250406141444.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:44,397 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:44,988 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:44,993 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:45,006 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/0b85ow78.json
+2025-04-06 14:14:45,037 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/pw69a515.json
+2025-04-06 14:14:45,037 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:45,037 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:45,037 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=61729', 'data', 'file=/tmp/tmp4oc_9qt4/0b85ow78.json', 'init=/tmp/tmp4oc_9qt4/pw69a515.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelpqf5h0xl/prophet_model-20250406141445.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:45,037 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:45,705 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:45,711 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:45,711 - symphony_analyzer - ERROR - Error forecasting GLD: Failed to fit any models for GLD
+2025-04-06 14:14:45,711 - symphony_analyzer - INFO - Forecasting TLT
+2025-04-06 14:14:45,711 - alpha_vantage_api - INFO - Retrieved cached data for TLT, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:45,727 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/pf5gz3k8.json
+2025-04-06 14:14:45,759 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/7l_2uy01.json
+2025-04-06 14:14:45,759 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:45,759 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:45,760 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=92233', 'data', 'file=/tmp/tmp4oc_9qt4/pf5gz3k8.json', 'init=/tmp/tmp4oc_9qt4/7l_2uy01.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modeld12yv6x9/prophet_model-20250406141445.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:45,760 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:45,829 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:45,834 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:45,847 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/il7346vr.json
+2025-04-06 14:14:45,877 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/fpr5jqx2.json
+2025-04-06 14:14:45,878 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:45,878 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:45,878 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=62149', 'data', 'file=/tmp/tmp4oc_9qt4/il7346vr.json', 'init=/tmp/tmp4oc_9qt4/fpr5jqx2.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelx0xcnquy/prophet_model-20250406141445.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:45,878 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:46,059 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:46,065 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:46,078 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/s1qql39b.json
+2025-04-06 14:14:46,109 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/jyy5bzgo.json
+2025-04-06 14:14:46,110 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:46,110 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:46,110 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=51610', 'data', 'file=/tmp/tmp4oc_9qt4/s1qql39b.json', 'init=/tmp/tmp4oc_9qt4/jyy5bzgo.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_models7kpejr8/prophet_model-20250406141446.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:46,110 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:46,492 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:46,497 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:46,510 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/8_dlr9rg.json
+2025-04-06 14:14:46,541 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/7tn33p49.json
+2025-04-06 14:14:46,541 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:46,541 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:46,541 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=84512', 'data', 'file=/tmp/tmp4oc_9qt4/8_dlr9rg.json', 'init=/tmp/tmp4oc_9qt4/7tn33p49.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelxz14fjo5/prophet_model-20250406141446.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:46,541 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:47,157 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:47,162 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:47,175 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/nlk5ct7a.json
+2025-04-06 14:14:47,206 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/dbkkna4f.json
+2025-04-06 14:14:47,206 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:47,207 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:47,207 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=76959', 'data', 'file=/tmp/tmp4oc_9qt4/nlk5ct7a.json', 'init=/tmp/tmp4oc_9qt4/dbkkna4f.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelcnw5wr9o/prophet_model-20250406141447.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:47,207 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:47,804 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:47,811 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:47,811 - symphony_analyzer - ERROR - Error forecasting TLT: Failed to fit any models for TLT
+2025-04-06 14:14:47,811 - symphony_analyzer - INFO - Forecasting LQD
+2025-04-06 14:14:47,812 - alpha_vantage_api - INFO - Retrieved cached data for LQD, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:47,826 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/wfq_rh3i.json
+2025-04-06 14:14:47,858 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/uzha8u9v.json
+2025-04-06 14:14:47,859 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:47,860 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:47,860 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=90146', 'data', 'file=/tmp/tmp4oc_9qt4/wfq_rh3i.json', 'init=/tmp/tmp4oc_9qt4/uzha8u9v.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model78ufghp8/prophet_model-20250406141447.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:47,860 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:48,050 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:48,056 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:48,069 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/w71zv5sd.json
+2025-04-06 14:14:48,099 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/lhkuu0t7.json
+2025-04-06 14:14:48,100 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:48,100 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:48,100 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=24739', 'data', 'file=/tmp/tmp4oc_9qt4/w71zv5sd.json', 'init=/tmp/tmp4oc_9qt4/lhkuu0t7.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelekdb9g9j/prophet_model-20250406141448.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:48,100 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:48,437 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:48,443 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:48,455 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/fwch154n.json
+2025-04-06 14:14:48,485 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/18l1ieea.json
+2025-04-06 14:14:48,486 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:48,486 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:48,486 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=76411', 'data', 'file=/tmp/tmp4oc_9qt4/fwch154n.json', 'init=/tmp/tmp4oc_9qt4/18l1ieea.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modeltjdfdp7l/prophet_model-20250406141448.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:48,486 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:49,118 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:49,124 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:49,137 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/gtleqz7u.json
+2025-04-06 14:14:49,169 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/_c8xbe_p.json
+2025-04-06 14:14:49,169 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:49,169 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:49,169 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=35849', 'data', 'file=/tmp/tmp4oc_9qt4/gtleqz7u.json', 'init=/tmp/tmp4oc_9qt4/_c8xbe_p.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_models7kh0xvv/prophet_model-20250406141449.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:49,170 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:49,784 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:49,790 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:49,802 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/gjbvu_nd.json
+2025-04-06 14:14:49,834 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/yc168n1r.json
+2025-04-06 14:14:49,834 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:49,835 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:49,835 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=83388', 'data', 'file=/tmp/tmp4oc_9qt4/gjbvu_nd.json', 'init=/tmp/tmp4oc_9qt4/yc168n1r.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelwlxe4zru/prophet_model-20250406141449.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:49,835 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:50,317 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:50,323 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:50,323 - symphony_analyzer - ERROR - Error forecasting LQD: Failed to fit any models for LQD
+2025-04-06 14:14:50,323 - symphony_analyzer - INFO - Forecasting VNQ
+2025-04-06 14:14:50,323 - alpha_vantage_api - INFO - Retrieved cached data for VNQ, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:50,338 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/ha5lhtu1.json
+2025-04-06 14:14:50,368 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/1qpie2s5.json
+2025-04-06 14:14:50,369 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:50,369 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:50,369 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=39879', 'data', 'file=/tmp/tmp4oc_9qt4/ha5lhtu1.json', 'init=/tmp/tmp4oc_9qt4/1qpie2s5.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model9443517z/prophet_model-20250406141450.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:50,369 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:50,474 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:50,479 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:50,492 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/v8p3cgvj.json
+2025-04-06 14:14:50,523 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/9zihyfrv.json
+2025-04-06 14:14:50,523 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:50,524 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:50,524 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=40831', 'data', 'file=/tmp/tmp4oc_9qt4/v8p3cgvj.json', 'init=/tmp/tmp4oc_9qt4/9zihyfrv.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelsdaxmtb5/prophet_model-20250406141450.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:50,524 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:50,790 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:50,795 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:50,808 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/e635k7gi.json
+2025-04-06 14:14:50,840 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/wcdln4y3.json
+2025-04-06 14:14:50,841 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:50,841 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:50,841 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=78877', 'data', 'file=/tmp/tmp4oc_9qt4/e635k7gi.json', 'init=/tmp/tmp4oc_9qt4/wcdln4y3.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modeltck45bp4/prophet_model-20250406141450.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:50,841 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:51,149 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:51,154 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:51,168 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/x2jwyxqa.json
+2025-04-06 14:14:51,200 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/mt7kuuit.json
+2025-04-06 14:14:51,200 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:51,200 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:51,200 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=59565', 'data', 'file=/tmp/tmp4oc_9qt4/x2jwyxqa.json', 'init=/tmp/tmp4oc_9qt4/mt7kuuit.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modeldz3bx_gs/prophet_model-20250406141451.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:51,201 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:51,585 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:51,591 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:51,603 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/s43cu4_t.json
+2025-04-06 14:14:51,634 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/2djhui6y.json
+2025-04-06 14:14:51,635 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:51,635 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:51,635 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=33391', 'data', 'file=/tmp/tmp4oc_9qt4/s43cu4_t.json', 'init=/tmp/tmp4oc_9qt4/2djhui6y.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modeldo1f82_p/prophet_model-20250406141451.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:51,635 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:52,089 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:52,094 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:52,094 - symphony_analyzer - ERROR - Error forecasting VNQ: Failed to fit any models for VNQ
+2025-04-06 14:14:52,094 - symphony_analyzer - INFO - Forecasting XLE
+2025-04-06 14:14:52,095 - alpha_vantage_api - INFO - Retrieved cached data for XLE, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:52,109 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/00qj_ymc.json
+2025-04-06 14:14:52,140 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/zhtxddhg.json
+2025-04-06 14:14:52,140 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:52,140 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:52,140 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=14762', 'data', 'file=/tmp/tmp4oc_9qt4/00qj_ymc.json', 'init=/tmp/tmp4oc_9qt4/zhtxddhg.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model7vdy24to/prophet_model-20250406141452.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:52,141 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:52,179 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:52,184 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:52,198 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/c1tl6_kl.json
+2025-04-06 14:14:52,229 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/5rfxqchg.json
+2025-04-06 14:14:52,229 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:52,229 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:52,229 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=66637', 'data', 'file=/tmp/tmp4oc_9qt4/c1tl6_kl.json', 'init=/tmp/tmp4oc_9qt4/5rfxqchg.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelpx2dis4g/prophet_model-20250406141452.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:52,229 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:52,340 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:52,345 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:52,359 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/5_qeh41c.json
+2025-04-06 14:14:52,391 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/h5g88hy9.json
+2025-04-06 14:14:52,391 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:52,391 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:52,391 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=26010', 'data', 'file=/tmp/tmp4oc_9qt4/5_qeh41c.json', 'init=/tmp/tmp4oc_9qt4/h5g88hy9.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelw8tp_m_v/prophet_model-20250406141452.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:52,391 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:52,736 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:52,742 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:52,755 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/tbmd2u7g.json
+2025-04-06 14:14:52,785 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/lpboy6me.json
+2025-04-06 14:14:52,786 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:52,786 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:52,786 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=64633', 'data', 'file=/tmp/tmp4oc_9qt4/tbmd2u7g.json', 'init=/tmp/tmp4oc_9qt4/lpboy6me.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelwlh67sj8/prophet_model-20250406141452.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:52,786 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:53,103 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:53,109 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:53,122 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/ysh8wnlk.json
+2025-04-06 14:14:53,152 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/d12rxpg4.json
+2025-04-06 14:14:53,153 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:53,153 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:53,153 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=18960', 'data', 'file=/tmp/tmp4oc_9qt4/ysh8wnlk.json', 'init=/tmp/tmp4oc_9qt4/d12rxpg4.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelcuyddt9_/prophet_model-20250406141453.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:53,153 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:53,516 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:53,522 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:53,522 - symphony_analyzer - ERROR - Error forecasting XLE: Failed to fit any models for XLE
+2025-04-06 14:14:53,522 - symphony_analyzer - INFO - Forecasting XLF
+2025-04-06 14:14:53,522 - alpha_vantage_api - INFO - Retrieved cached data for XLF, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:53,536 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/zekukgxg.json
+2025-04-06 14:14:53,567 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/3fd5u9sd.json
+2025-04-06 14:14:53,567 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:53,567 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:53,567 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=65198', 'data', 'file=/tmp/tmp4oc_9qt4/zekukgxg.json', 'init=/tmp/tmp4oc_9qt4/3fd5u9sd.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelyi5g5sef/prophet_model-20250406141453.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:53,567 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:53,644 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:53,649 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:53,662 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/2zknlslp.json
+2025-04-06 14:14:53,693 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/4yu39zhv.json
+2025-04-06 14:14:53,693 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:53,693 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:53,693 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=34244', 'data', 'file=/tmp/tmp4oc_9qt4/2zknlslp.json', 'init=/tmp/tmp4oc_9qt4/4yu39zhv.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model47ux92qs/prophet_model-20250406141453.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:53,693 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:53,987 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:53,993 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:54,006 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/hfry8uob.json
+2025-04-06 14:14:54,036 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/xv0p7ck3.json
+2025-04-06 14:14:54,037 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:54,037 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:54,037 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=17375', 'data', 'file=/tmp/tmp4oc_9qt4/hfry8uob.json', 'init=/tmp/tmp4oc_9qt4/xv0p7ck3.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelv9nunx7f/prophet_model-20250406141454.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:54,037 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:54,396 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:54,402 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:54,415 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/xmbns3g7.json
+2025-04-06 14:14:54,445 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/nq8uxzcb.json
+2025-04-06 14:14:54,446 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:54,446 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:54,446 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=15171', 'data', 'file=/tmp/tmp4oc_9qt4/xmbns3g7.json', 'init=/tmp/tmp4oc_9qt4/nq8uxzcb.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelpywixwre/prophet_model-20250406141454.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:54,446 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:54,890 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:54,896 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:54,908 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/s1pn5982.json
+2025-04-06 14:14:54,939 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/c8k5p4mz.json
+2025-04-06 14:14:54,940 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:54,940 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:54,940 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=40532', 'data', 'file=/tmp/tmp4oc_9qt4/s1pn5982.json', 'init=/tmp/tmp4oc_9qt4/c8k5p4mz.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelu1aibw68/prophet_model-20250406141454.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:54,940 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:55,377 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:55,382 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:55,382 - symphony_analyzer - ERROR - Error forecasting XLF: Failed to fit any models for XLF
+2025-04-06 14:14:55,382 - symphony_analyzer - INFO - Forecasting XLV
+2025-04-06 14:14:55,383 - alpha_vantage_api - INFO - Retrieved cached data for XLV, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:55,396 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/5y1cs0iv.json
+2025-04-06 14:14:55,428 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/885blssd.json
+2025-04-06 14:14:55,428 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:55,428 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:55,428 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=39457', 'data', 'file=/tmp/tmp4oc_9qt4/5y1cs0iv.json', 'init=/tmp/tmp4oc_9qt4/885blssd.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model33hhhfb2/prophet_model-20250406141455.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:55,428 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:55,530 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:55,536 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:55,548 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/urt78e_k.json
+2025-04-06 14:14:55,579 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/fpxr4wd8.json
+2025-04-06 14:14:55,580 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:55,580 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:55,580 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=39969', 'data', 'file=/tmp/tmp4oc_9qt4/urt78e_k.json', 'init=/tmp/tmp4oc_9qt4/fpxr4wd8.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelzvg8ik7f/prophet_model-20250406141455.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:55,580 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:55,859 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:55,865 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:55,877 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/s0933cdy.json
+2025-04-06 14:14:55,909 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/ovaj4heh.json
+2025-04-06 14:14:55,910 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:55,910 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:55,910 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=47520', 'data', 'file=/tmp/tmp4oc_9qt4/s0933cdy.json', 'init=/tmp/tmp4oc_9qt4/ovaj4heh.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelj2m81x8_/prophet_model-20250406141455.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:55,910 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:56,276 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:56,281 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:56,294 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/v6azmwxf.json
+2025-04-06 14:14:56,324 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/mzil9qob.json
+2025-04-06 14:14:56,325 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:56,325 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:56,325 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=11836', 'data', 'file=/tmp/tmp4oc_9qt4/v6azmwxf.json', 'init=/tmp/tmp4oc_9qt4/mzil9qob.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modely0fnr5kg/prophet_model-20250406141456.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:56,325 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:56,891 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:56,896 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:56,933 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/6_s3qaok.json
+2025-04-06 14:14:56,964 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/ponpoagf.json
+2025-04-06 14:14:56,965 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:56,965 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:56,965 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=8190', 'data', 'file=/tmp/tmp4oc_9qt4/6_s3qaok.json', 'init=/tmp/tmp4oc_9qt4/ponpoagf.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelswuqhb2k/prophet_model-20250406141456.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:56,965 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:57,476 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:57,482 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:57,482 - symphony_analyzer - ERROR - Error forecasting XLV: Failed to fit any models for XLV
+2025-04-06 14:14:57,482 - symphony_analyzer - INFO - Forecasting XLK
+2025-04-06 14:14:57,482 - alpha_vantage_api - INFO - Retrieved cached data for XLK, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:57,496 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/g7s_67zi.json
+2025-04-06 14:14:57,527 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/gs31fd1j.json
+2025-04-06 14:14:57,527 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:57,527 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:57,527 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=21599', 'data', 'file=/tmp/tmp4oc_9qt4/g7s_67zi.json', 'init=/tmp/tmp4oc_9qt4/gs31fd1j.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelsg9dr0fu/prophet_model-20250406141457.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:57,528 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:57,614 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:57,619 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:57,632 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/43o5pbmq.json
+2025-04-06 14:14:57,664 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/tvxx92yr.json
+2025-04-06 14:14:57,664 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:57,665 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:57,665 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=83101', 'data', 'file=/tmp/tmp4oc_9qt4/43o5pbmq.json', 'init=/tmp/tmp4oc_9qt4/tvxx92yr.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelxp48lneu/prophet_model-20250406141457.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:57,665 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:57,899 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:57,905 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:57,919 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/_sy2d17w.json
+2025-04-06 14:14:57,950 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/7zkc5s6o.json
+2025-04-06 14:14:57,951 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:57,951 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:57,951 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=65575', 'data', 'file=/tmp/tmp4oc_9qt4/_sy2d17w.json', 'init=/tmp/tmp4oc_9qt4/7zkc5s6o.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelyyinvqh4/prophet_model-20250406141457.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:57,951 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:58,255 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:58,262 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:14:58,275 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/r08hztzb.json
+2025-04-06 14:14:58,306 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/aqyiqyvy.json
+2025-04-06 14:14:58,307 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:58,307 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:58,307 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=69840', 'data', 'file=/tmp/tmp4oc_9qt4/r08hztzb.json', 'init=/tmp/tmp4oc_9qt4/aqyiqyvy.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelnk44ba_v/prophet_model-20250406141458.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:58,307 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:58,737 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:58,742 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:14:58,755 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/d6igj5pq.json
+2025-04-06 14:14:58,785 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/j2hcghw2.json
+2025-04-06 14:14:58,786 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:58,786 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:58,786 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=58962', 'data', 'file=/tmp/tmp4oc_9qt4/d6igj5pq.json', 'init=/tmp/tmp4oc_9qt4/j2hcghw2.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model6hq0nxs6/prophet_model-20250406141458.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:58,786 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:59,386 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:59,391 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:14:59,391 - symphony_analyzer - ERROR - Error forecasting XLK: Failed to fit any models for XLK
+2025-04-06 14:14:59,392 - symphony_analyzer - INFO - Forecasting XLY
+2025-04-06 14:14:59,392 - alpha_vantage_api - INFO - Retrieved cached data for XLY, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:14:59,411 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/g2mshfnv.json
+2025-04-06 14:14:59,452 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/qfide17w.json
+2025-04-06 14:14:59,453 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:59,453 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:59,453 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=4056', 'data', 'file=/tmp/tmp4oc_9qt4/g2mshfnv.json', 'init=/tmp/tmp4oc_9qt4/qfide17w.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model9yhj138q/prophet_model-20250406141459.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:59,453 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:59,544 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:59,554 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:14:59,572 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/23q5ar2p.json
+2025-04-06 14:14:59,606 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/x08excc7.json
+2025-04-06 14:14:59,607 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:59,607 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:59,607 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=91723', 'data', 'file=/tmp/tmp4oc_9qt4/23q5ar2p.json', 'init=/tmp/tmp4oc_9qt4/x08excc7.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modeluuixyfg4/prophet_model-20250406141459.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:59,607 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:14:59,808 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:14:59,814 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:14:59,826 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/21ivx31e.json
+2025-04-06 14:14:59,858 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/3ib5auhu.json
+2025-04-06 14:14:59,859 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:14:59,859 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:14:59,859 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=20981', 'data', 'file=/tmp/tmp4oc_9qt4/21ivx31e.json', 'init=/tmp/tmp4oc_9qt4/3ib5auhu.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model6lup_m0a/prophet_model-20250406141459.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:14:59,859 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:15:00,204 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:15:00,210 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:15:00,223 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/h32yevhs.json
+2025-04-06 14:15:00,254 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/ina27frr.json
+2025-04-06 14:15:00,255 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:15:00,255 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:15:00,255 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=239', 'data', 'file=/tmp/tmp4oc_9qt4/h32yevhs.json', 'init=/tmp/tmp4oc_9qt4/ina27frr.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model1va0gg66/prophet_model-20250406141500.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:15:00,255 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:15:01,002 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:15:01,013 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:15:01,030 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/cnocivbf.json
+2025-04-06 14:15:01,071 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/dtwm4ypc.json
+2025-04-06 14:15:01,072 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:15:01,072 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:15:01,072 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=81652', 'data', 'file=/tmp/tmp4oc_9qt4/cnocivbf.json', 'init=/tmp/tmp4oc_9qt4/dtwm4ypc.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model08b53g9_/prophet_model-20250406141501.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:15:01,072 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:15:01,650 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:15:01,656 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:15:01,656 - symphony_analyzer - ERROR - Error forecasting XLY: Failed to fit any models for XLY
+2025-04-06 14:15:01,656 - symphony_analyzer - INFO - Forecasting SOXX
+2025-04-06 14:15:01,656 - alpha_vantage_api - INFO - Retrieved cached data for SOXX, function TIME_SERIES_DAILY_ADJUSTED
+2025-04-06 14:15:01,670 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/4bek34t7.json
+2025-04-06 14:15:01,701 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/b7dkkp6w.json
+2025-04-06 14:15:01,702 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:15:01,702 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:15:01,702 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=63352', 'data', 'file=/tmp/tmp4oc_9qt4/4bek34t7.json', 'init=/tmp/tmp4oc_9qt4/b7dkkp6w.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model3t4829rt/prophet_model-20250406141501.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:15:01,702 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:15:01,807 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:15:01,813 - prophet_forecasting - WARNING - Model 0 failed: Found NaN in column 'volume'
+2025-04-06 14:15:01,826 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/nds0lv43.json
+2025-04-06 14:15:01,857 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/yc5sacog.json
+2025-04-06 14:15:01,858 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:15:01,858 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:15:01,858 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=68117', 'data', 'file=/tmp/tmp4oc_9qt4/nds0lv43.json', 'init=/tmp/tmp4oc_9qt4/yc5sacog.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelr5ba5t6e/prophet_model-20250406141501.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:15:01,858 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:15:02,125 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:15:02,131 - prophet_forecasting - WARNING - Model 1 failed: Found NaN in column 'volume'
+2025-04-06 14:15:02,143 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/k2krj3rd.json
+2025-04-06 14:15:02,174 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/6l1i088y.json
+2025-04-06 14:15:02,175 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:15:02,175 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:15:02,175 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=32680', 'data', 'file=/tmp/tmp4oc_9qt4/k2krj3rd.json', 'init=/tmp/tmp4oc_9qt4/6l1i088y.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_model_jf79138/prophet_model-20250406141502.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:15:02,175 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:15:02,535 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:15:02,541 - prophet_forecasting - WARNING - Model 2 failed: Found NaN in column 'volume'
+2025-04-06 14:15:02,554 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/3qeceeoi.json
+2025-04-06 14:15:02,586 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/ri0c2ukw.json
+2025-04-06 14:15:02,586 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:15:02,586 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:15:02,586 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=89207', 'data', 'file=/tmp/tmp4oc_9qt4/3qeceeoi.json', 'init=/tmp/tmp4oc_9qt4/ri0c2ukw.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelud4otpqx/prophet_model-20250406141502.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:15:02,586 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:15:02,860 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:15:02,866 - prophet_forecasting - WARNING - Model 3 failed: Found NaN in column 'volume'
+2025-04-06 14:15:02,880 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/c2esapli.json
+2025-04-06 14:15:02,910 - cmdstanpy - DEBUG - input tempfile: /tmp/tmp4oc_9qt4/7a_n96ab.json
+2025-04-06 14:15:02,911 - cmdstanpy - DEBUG - idx 0
+2025-04-06 14:15:02,911 - cmdstanpy - DEBUG - running CmdStan, num_threads: None
+2025-04-06 14:15:02,911 - cmdstanpy - DEBUG - CmdStan args: ['/home/asabaal/python_env/investing/lib/python3.10/site-packages/prophet/stan_model/prophet_model.bin', 'random', 'seed=38031', 'data', 'file=/tmp/tmp4oc_9qt4/c2esapli.json', 'init=/tmp/tmp4oc_9qt4/7a_n96ab.json', 'output', 'file=/tmp/tmp4oc_9qt4/prophet_modelzzxyn_fa/prophet_model-20250406141502.csv', 'method=optimize', 'algorithm=lbfgs', 'iter=10000']
+2025-04-06 14:15:02,911 - cmdstanpy - INFO - Chain [1] start processing
+2025-04-06 14:15:03,383 - cmdstanpy - INFO - Chain [1] done processing
+2025-04-06 14:15:03,388 - prophet_forecasting - WARNING - Model 4 failed: Found NaN in column 'volume'
+2025-04-06 14:15:03,388 - symphony_analyzer - ERROR - Error forecasting SOXX: Failed to fit any models for SOXX
+2025-04-06 14:15:03,388 - symphony_analyzer - INFO - Analyzing symphony risk
+2025-04-06 14:15:03,389 - __main__ - INFO - Analysis complete. Results saved to symphony_analysis_results/sample_symphony_analysis.json
+2025-04-06 14:15:03,390 - report_generator - INFO - Generating enhanced HTML report
+2025-04-06 14:15:03,467 - report_generator - INFO - Generated enhanced HTML report: symphony_analysis_results/Momentum ETF Rotation_enhanced_report.html
+2025-04-06 14:15:03,467 - __main__ - INFO - Enhanced HTML report generated: symphony_analysis_results/Momentum ETF Rotation_enhanced_report.html
+2025-04-06 14:15:03,468 - __main__ - INFO - Analysis complete. Results saved to the specified output directory.

@@ -1,0 +1,128 @@
+{
+  "symbols_count": 14,
+  "forecast_results_keys": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "EEM",
+    "GLD",
+    "TLT",
+    "LQD",
+    "VNQ",
+    "XLE",
+    "XLF",
+    "XLV",
+    "XLK",
+    "XLY",
+    "SOXX",
+    "average_7d_forecast",
+    "average_30d_forecast",
+    "forecast_sentiment"
+  ],
+  "has_7d_forecast": true,
+  "has_30d_forecast": true,
+  "has_sentiment": true,
+  "7d_forecast": 0.0,
+  "30d_forecast": 0.0,
+  "sentiment": "neutral",
+  "symbol_forecasts": {
+    "SPY": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "QQQ": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "IWM": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "EEM": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "GLD": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "TLT": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "LQD": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "VNQ": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "XLE": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "XLF": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "XLV": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "XLK": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "XLY": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    },
+    "SOXX": {
+      "has_7d": false,
+      "has_30d": false,
+      "7d_value": null,
+      "30d_value": null,
+      "has_error": true
+    }
+  }
+}
