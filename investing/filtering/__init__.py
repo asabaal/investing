@@ -16,7 +16,6 @@ from investing.filtering.technical_indicators import (
     calculate_returns
 )
 
-'''
 from investing.filtering.evaluation_functions import (
     evaluate_threshold,
     evaluate_range,
@@ -25,6 +24,7 @@ from investing.filtering.evaluation_functions import (
     evaluate_persistence
 )
 
+'''
 from investing.filtering.filter_base import (
     FilterBase,
     ThresholdFilter,

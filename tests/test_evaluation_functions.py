@@ -8,7 +8,7 @@ evaluate technical indicators against various criteria.
 import unittest
 import numpy as np
 import pandas as pd
-from evaluation_functions import (
+from investing.filtering.evaluation_functions import (
     evaluate_threshold,
     evaluate_range,
     evaluate_crossover,
