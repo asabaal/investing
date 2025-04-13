@@ -8,7 +8,7 @@ to ensure they provide correct results for known inputs.
 import unittest
 import numpy as np
 import pandas as pd
-from technical_indicators import (
+from investing.filtering.technical_indicators import (
     calculate_rsi,
     calculate_sma,
     calculate_ema,

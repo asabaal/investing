@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: investing
+Version: 0.1.0
+Summary: Symphony Trading System for algorithmic trading
+Home-page: https://github.com/asabaal/investing
+Author: Asabaal
+Author-email: asabaal@example.com
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: matplotlib
+Requires-Dist: prophet
+Requires-Dist: plotly
+Requires-Dist: requests

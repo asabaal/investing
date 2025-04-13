@@ -16,6 +16,7 @@ from investing.filtering.technical_indicators import (
     calculate_returns
 )
 
+'''
 from investing.filtering.evaluation_functions import (
     evaluate_threshold,
     evaluate_range,
@@ -42,7 +43,7 @@ from investing.filtering.filter_types import (
     DrawdownFilter,
     ReturnFilter
 )
-
+'''
 __all__ = [
     # Technical indicators
     'calculate_rsi',
