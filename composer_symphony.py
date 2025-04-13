@@ -462,6 +462,157 @@ class Symphony:
     def set_allocator(self, allocator: Allocator):
         """Set the allocator for the symphony."""
         self.allocator = allocator
+
+    def fetch_market_data(self, client: AlphaVantageClient) -> Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
+        """
+        Fetch market data for all symbols in the universe.
+        
+        This method fetches price and technical data for all symbols in the universe,
+        handling API errors gracefully.
+        
+        Args:
+            client: Alpha Vantage client for market data
+            
+        Returns:
+            Tuple of (market_data, technical_data) dictionaries
+        """
+        market_data = {}
+        technical_data = {}
+        
+        if not self.universe or len(self.universe) == 0:
+            logger.info("No symbols in universe to fetch data for")
+            return market_data, technical_data
+        
+        logger.info(f"Fetching data for {len(self.universe)} symbols")
+        
+        for symbol in self.universe:
+            try:
+                # Get daily price data
+                market_data[symbol] = client.get_daily(symbol)
+                logger.debug(f"Successfully fetched market data for {symbol}")
+            except Exception as e:
+                logger.warning(f"Failed to get market data for {symbol}: {str(e)}")
+            
+            try:
+                # Get RSI technical indicator
+                technical_data[symbol] = client.get_rsi(symbol)
+                logger.debug(f"Successfully fetched RSI data for {symbol}")
+            except Exception as e:
+                logger.warning(f"Failed to get RSI data for {symbol}: {str(e)}")
+        
+        # Validate the data
+        if not market_data:
+            logger.warning("Failed to fetch market data for any symbol")
+        
+        return market_data, technical_data
+        
+    def apply_filters(self, current_symbols: SymbolList, market_data: Dict[str, pd.DataFrame], 
+                     technical_data: Dict[str, pd.DataFrame]) -> SymbolList:
+        """
+        Apply all filters in sequence to the symbol list.
+        
+        This method applies each operator in the symphony to the symbols,
+        filtering them based on the defined conditions.
+        
+        Args:
+            current_symbols: Current set of symbols
+            market_data: Dictionary of market data by symbol
+            technical_data: Dictionary of technical data by symbol
+            
+        Returns:
+            Filtered symbol list
+        """
+        if not self.operators:
+            logger.info("No operators to apply")
+            return current_symbols
+        
+        if not current_symbols or len(current_symbols) == 0:
+            logger.info("No symbols to filter")
+            return current_symbols
+        
+        filtered_symbols = current_symbols
+        
+        for operator in self.operators:
+            logger.debug(f"Applying operator: {operator}")
+            
+            if not isinstance(operator, Filter):
+                logger.warning(f"Skipping non-filter operator: {operator}")
+                continue
+                
+            # Track symbol count before filtering
+            before_count = len(filtered_symbols)
+            
+            try:
+                # Apply the appropriate filter based on type
+                if isinstance(operator, RSIFilter):
+                    filtered_symbols = operator.execute(filtered_symbols, market_data, technical_data)
+                else:
+                    filtered_symbols = operator.execute(filtered_symbols, market_data)
+                
+                # Log filtering results
+                after_count = len(filtered_symbols)
+                logger.debug(f"Operator {operator.name} filtered {before_count - after_count} symbols, {after_count} remaining")
+                
+                # Check if all symbols were filtered out
+                if after_count == 0:
+                    logger.warning(f"All symbols were filtered out by {operator.name}")
+                    break
+                    
+            except Exception as e:
+                logger.error(f"Error applying operator {operator.name}: {str(e)}")
+                # Continue with current set of symbols if an operator fails
+        
+        return filtered_symbols
+        
+    def calculate_allocations(self, symbols: SymbolList, market_data: Dict[str, pd.DataFrame]) -> Dict[str, float]:
+        """
+        Calculate allocations for the given symbols.
+        
+        This method applies the symphony's allocator to the filtered symbols
+        to determine allocation weights.
+        
+        Args:
+            symbols: Symbol list to allocate
+            market_data: Dictionary of market data by symbol
+            
+        Returns:
+            Dictionary mapping symbols to weights
+        """
+        if not symbols or len(symbols) == 0:
+            logger.info("No symbols to allocate")
+            return {}
+        
+        logger.info(f"Calculating allocations for {len(symbols)} symbols")
+        
+        try:
+            # Apply the appropriate allocator based on type
+            if isinstance(self.allocator, EqualWeightAllocator):
+                allocations = self.allocator.execute(symbols)
+            else:
+                allocations = self.allocator.execute(symbols, market_data)
+            
+            # Validate allocations
+            if not allocations:
+                logger.warning("Allocator returned empty allocations")
+                return {}
+                
+            # Check that weights sum to approximately 1.0
+            total_weight = sum(allocations.values())
+            if not 0.999 <= total_weight <= 1.001:
+                logger.warning(f"Allocation weights sum to {total_weight}, not 1.0")
+                
+                # Normalize weights if sum is significantly different from 1.0
+                if total_weight > 0:
+                    logger.info("Normalizing allocation weights to sum to 1.0")
+                    allocations = {symbol: weight / total_weight for symbol, weight in allocations.items()}
+            
+            return allocations
+            
+        except Exception as e:
+            logger.error(f"Error calculating allocations: {str(e)}")
+            # Fallback to equal weight if allocation fails
+            logger.info("Falling back to equal weight allocation")
+            return EqualWeightAllocator().execute(symbols)
         
     def execute(self, client: AlphaVantageClient) -> Dict[str, float]:
         """
