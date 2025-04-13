@@ -195,27 +195,29 @@ def evaluate_crossover(fast_values: Union[pd.Series, np.ndarray],
     if len(fast_values) < 2:
         return False
     
-    # Handle lookback
+    # Handle lookback - only look at the last 'lookback' periods
     if lookback > len(fast_values) - 1:
         lookback = len(fast_values) - 1
     
-    # Loop through lookback period to check for crossovers
-    for i in range(1, lookback + 1):
-        idx = -i  # Index from the end
-        prev_idx = idx - 1
-        
+    # Get only the last 'lookback+1' elements to check for crossovers
+    # We need lookback+1 elements to check for 'lookback' transitions
+    fast_window = fast_values[-(lookback+1):]
+    slow_window = slow_values[-(lookback+1):]
+    
+    # Loop through the window to check for crossovers
+    for i in range(1, len(fast_window)):
         # Skip if any value is NaN
-        if (np.isnan(fast_values[idx]) or np.isnan(slow_values[idx]) or 
-            np.isnan(fast_values[prev_idx]) or np.isnan(slow_values[prev_idx])):
+        if (np.isnan(fast_window[i]) or np.isnan(slow_window[i]) or 
+            np.isnan(fast_window[i-1]) or np.isnan(slow_window[i-1])):
             continue
         
         if condition == 'above':
             # Check for fast crossing above slow
-            if fast_values[prev_idx] <= slow_values[prev_idx] and fast_values[idx] > slow_values[idx]:
+            if fast_window[i-1] <= slow_window[i-1] and fast_window[i] > slow_window[i]:
                 return True
         else:  # 'below'
             # Check for fast crossing below slow
-            if fast_values[prev_idx] >= slow_values[prev_idx] and fast_values[idx] < slow_values[idx]:
+            if fast_window[i-1] >= slow_window[i-1] and fast_window[i] < slow_window[i]:
                 return True
     
     return False
@@ -224,7 +226,7 @@ def evaluate_crossover(fast_values: Union[pd.Series, np.ndarray],
 def evaluate_lookback(values: Union[pd.Series, np.ndarray],
                      evaluation_func: Callable,
                      lookback_days: int = 1,
-                     **func_args) -> Union[bool, List[bool]]:
+                     **func_args) -> Union[bool, int, float, List]:
     """
     Apply a custom evaluation function to a series of values over a lookback period.
     
