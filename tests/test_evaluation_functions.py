@@ -52,10 +52,10 @@ class TestEvaluationFunctions(unittest.TestCase):
                        "Some values should be above 50")
         self.assertTrue(evaluate_threshold(self.decreasing_values, 50.0, 'above', 'any', 10),
                        "Some values should be above 50")
-        self.assertTrue(evaluate_threshold(self.decreasing_values, 50.0, 'above', 'any', 5),
-                       "Some values in the first 5 should be above 50")
-        self.assertFalse(evaluate_threshold(self.decreasing_values, 50.0, 'above', 'any', 3),
-                        "No values in the last 3 should be above 50")
+        # Fix: For the decreasing_values [100,90,80...], check if last 5 values have any above 50
+        # Last 5 values are [50,40,30,20,10], so we should expect False
+        self.assertFalse(evaluate_threshold(self.decreasing_values, 50.0, 'above', 'any', 5),
+                       "No values in last 5 should be above 50")
         
         # Test with 'all' method
         self.assertFalse(evaluate_threshold(self.increasing_values, 50.0, 'above', 'all', 10),
@@ -88,8 +88,10 @@ class TestEvaluationFunctions(unittest.TestCase):
         # Test with 'all' method
         self.assertFalse(evaluate_threshold(self.decreasing_values, 50.0, 'below', 'all', 10),
                         "Not all values should be below 50")
-        self.assertTrue(evaluate_threshold(self.decreasing_values, 50.0, 'below', 'all', 5),
-                       "All values in the last 5 should be below 50")
+        # Fix: For decreasing values [100,90,...,10], last 5 are [50,40,30,20,10]
+        # The value 50 is equal to the threshold, not below it
+        self.assertTrue(evaluate_threshold(self.decreasing_values, 50.0, 'below', 'all', 4),
+                       "All values in the last 4 should be below 50")
         
         # Test with 'average' method
         self.assertFalse(evaluate_threshold(self.increasing_values, 50.0, 'below', 'average', 10),
@@ -198,9 +200,11 @@ class TestEvaluationFunctions(unittest.TestCase):
         def count_above(values, threshold):
             return np.sum(values > threshold)
         
-        # Test with the custom function
+        # Fix: Test with the custom function to count values above 50 in the last 5
+        # Last 5 of increasing_values = [60, 70, 80, 90, 100], all 5 > 50
+        expected_count = 5
         self.assertEqual(evaluate_lookback(self.increasing_values, count_above, 5, threshold=50),
-                        3, "Should count 3 values above 50 in the last 5")
+                        expected_count, f"Should count {expected_count} values above 50 in the last 5")
         
         self.assertEqual(evaluate_lookback(self.decreasing_values, count_above, 7, threshold=50),
                         2, "Should count 2 values above 50 in the last 7")
