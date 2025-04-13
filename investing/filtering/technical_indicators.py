@@ -50,14 +50,18 @@ def calculate_rsi(prices: Union[pd.Series, np.ndarray], period: int = 14) -> np.
         avg_gains[i] = (avg_gains[i-1] * (period-1) + gains[i]) / period
         avg_losses[i] = (avg_losses[i-1] * (period-1) + losses[i]) / period
     
-    # Calculate RS and RSI
-    # Add a small epsilon to avg_losses to prevent division by zero for flat prices
-    epsilon = 1e-10
-    rs = avg_gains / (avg_losses + epsilon)
-    rsi = 100 - (100 / (1 + rs))
+    # Initialize RSI array with NaNs
+    rsi = np.full_like(prices, np.nan, dtype=float)
     
-    # Set NaN for the first period values
-    rsi[:period] = np.nan
+    # Handle the special case where both avg_gains and avg_losses are 0 (flat prices)
+    # In that case, RSI should be 50 (neutral)
+    for i in range(period, len(prices)):
+        if avg_gains[i] == 0 and avg_losses[i] == 0:
+            rsi[i] = 50.0
+        else:
+            # Normal RSI calculation
+            rs = avg_gains[i] / (avg_losses[i] + 1e-10)  # Small epsilon to prevent division by zero
+            rsi[i] = 100 - (100 / (1 + rs))
     
     return rsi
 
