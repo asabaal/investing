@@ -32,6 +32,7 @@ numpy>=1.21.0
 requests>=2.28.0
 matplotlib>=3.5.0
 plotly>=5.0.0
+seaborn>=0.11.0
 yfinance>=0.1.87
 python-dateutil>=2.8.0
 ```
@@ -53,12 +54,24 @@ python symphony_runner.py --create-sample
 ```
 This creates `sample_symphony_v2.json` with a working strategy.
 
-### 2. Run Your First Backtest
+### 2. Run Complete Analysis (NEW!)
+```bash
+python symphony_runner.py --config sample_symphony_v2.json --full-analysis
+```
+This runs backtest AND creates beautiful visualizations!
+
+### 3. Open Interactive Dashboard
+```bash
+# After running analysis, open in your browser:
+open backtest_results/charts/interactive_dashboard.html
+```
+
+### 4. Run Just Backtest
 ```bash
 python symphony_runner.py --config sample_symphony_v2.json --backtest --start-date 2023-01-01
 ```
 
-### 3. Run Single Execution (Current Portfolio)
+### 5. Get Current Portfolio
 ```bash
 python symphony_runner.py --config sample_symphony_v2.json --execute
 ```

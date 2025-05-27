@@ -17,6 +17,7 @@ from typing import Dict, Any
 from data_pipeline import MarketDataPipeline, SymphonyDataManager, DataConfig
 from symphony_engine import SymphonyEngine, SymphonyBacktester
 from metrics_module import SymphonyMetrics
+from symphony_visualizer import SymphonyVisualizer, fetch_benchmark_data
 
 class SymphonyRunner:
     """Main orchestrator for symphony operations"""
@@ -28,10 +29,12 @@ class SymphonyRunner:
         self.data_manager = SymphonyDataManager(self.data_pipeline)
         self.engine = SymphonyEngine()
         self.backtester = SymphonyBacktester()
+        self.visualizer = SymphonyVisualizer()
         
         print("🎵 Symphony Runner initialized")
         print(f"📊 Data source: {self.data_config.source}")
         print(f"💾 Cache directory: {self.data_config.cache_dir}")
+        print(f"🎨 Visualization enabled")
     
     def load_symphony_config(self, config_path: str) -> dict:
         """Load symphony configuration from JSON file"""
@@ -269,6 +272,89 @@ class SymphonyRunner:
         allocation_file = os.path.join(output_dir, "allocation_history.csv")
         allocation_df.to_csv(allocation_file, index=False)
         print(f"📈 Allocation history exported: {allocation_file}")
+    
+    def create_visualizations(self, results: pd.DataFrame, analysis: Dict[str, Any], 
+                            output_dir: str = "./backtest_results", 
+                            benchmark_symbol: str = 'SPY',
+                            start_date: str = None, end_date: str = None) -> None:
+        """Create comprehensive visualizations for backtest results"""
+        
+        print(f"\n🎨 Creating visualizations...")
+        
+        # Fetch benchmark data if requested
+        benchmark_data = None
+        if benchmark_symbol:
+            print(f"📊 Fetching benchmark data ({benchmark_symbol})...")
+            benchmark_data = fetch_benchmark_data(benchmark_symbol, start_date, end_date)
+            
+            if not benchmark_data.empty:
+                print(f"✅ Benchmark data loaded: {len(benchmark_data)} records")
+            else:
+                print("⚠️ Could not load benchmark data, proceeding without comparison")
+                benchmark_data = None
+        
+        # Create charts directory
+        charts_dir = os.path.join(output_dir, "charts")
+        os.makedirs(charts_dir, exist_ok=True)
+        
+        # Generate all visualizations
+        try:
+            print("\n📊 Generating performance dashboard...")
+            self.visualizer.create_performance_dashboard(
+                results, analysis, benchmark_data,
+                save_path=os.path.join(charts_dir, "performance_dashboard.png")
+            )
+            
+            print("🌐 Generating interactive dashboard...")
+            self.visualizer.create_interactive_dashboard(
+                results, analysis, benchmark_data,
+                save_path=os.path.join(charts_dir, "interactive_dashboard.html")
+            )
+            
+            print("🌅 Generating allocation sunburst...")
+            self.visualizer.create_allocation_sunburst(
+                results,
+                save_path=os.path.join(charts_dir, "allocation_sunburst.html")
+            )
+            
+            print("📈 Generating rolling metrics...")
+            self.visualizer.create_rolling_metrics_chart(
+                results, window=min(12, len(results)//4),
+                save_path=os.path.join(charts_dir, "rolling_metrics.html")
+            )
+            
+            print(f"\n✅ All visualizations saved to: {charts_dir}")
+            print(f"🌐 Open {charts_dir}/interactive_dashboard.html in your browser for interactive charts!")
+            
+        except Exception as e:
+            print(f"❌ Error creating visualizations: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def run_full_analysis(self, symphony_config: dict, start_date: str, end_date: str,
+                         rebalance_frequency: str = "monthly", benchmark_symbol: str = 'SPY',
+                         output_dir: str = "./backtest_results") -> Dict[str, Any]:
+        """Run complete analysis including backtest and visualizations"""
+        
+        print(f"\n🚀 Running full analysis: {symphony_config['name']}")
+        
+        # Step 1: Run backtest
+        results = self.run_backtest(symphony_config, start_date, end_date, rebalance_frequency)
+        
+        # Step 2: Analyze results
+        analysis = self.analyze_backtest_results(results)
+        
+        # Step 3: Export results
+        self.export_results(results, analysis, output_dir)
+        
+        # Step 4: Create visualizations
+        self.create_visualizations(results, analysis, output_dir, benchmark_symbol, start_date, end_date)
+        
+        return {
+            'results': results,
+            'analysis': analysis,
+            'output_dir': output_dir
+        }
 
 
 def main():
@@ -279,11 +365,15 @@ def main():
     parser.add_argument('--create-sample', action='store_true', help='Create sample symphony configuration')
     parser.add_argument('--backtest', action='store_true', help='Run backtest')
     parser.add_argument('--execute', action='store_true', help='Run single execution')
+    parser.add_argument('--full-analysis', action='store_true', help='Run complete analysis with visualizations')
+    parser.add_argument('--visualize-only', action='store_true', help='Create visualizations from existing results')
     parser.add_argument('--start-date', type=str, default='2023-01-01', help='Backtest start date (YYYY-MM-DD)')
     parser.add_argument('--end-date', type=str, help='Backtest end date (YYYY-MM-DD)')
     parser.add_argument('--frequency', type=str, default='monthly', choices=['daily', 'weekly', 'monthly'], 
                        help='Rebalance frequency')
+    parser.add_argument('--benchmark', type=str, default='SPY', help='Benchmark symbol for comparison')
     parser.add_argument('--output-dir', type=str, default='./backtest_results', help='Output directory for results')
+    parser.add_argument('--no-charts', action='store_true', help='Skip chart generation')
     
     args = parser.parse_args()
     
@@ -293,13 +383,38 @@ def main():
         # Create sample configuration if requested
         if args.create_sample:
             runner.create_sample_symphony()
-            print("✅ Sample symphony created. You can now run: python symphony_runner.py --config sample_symphony_v2.json --backtest")
+            print("✅ Sample symphony created.")
+            print("💡 Quick start commands:")
+            print("   Full analysis:  python symphony_runner.py --config sample_symphony_v2.json --full-analysis")
+            print("   Just backtest:  python symphony_runner.py --config sample_symphony_v2.json --backtest")
             return
         
         # Load symphony configuration
-        if not args.config:
+        if not args.config and not args.visualize_only:
             print("❌ Please specify a symphony configuration file with --config")
             print("💡 Use --create-sample to create a sample configuration")
+            return
+        
+        # Handle visualization-only mode
+        if args.visualize_only:
+            results_file = os.path.join(args.output_dir, "backtest_results.csv")
+            analysis_file = os.path.join(args.output_dir, "performance_analysis.json")
+            
+            if not os.path.exists(results_file) or not os.path.exists(analysis_file):
+                print(f"❌ Results files not found in {args.output_dir}")
+                print("💡 Run a backtest first, then use --visualize-only")
+                return
+            
+            # Load existing results
+            results = pd.read_csv(results_file, parse_dates=['date'])
+            with open(analysis_file, 'r') as f:
+                analysis = json.load(f)
+            
+            # Convert allocation strings back to dictionaries
+            results['allocation'] = results['allocation'].apply(eval)
+            
+            runner.create_visualizations(results, analysis, args.output_dir, args.benchmark, 
+                                       args.start_date, args.end_date)
             return
         
         symphony_config = runner.load_symphony_config(args.config)
@@ -308,8 +423,21 @@ def main():
             print("❌ Symphony configuration validation failed")
             return
         
-        # Run backtest
-        if args.backtest:
+        # Run full analysis (backtest + visualizations)
+        if args.full_analysis:
+            end_date = args.end_date or datetime.now().strftime('%Y-%m-%d')
+            
+            full_results = runner.run_full_analysis(
+                symphony_config, args.start_date, end_date, args.frequency, 
+                args.benchmark, args.output_dir
+            )
+            
+            print(f"\n🎉 Full analysis completed!")
+            print(f"📁 Results saved to: {args.output_dir}")
+            print(f"🌐 Open {args.output_dir}/charts/interactive_dashboard.html for interactive analysis")
+        
+        # Run backtest only
+        elif args.backtest:
             end_date = args.end_date or datetime.now().strftime('%Y-%m-%d')
             
             results = runner.run_backtest(
@@ -318,6 +446,11 @@ def main():
             
             analysis = runner.analyze_backtest_results(results)
             runner.export_results(results, analysis, args.output_dir)
+            
+            # Create visualizations unless disabled
+            if not args.no_charts:
+                runner.create_visualizations(results, analysis, args.output_dir, 
+                                          args.benchmark, args.start_date, end_date)
         
         # Run single execution
         elif args.execute:
@@ -331,7 +464,7 @@ def main():
             print(f"💾 Execution result saved: {execution_file}")
         
         else:
-            print("❌ Please specify either --backtest or --execute")
+            print("❌ Please specify one of: --full-analysis, --backtest, --execute, or --visualize-only")
             print("💡 Use --help for usage information")
     
     except Exception as e:
