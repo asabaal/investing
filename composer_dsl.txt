@@ -1,0 +1,34 @@
+(defsymphony
+ "Copy of 200d MA 3x Leverage"
+ {:asset-class "EQUITIES", :rebalance-threshold 0.05}
+ (weight-equal
+  [(if
+    (>
+     (current-price "SPY")
+     (moving-average-price "SPY" {:window 200}))
+    [(weight-equal
+      [(if
+        (> (rsi "TQQQ" {:window 10}) 79)
+        [(asset "UVXY" "ProShares Ultra VIX Short-Term Futures ETF")]
+        [(asset "TQQQ" "ProShares UltraPro QQQ")])])]
+    [(weight-equal
+      [(if
+        (< (rsi "TQQQ" {:window 10}) 31)
+        [(asset "TECL" "Direxion Daily Technology Bull 3x Shares")]
+        [(weight-equal
+          [(if
+            (>
+             (current-price "QQQ")
+             (moving-average-price "QQQ" {:window 20}))
+            [(weight-equal
+              [(if
+                (> (rsi "QQQ" {:window 10}) 70)
+                [(asset "PSQ" "ProShares Short QQQ")]
+                [(weight-equal
+                  [(asset "QQQ" "Invesco QQQ Trust")])])])]
+            [(weight-equal
+              [(if
+                (> (rsi "SHY" {:window 10}) (rsi "PSQ" {:window 10}))
+                [(asset "QQQ" "Invesco QQQ Trust")]
+                [(asset "PSQ" "ProShares Short QQQ")])])])])])])])]))
+

@@ -1,0 +1,20 @@
+{
+  "symphony_name": "Momentum Quality Strategy",
+  "forecast_date": "2025-05-27T14:11:53.611689",
+  "forecast_horizon_days": 252,
+  "monte_carlo_results": {
+    "expected_annual_return": 0.20956493468702106,
+    "expected_volatility": 0.33001068231764835,
+    "expected_sharpe": 0.6350247004589582,
+    "worst_case_scenario": -0.2564849040759328,
+    "best_case_scenario": 0.8117860037885303,
+    "probability_beating_benchmark": 0.5,
+    "stress_test_results": {
+      "market_crash": -0.0928613422397575,
+      "high_volatility": 0.6011178233013919,
+      "low_return_environment": -0.1666000118673997,
+      "trending_market": 0.8874187744817688,
+      "sideways_market": 0.1384265088057317
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "total_return": 0.022410250767541884,
+  "annual_return": 0.22075006468507952,
+  "volatility": 0.1374675713891713,
+  "sharpe_ratio": 1.605833742855143,
+  "max_drawdown": -0.0330555375448965,
+  "win_rate": 0.4642857142857143,
+  "num_trades": 28,
+  "avg_return_per_period": 0.000827792379782921
+}
