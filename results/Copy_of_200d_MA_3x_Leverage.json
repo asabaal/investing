@@ -1,0 +1,31 @@
+{
+  "name": "Copy of 200d MA 3x Leverage",
+  "description": "Converted from Composer DSL - EQUITIES",
+  "universe": [
+    "PSQ",
+    "QQQ",
+    "SHY",
+    "SPY",
+    "TECL",
+    "TQQQ",
+    "UVXY"
+  ],
+  "rebalance_frequency": "daily",
+  "logic": {
+    "conditions": [],
+    "allocations": {
+      "default_allocation": {
+        "type": "fixed_allocation",
+        "weights": {
+          "TECL": 0.14285714285714285,
+          "SHY": 0.14285714285714285,
+          "PSQ": 0.14285714285714285,
+          "SPY": 0.14285714285714285,
+          "TQQQ": 0.14285714285714285,
+          "UVXY": 0.14285714285714285,
+          "QQQ": 0.14285714285714285
+        }
+      }
+    }
+  }
+}

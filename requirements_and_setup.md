@@ -2,7 +2,13 @@
 
 ## Overview
 
-This is a complete rewrite of your symphony trading system with a clean architecture that properly implements the Composer.trade logic model. The system consists of:
+This is a complete rewrite of your symphony trading system with a **clean, scalable architecture** that eliminates circular imports and provides a robust foundation for algorithmic trading.
+
+### ✅ **Fixed Architecture Issues**
+- **No circular imports** - Uses factory pattern and dependency injection
+- **Modular components** - Each system is independent and testable  
+- **Scalable design** - Easy to add new features without breaking existing code
+- **Clean separation** - Core, service, and presentation layers properly separated
 
 1. **Metrics Module** - Calculates all technical indicators
 2. **Symphony Engine** - Executes conditional logic and portfolio allocation  
@@ -13,7 +19,15 @@ This is a complete rewrite of your symphony trading system with a clean architec
 ## Installation
 
 ### 1. Set up Python Environment
-```bash
+```
+
+## Prerequisites
+
+- Python 3.8 or higher
+- Alpha Vantage API Key (set as environment variable `ALPHA_VANTAGE_API_KEY`)
+- Required packages (install with `pip install -r requirements.txt`)
+
+## Getting Startedbash
 # Create new branch for clean implementation
 git checkout -b symphony-v2-clean
 
@@ -27,14 +41,32 @@ pip install -r requirements.txt
 
 ### 2. Create requirements.txt
 ```txt
+# Core data processing
 pandas>=1.5.0
 numpy>=1.21.0
+python-dateutil>=2.8.0
+
+# Market data and APIs
 requests>=2.28.0
+
+# Visualization
 matplotlib>=3.5.0
 plotly>=5.0.0
 seaborn>=0.11.0
-yfinance>=0.1.87
-python-dateutil>=2.8.0
+
+# Optional forecasting (install if needed)
+# prophet>=1.1.0
+
+# Development and testing
+pytest>=7.0.0
+```
+
+### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+
+# Optional: Install Prophet for advanced forecasting
+pip install prophet
 ```
 
 ### 3. Set Environment Variables
@@ -48,30 +80,36 @@ export ALPHA_VANTAGE_API_KEY="your_api_key_here"
 
 ## Quick Start
 
-### 1. Create Sample Symphony
+### 1. Verify Setup
+```bash
+python setup_verification.py
+```
+This checks all dependencies and system components.
+
+### 2. Create Sample Symphony
 ```bash
 python symphony_runner.py --create-sample
 ```
 This creates `sample_symphony_v2.json` with a working strategy.
 
-### 2. Run Complete Analysis (NEW!)
+### 3. Run Complete Analysis (NEW!)
 ```bash
 python symphony_runner.py --config sample_symphony_v2.json --full-analysis
 ```
 This runs backtest AND creates beautiful visualizations!
 
-### 3. Open Interactive Dashboard
+### 4. Open Interactive Dashboard
 ```bash
 # After running analysis, open in your browser:
-open backtest_results/charts/interactive_dashboard.html
+open results/charts/interactive_dashboard.html
 ```
 
-### 4. Run Just Backtest
+### 5. Run Just Backtest
 ```bash
 python symphony_runner.py --config sample_symphony_v2.json --backtest --start-date 2023-01-01
 ```
 
-### 5. Get Current Portfolio
+### 6. Get Current Portfolio
 ```bash
 python symphony_runner.py --config sample_symphony_v2.json --execute
 ```
