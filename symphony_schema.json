@@ -1,0 +1,100 @@
+{
+  "symphony": {
+    "name": "Momentum Sort Strategy",
+    "description": "Buy top 3 momentum stocks, equal weight",
+    "universe": ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "SPY", "QQQ", "IWM"],
+    "rebalance_frequency": "weekly",
+    
+    "logic": {
+      "conditions": [
+        {
+          "id": "market_filter",
+          "type": "if_statement",
+          "condition": {
+            "metric": "cumulative_return",
+            "asset_1": "SPY",
+            "operator": "greater_than",
+            "asset_2": {"type": "fixed_value", "value": 0.0},
+            "lookback_days": 20
+          },
+          "if_true": "momentum_sort",
+          "if_false": "defensive_allocation"
+        }
+      ],
+      
+      "allocations": {
+        "momentum_sort": {
+          "type": "sort_and_weight",
+          "sort": {
+            "metric": "cumulative_return",
+            "lookback_days": 90,
+            "direction": "top",
+            "count": 3
+          },
+          "weighting": {
+            "method": "equal_weight"
+          }
+        },
+        
+        "defensive_allocation": {
+          "type": "fixed_allocation",
+          "weights": {
+            "SPY": 0.6,
+            "TLT": 0.4
+          }
+        }
+      }
+    }
+  }
+}
+
+// Example of more complex symphony with inverse volatility weighting
+{
+  "symphony": {
+    "name": "Low Vol Quality",
+    "description": "Select low volatility stocks with good momentum, inverse vol weighted",
+    "universe": ["AAPL", "MSFT", "GOOGL", "AMZN", "JNJ", "PG", "KO", "WMT"],
+    "rebalance_frequency": "monthly",
+    
+    "logic": {
+      "conditions": [
+        {
+          "id": "volatility_filter", 
+          "type": "if_statement",
+          "condition": {
+            "metric": "RSI",
+            "asset_1": "SPY",
+            "operator": "less_than",
+            "asset_2": {"type": "fixed_value", "value": 70},
+            "lookback_days": 14
+          },
+          "if_true": "low_vol_sort",
+          "if_false": "cash"
+        }
+      ],
+      
+      "allocations": {
+        "low_vol_sort": {
+          "type": "sort_and_weight",
+          "sort": {
+            "metric": "standard_deviation_return",
+            "lookback_days": 60,
+            "direction": "bottom",
+            "count": 4
+          },
+          "weighting": {
+            "method": "inverse_volatility",
+            "lookback_days": 30
+          }
+        },
+        
+        "cash": {
+          "type": "fixed_allocation",
+          "weights": {
+            "CASH": 1.0
+          }
+        }
+      }
+    }
+  }
+}
