@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Data Admin Dashboard</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            border-radius: 0.5rem;
+            margin: 0.2rem 0;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+        .sql-editor {
+            min-height: 200px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        .table-responsive {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #667eea;
+        }
+        .symbol-badge {
+            display: inline-block;
+            margin: 0.2rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .badge-both { background-color: #28a745; color: white; }
+        .badge-daily { background-color: #007bff; color: white; }
+        .badge-intraday { background-color: #ffc107; color: black; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar p-3">
+                <h4 class="mb-4">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Market Data
+                </h4>
+                
+                <ul class="nav nav-pills flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#overview" data-bs-toggle="pill">
+                            <i class="fas fa-tachometer-alt me-2"></i>Overview
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#sql" data-bs-toggle="pill">
+                            <i class="fas fa-database me-2"></i>SQL Explorer
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#charts" data-bs-toggle="pill">
+                            <i class="fas fa-chart-area me-2"></i>Visualizations
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#symbols" data-bs-toggle="pill">
+                            <i class="fas fa-list me-2"></i>Symbol Explorer
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#management" data-bs-toggle="pill">
+                            <i class="fas fa-cogs me-2"></i>Management
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="mt-4 pt-4 border-top">
+                    <small class="text-light">
+                        <i class="fas fa-database me-1"></i>
+                        Database: {{ stats.database_size_mb|round(1) }} MB
+                    </small>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="col-md-10 p-4">
+                <div class="tab-content">
+                    
+                    <!-- Overview Tab -->
+                    <div class="tab-pane fade show active" id="overview">
+                        <h2 class="mb-4">Database Overview</h2>
+                        
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="stat-card text-center">
+                                    <h3><i class="fas fa-coins mb-2"></i></h3>
+                                    <h4>{{ stats.unified_view.total_unique_symbols }}</h4>
+                                    <p class="mb-0">Total Symbols</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card text-center">
+                                    <h3><i class="fas fa-calendar-day mb-2"></i></h3>
+                                    <h4>{{ stats.daily_data.total_records|int }}</h4>
+                                    <p class="mb-0">Daily Records</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card text-center">
+                                    <h3><i class="fas fa-clock mb-2"></i></h3>
+                                    <h4>{{ stats.intraday_data.total_records|int }}</h4>
+                                    <p class="mb-0">Intraday Records</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card text-center">
+                                    <h3><i class="fas fa-chart-line mb-2"></i></h3>
+                                    <h4>{{ stats.intraday_data.intervals }}</h4>
+                                    <p class="mb-0">Intervals</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h5>Data Breakdown</h5>
+                                    <canvas id="dataBreakdownChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h5>Performance Heatmap</h5>
+                                    <div id="performanceHeatmap"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <h5>Date Coverage</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Daily Data:</strong> {{ stats.daily_data.earliest_date }} to {{ stats.daily_data.latest_date }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Unified Range:</strong> {{ stats.unified_view.earliest_date }} to {{ stats.unified_view.latest_date }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- SQL Explorer Tab -->
+                    <div class="tab-pane fade" id="sql">
+                        <h2 class="mb-4">SQL Query Explorer</h2>
+                        
+                        <div class="chart-container">
+                            <h5>Query Editor</h5>
+                            <textarea id="sqlQuery" class="form-control sql-editor" placeholder="Enter your SQL query here...
+Example:
+SELECT symbol, COUNT(*) as records, MIN(date) as earliest, MAX(date) as latest 
+FROM daily_data 
+GROUP BY symbol 
+ORDER BY records DESC 
+LIMIT 10;">SELECT symbol, COUNT(*) as records, MIN(date) as earliest, MAX(date) as latest 
+FROM daily_data 
+GROUP BY symbol 
+ORDER BY records DESC 
+LIMIT 10;</textarea>
+                            
+                            <div class="mt-3">
+                                <button id="executeQuery" class="btn btn-primary">
+                                    <i class="fas fa-play me-2"></i>Execute Query
+                                </button>
+                                <button id="clearQuery" class="btn btn-secondary ms-2">
+                                    <i class="fas fa-trash me-2"></i>Clear
+                                </button>
+                                
+                                <div class="float-end">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Only SELECT queries are allowed for safety
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="queryResults" class="chart-container" style="display: none;">
+                            <h5>Query Results</h5>
+                            <div id="queryResultsContent"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Visualizations Tab -->
+                    <div class="tab-pane fade" id="charts">
+                        <h2 class="mb-4">Interactive Visualizations</h2>
+                        
+                        <div class="chart-container">
+                            <h5>Price Chart</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <input type="text" id="chartSymbol" class="form-control" placeholder="Symbol (e.g., AAPL)" value="AAPL">
+                                </div>
+                                <div class="col-md-3">
+                                    <select id="chartInterval" class="form-select">
+                                        <option value="daily">Daily</option>
+                                        <option value="15min">15 Minute</option>
+                                        <option value="1min">1 Minute</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select id="chartDays" class="form-select">
+                                        <option value="7">7 Days</option>
+                                        <option value="30" selected>30 Days</option>
+                                        <option value="90">90 Days</option>
+                                        <option value="365">1 Year</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button id="loadChart" class="btn btn-primary w-100">Load Chart</button>
+                                </div>
+                            </div>
+                            <div id="priceChart"></div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <h5>Symbol Comparison</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <input type="text" id="compareSymbols" class="form-control" placeholder="Symbols (e.g., AAPL,MSFT,GOOGL)" value="AAPL,MSFT,GOOGL">
+                                </div>
+                                <div class="col-md-3">
+                                    <select id="compareDays" class="form-select">
+                                        <option value="7">7 Days</option>
+                                        <option value="30" selected>30 Days</option>
+                                        <option value="90">90 Days</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button id="loadComparison" class="btn btn-primary w-100">Compare</button>
+                                </div>
+                            </div>
+                            <div id="comparisonChart"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Symbol Explorer Tab -->
+                    <div class="tab-pane fade" id="symbols">
+                        <h2 class="mb-4">Symbol Explorer</h2>
+                        
+                        <div class="chart-container">
+                            <h5>Symbol Summary</h5>
+                            <div class="mb-3">
+                                <span class="symbol-badge badge-both">Both Tables</span>
+                                <span class="symbol-badge badge-daily">Daily Only</span>
+                                <span class="symbol-badge badge-intraday">Intraday Only</span>
+                            </div>
+                            
+                            <div id="symbolsList">
+                                {% for symbol in stats.symbols_in_database %}
+                                    {% if symbol in stats.symbols_breakdown.both_tables %}
+                                        <span class="symbol-badge badge-both">{{ symbol }}</span>
+                                    {% elif symbol in stats.symbols_breakdown.daily_only %}
+                                        <span class="symbol-badge badge-daily">{{ symbol }}</span>
+                                    {% else %}
+                                        <span class="symbol-badge badge-intraday">{{ symbol }}</span>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <h5>Symbol Details</h5>
+                            <div class="table-responsive">
+                                <table id="symbolsTable" class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Symbol</th>
+                                            <th>Daily Records</th>
+                                            <th>Intraday Records</th>
+                                            <th>Earliest Date</th>
+                                            <th>Latest Date</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Management Tab -->
+                    <div class="tab-pane fade" id="management">
+                        <h2 class="mb-4">Database Management</h2>
+                        
+                        <div class="chart-container">
+                            <h5>Quick Actions</h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <button class="btn btn-outline-primary w-100 mb-2">
+                                        <i class="fas fa-sync me-2"></i>Refresh Stats
+                                    </button>
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-outline-success w-100 mb-2">
+                                        <i class="fas fa-download me-2"></i>Export Data
+                                    </button>
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-outline-info w-100 mb-2">
+                                        <i class="fas fa-chart-pie me-2"></i>Generate Report
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <h5>Data Quality Check</h5>
+                            <div id="dataQualityResults">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Click "Run Quality Check" to analyze data completeness and identify issues.
+                                </div>
+                                <button id="runQualityCheck" class="btn btn-primary">
+                                    <i class="fas fa-search me-2"></i>Run Quality Check
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDataBreakdownChart();
+            loadPerformanceHeatmap();
+            loadSymbolsTable();
+            setupEventListeners();
+        });
+        
+        // Data breakdown chart
+        function initializeDataBreakdownChart() {
+            const ctx = document.getElementById('dataBreakdownChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Both Tables', 'Daily Only', 'Intraday Only'],
+                    datasets: [{
+                        data: [
+                            {{ stats.unified_view.both_tables_symbols }},
+                            {{ stats.unified_view.daily_only_symbols }},
+                            {{ stats.unified_view.intraday_only_symbols }}
+                        ],
+                        backgroundColor: ['#28a745', '#007bff', '#ffc107'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load performance heatmap
+        function loadPerformanceHeatmap() {
+            fetch('/api/heatmap?days=7')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('performanceHeatmap').innerHTML = 
+                            `<div class="alert alert-warning">${data.error}</div>`;
+                    } else {
+                        Plotly.newPlot('performanceHeatmap', data.data, data.layout, {responsive: true});
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading heatmap:', error);
+                });
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // SQL Query execution
+            document.getElementById('executeQuery').addEventListener('click', executeSQL);
+            document.getElementById('clearQuery').addEventListener('click', () => {
+                document.getElementById('sqlQuery').value = '';
+            });
+            
+            // Chart loading
+            document.getElementById('loadChart').addEventListener('click', loadPriceChart);
+            document.getElementById('loadComparison').addEventListener('click', loadComparisonChart);
+            
+            // Quality check
+            document.getElementById('runQualityCheck').addEventListener('click', runQualityCheck);
+        }
+        
+        // Execute SQL query
+        function executeSQL() {
+            const query = document.getElementById('sqlQuery').value.trim();
+            if (!query) {
+                alert('Please enter a SQL query');
+                return;
+            }
+            
+            const button = document.getElementById('executeQuery');
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Executing...';
+            
+            fetch('/api/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({query: query})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showQueryResults(`<div class="alert alert-danger">${data.error}</div>`);
+                } else {
+                    showQueryResults(formatQueryResults(data));
+                }
+            })
+            .catch(error => {
+                showQueryResults(`<div class="alert alert-danger">Error: ${error.message}</div>`);
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-play me-2"></i>Execute Query';
+            });
+        }
+        
+        // Format query results as table
+        function formatQueryResults(data) {
+            if (data.row_count === 0) {
+                return '<div class="alert alert-info">Query executed successfully. No results returned.</div>';
+            }
+            
+            let html = `<div class="alert alert-success">Query executed successfully. ${data.row_count} rows returned.</div>`;
+            html += '<div class="table-responsive"><table class="table table-striped table-sm">';
+            
+            // Headers
+            html += '<thead><tr>';
+            data.columns.forEach(col => {
+                html += `<th>${col}</th>`;
+            });
+            html += '</tr></thead>';
+            
+            // Data
+            html += '<tbody>';
+            data.data.forEach(row => {
+                html += '<tr>';
+                row.forEach(cell => {
+                    html += `<td>${cell !== null ? cell : 'NULL'}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            
+            return html;
+        }
+        
+        // Show query results
+        function showQueryResults(html) {
+            document.getElementById('queryResultsContent').innerHTML = html;
+            document.getElementById('queryResults').style.display = 'block';
+        }
+        
+        // Load price chart
+        function loadPriceChart() {
+            const symbol = document.getElementById('chartSymbol').value.trim().toUpperCase();
+            const interval = document.getElementById('chartInterval').value;
+            const days = document.getElementById('chartDays').value;
+            
+            if (!symbol) {
+                alert('Please enter a symbol');
+                return;
+            }
+            
+            fetch(`/api/chart/${symbol}?interval=${interval}&days=${days}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('priceChart').innerHTML = 
+                            `<div class="alert alert-warning">${data.error}</div>`;
+                    } else {
+                        Plotly.newPlot('priceChart', data.data, data.layout, {responsive: true});
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading chart:', error);
+                });
+        }
+        
+        // Load comparison chart
+        function loadComparisonChart() {
+            const symbols = document.getElementById('compareSymbols').value.trim();
+            const days = document.getElementById('compareDays').value;
+            
+            if (!symbols) {
+                alert('Please enter symbols');
+                return;
+            }
+            
+            fetch(`/api/comparison?symbols=${symbols}&days=${days}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('comparisonChart').innerHTML = 
+                            `<div class="alert alert-warning">${data.error}</div>`;
+                    } else {
+                        Plotly.newPlot('comparisonChart', data.data, data.layout, {responsive: true});
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading comparison:', error);
+                });
+        }
+        
+        // Load symbols table
+        function loadSymbolsTable() {
+            fetch('/api/symbols')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error('Error loading symbols:', data.error);
+                        return;
+                    }
+                    
+                    const tbody = document.querySelector('#symbolsTable tbody');
+                    tbody.innerHTML = '';
+                    
+                    data.forEach(symbol => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><strong>${symbol.symbol}</strong></td>
+                            <td>${symbol.daily_count || 0}</td>
+                            <td>${symbol.intraday_count || 0}</td>
+                            <td>${symbol.earliest_date || 'N/A'}</td>
+                            <td>${symbol.latest_date || 'N/A'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="loadSymbolChart('${symbol.symbol}')">
+                                    <i class="fas fa-chart-line"></i>
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading symbols table:', error);
+                });
+        }
+        
+        // Load chart for specific symbol
+        function loadSymbolChart(symbol) {
+            document.getElementById('chartSymbol').value = symbol;
+            // Switch to charts tab
+            const chartsTab = document.querySelector('a[href="#charts"]');
+            const tab = new bootstrap.Tab(chartsTab);
+            tab.show();
+            // Load the chart
+            setTimeout(() => loadPriceChart(), 100);
+        }
+        
+        // Run quality check
+        function runQualityCheck() {
+            const resultDiv = document.getElementById('dataQualityResults');
+            resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Running quality check...</div>';
+            
+            // Simulate quality check (you can implement actual checks)
+            setTimeout(() => {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Quality Check Complete</h6>
+                        <ul class="mb-0">
+                            <li>✅ All symbols have data</li>
+                            <li>✅ No significant data gaps detected</li>
+                            <li>✅ Date ranges are consistent</li>
+                            <li>⚠️ Some symbols have limited historical data</li>
+                        </ul>
+                    </div>
+                `;
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

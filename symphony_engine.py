@@ -268,10 +268,22 @@ class SymphonyBacktester:
             try:
                 # Get market data up to this date for all symbols
                 date_market_data = {}
+                min_required_periods = 20  # Minimum data points needed for calculations
+                
                 for symbol, data in market_data.items():
                     symbol_data = data[data.index <= date]
-                    if len(symbol_data) > 0:
+                    # Only include symbol if we have sufficient historical data
+                    if len(symbol_data) >= min_required_periods:
                         date_market_data[symbol] = symbol_data
+                
+                # Skip this rebalance date if we don't have enough symbols with sufficient data
+                universe_symbols = set(symphony_config.get('universe', []))
+                available_symbols = set(date_market_data.keys())
+                missing_symbols = universe_symbols - available_symbols
+                
+                if missing_symbols:
+                    print(f"Skipping {date}: insufficient data for {missing_symbols}")
+                    continue
                 
                 # Execute symphony for this date
                 result = self.engine.execute_symphony(

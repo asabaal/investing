@@ -43,6 +43,17 @@ class MarketDataDatabase:
         if not self.api_key:
             raise ValueError("API key required. Set ALPHA_VANTAGE_API_KEY environment variable.")
         
+        # Symbol mapping for problematic symbols
+        self.symbol_mapping = {
+            'VIX': 'VXX',  # VIX index is not directly available, use VXX ETF as proxy
+            '^VIX': 'VXX',  # Handle different VIX formats
+        }
+        
+        # Symbols that don't support intraday data
+        self.intraday_unsupported = {
+            'VIX', '^VIX'  # VIX doesn't have intraday data available through Alpha Vantage
+        }
+        
         self._init_database()
         logger.info(f"📊 Market Data Database initialized: {db_path}")
     
@@ -100,90 +111,251 @@ class MarketDataDatabase:
             
             conn.commit()
     
+    def _resolve_symbol(self, symbol: str) -> str:
+        """
+        Resolve symbol mapping for problematic symbols
+        
+        Args:
+            symbol: Original symbol
+            
+        Returns:
+            Mapped symbol for API calls
+        """
+        mapped = self.symbol_mapping.get(symbol, symbol)
+        if mapped != symbol:
+            logger.info(f"🔄 Mapping {symbol} -> {mapped}")
+        return mapped
+    
+    def _supports_intraday(self, symbol: str) -> bool:
+        """
+        Check if symbol supports intraday data
+        
+        Args:
+            symbol: Symbol to check
+            
+        Returns:
+            True if intraday data is supported
+        """
+        return symbol not in self.intraday_unsupported
+    
     def get_data(self, symbol: str, start_date: str = None, end_date: str = None, 
                 interval: str = 'daily') -> pd.DataFrame:
         """
-        Get data from database - NO rate limiting since it's local!
+        Unified data retrieval - smart fallback from intraday to daily
         
         Args:
             symbol: Stock symbol
             start_date: Start date (YYYY-MM-DD)
             end_date: End date (YYYY-MM-DD) 
-            interval: Data interval
+            interval: Data interval ('daily', '1min', '5min', '15min', '30min', '60min')
             
         Returns:
-            DataFrame with market data
+            DataFrame with market data indexed by datetime
         """
         
         logger.info(f"📊 Getting {interval} data for {symbol} from database")
         
-        # Check if we need to update data first
-        self._ensure_data_current(symbol, interval)
+        if interval == 'daily':
+            # For daily data, first try to get from intraday (preferred) then fallback to daily table
+            return self._get_daily_data_unified(symbol, start_date, end_date)
+        else:
+            # For intraday data, get directly from intraday table
+            return self._get_intraday_data_direct(symbol, start_date, end_date, interval)
+    
+    def _get_daily_data_unified(self, symbol: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
+        """
+        Get daily data with smart fallback strategy:
+        1. Try to derive from intraday data (more comprehensive)
+        2. Fallback to daily_data table
+        3. Update if needed
+        """
         
-        # Query database
+        # First, check if we have intraday data for this symbol
         with sqlite3.connect(self.db_path) as conn:
-            if interval == 'daily':
-                query = '''
-                    SELECT date, open, high, low, close, adj_close, volume
-                    FROM daily_data 
-                    WHERE symbol = ?
-                '''
-                params = [symbol]
-                
-                if start_date:
-                    query += ' AND date >= ?'
-                    params.append(start_date)
-                
-                if end_date:
-                    query += ' AND date <= ?'
-                    params.append(end_date)
-                
-                query += ' ORDER BY date'
-                
+            intraday_check = conn.execute(
+                'SELECT COUNT(*) FROM intraday_data WHERE symbol = ? LIMIT 1',
+                [symbol]
+            ).fetchone()[0]
+            
+            if intraday_check > 0:
+                # We have intraday data - derive daily from it
+                logger.info(f"📈 Deriving daily data from intraday for {symbol}")
+                return self._derive_daily_from_intraday(symbol, start_date, end_date)
             else:
-                query = '''
-                    SELECT datetime, open, high, low, close, volume
+                # No intraday data - use daily table or update
+                logger.info(f"📊 Using daily table for {symbol}")
+                return self._get_daily_data_direct(symbol, start_date, end_date)
+    
+    def _derive_daily_from_intraday(self, symbol: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
+        """Derive daily OHLCV data from intraday data"""
+        
+        with sqlite3.connect(self.db_path) as conn:
+            # Get all intraday data and aggregate to daily
+            query = '''
+                SELECT 
+                    DATE(datetime) as date,
+                    MIN(datetime) as first_time,
+                    MAX(datetime) as last_time
+                FROM intraday_data 
+                WHERE symbol = ?
+            '''
+            params = [symbol]
+            
+            if start_date:
+                query += ' AND DATE(datetime) >= ?'
+                params.append(start_date)
+            
+            if end_date:
+                query += ' AND DATE(datetime) <= ?'
+                params.append(end_date)
+            
+            query += ' GROUP BY DATE(datetime) ORDER BY date'
+            
+            date_ranges = pd.read_sql_query(query, conn, params=params)
+            
+            if date_ranges.empty:
+                logger.warning(f"⚠️ No intraday data found for {symbol}")
+                return pd.DataFrame()
+            
+            # For each date, get OHLCV
+            daily_data = []
+            for _, row in date_ranges.iterrows():
+                date_str = row['date']
+                
+                # Get OHLCV for this date
+                ohlcv_query = '''
+                    SELECT 
+                        ? as date,
+                        (SELECT open FROM intraday_data WHERE symbol = ? AND DATE(datetime) = ? ORDER BY datetime ASC LIMIT 1) as open,
+                        MAX(high) as high,
+                        MIN(low) as low,
+                        (SELECT close FROM intraday_data WHERE symbol = ? AND DATE(datetime) = ? ORDER BY datetime DESC LIMIT 1) as close,
+                        SUM(volume) as volume
                     FROM intraday_data 
-                    WHERE symbol = ? AND interval = ?
+                    WHERE symbol = ? AND DATE(datetime) = ?
                 '''
-                params = [symbol, interval]
                 
-                if start_date:
-                    query += ' AND date(datetime) >= ?'
-                    params.append(start_date)
+                result = conn.execute(ohlcv_query, [date_str, symbol, date_str, symbol, date_str, symbol, date_str]).fetchone()
                 
-                if end_date:
-                    query += ' AND date(datetime) <= ?'
-                    params.append(end_date)
+                if result and result[1] is not None:  # Ensure we have data
+                    daily_data.append({
+                        'date': result[0],
+                        'open': result[1],
+                        'high': result[2], 
+                        'low': result[3],
+                        'close': result[4],
+                        'volume': result[5] or 0
+                    })
+            
+            if daily_data:
+                df = pd.DataFrame(daily_data)
+                df['date'] = pd.to_datetime(df['date'])
+                df.set_index('date', inplace=True)
+                df['adj_close'] = df['close']  # For compatibility
                 
-                query += ' ORDER BY datetime'
+                # Format columns to match the expected format (title case)
+                df.rename(columns={
+                    'open': 'Open',
+                    'high': 'High',
+                    'low': 'Low',
+                    'close': 'Unadjusted_Close',
+                    'adj_close': 'Close',
+                    'volume': 'Volume'
+                }, inplace=True)
+                
+                logger.info(f"✅ Derived {len(df)} daily records from intraday for {symbol}")
+                return df
+            else:
+                return pd.DataFrame()
+    
+    def _get_daily_data_direct(self, symbol: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
+        """Get data directly from daily_data table"""
+        
+        # Check if we need to update data first
+        self._ensure_data_current(symbol, 'daily')
+        
+        with sqlite3.connect(self.db_path) as conn:
+            query = '''
+                SELECT date, open, high, low, close, adj_close, volume
+                FROM daily_data 
+                WHERE symbol = ?
+            '''
+            params = [symbol]
+            
+            if start_date:
+                query += ' AND date >= ?'
+                params.append(start_date)
+            
+            if end_date:
+                query += ' AND date <= ?'
+                params.append(end_date)
+            
+            query += ' ORDER BY date'
             
             df = pd.read_sql_query(query, conn, params=params)
-        
-        if df.empty:
-            logger.warning(f"⚠️ No data found for {symbol} in database")
-            return pd.DataFrame()
-        
-        # Set index and format
-        if interval == 'daily':
+            
+            if df.empty:
+                logger.warning(f"⚠️ No daily data found for {symbol} in database")
+                return pd.DataFrame()
+            
+            # Format daily data
             df['date'] = pd.to_datetime(df['date'])
             df.set_index('date', inplace=True)
-            # Rename for consistency and remove duplicate Close columns
             df.rename(columns={
                 'open': 'Open',
                 'high': 'High', 
                 'low': 'Low',
-                'close': 'Unadjusted_Close',  # Keep original close separate
-                'adj_close': 'Close',         # Use adjusted close as main Close
+                'close': 'Unadjusted_Close',
+                'adj_close': 'Close',
                 'volume': 'Volume'
             }, inplace=True)
-        else:
+            
+            logger.info(f"✅ Retrieved {len(df)} daily records for {symbol}")
+            return df
+    
+    def _get_intraday_data_direct(self, symbol: str, start_date: str = None, end_date: str = None, interval: str = '15min') -> pd.DataFrame:
+        """Get data directly from intraday_data table"""
+        
+        # Check if we need to update data first
+        self._ensure_data_current(symbol, interval)
+        
+        with sqlite3.connect(self.db_path) as conn:
+            query = '''
+                SELECT datetime, open, high, low, close, volume
+                FROM intraday_data 
+                WHERE symbol = ? AND interval = ?
+            '''
+            params = [symbol, interval]
+            
+            if start_date:
+                query += ' AND date(datetime) >= ?'
+                params.append(start_date)
+            
+            if end_date:
+                query += ' AND date(datetime) <= ?'
+                params.append(end_date)
+            
+            query += ' ORDER BY datetime'
+            
+            df = pd.read_sql_query(query, conn, params=params)
+            
+            if df.empty:
+                logger.warning(f"⚠️ No {interval} data found for {symbol} in database")
+                return pd.DataFrame()
+            
+            # Format intraday data
             df['datetime'] = pd.to_datetime(df['datetime'])
             df.set_index('datetime', inplace=True)
-            df.rename(columns=str.title, inplace=True)
-        
-        logger.info(f"✅ Retrieved {len(df)} records for {symbol}")
-        return df
+            df.rename(columns={
+                'open': 'Open',
+                'high': 'High',
+                'low': 'Low', 
+                'close': 'Close',
+                'volume': 'Volume'
+            }, inplace=True)
+            
+            logger.info(f"✅ Retrieved {len(df)} {interval} records for {symbol}")
+            return df
     
     def update_daily_data(self, symbol: str, force_full_update: bool = False) -> bool:
         """
@@ -200,6 +372,9 @@ class MarketDataDatabase:
         logger.info(f"🔄 Updating daily data for {symbol}")
         
         try:
+            # Resolve symbol mapping (e.g., VIX -> VXX)
+            api_symbol = self._resolve_symbol(symbol)
+            
             # Determine date range to fetch
             if force_full_update:
                 # Fetch all available data
@@ -219,7 +394,7 @@ class MarketDataDatabase:
                 fetch_size = 'compact'  # Last 100 days
             
             # Fetch from API with rate limiting (only when actually calling API)
-            data = self._fetch_daily_from_api(symbol, fetch_size)
+            data = self._fetch_daily_from_api(api_symbol, fetch_size)
             
             if data.empty:
                 logger.error(f"❌ No data received for {symbol}")
@@ -250,8 +425,16 @@ class MarketDataDatabase:
         logger.info(f"🔄 Updating {interval} data for {symbol}")
         
         try:
+            # Check if symbol supports intraday data
+            if not self._supports_intraday(symbol):
+                logger.warning(f"⚠️ {symbol} does not support intraday data")
+                return False
+            
+            # Resolve symbol mapping (e.g., VIX -> VXX)
+            api_symbol = self._resolve_symbol(symbol)
+            
             # Fetch from API
-            data = self._fetch_intraday_from_api(symbol, interval)
+            data = self._fetch_intraday_from_api(api_symbol, interval)
             
             if data.empty:
                 logger.error(f"❌ No intraday data received for {symbol}")
@@ -530,8 +713,24 @@ class MarketDataDatabase:
                 FROM intraday_data
             ''').fetchone()
             
-            # Symbol list
-            symbols = [row[0] for row in conn.execute('SELECT DISTINCT symbol FROM daily_data')]
+            # All symbols from both tables (unified view)
+            all_symbols = set()
+            daily_symbols = {row[0] for row in conn.execute('SELECT DISTINCT symbol FROM daily_data')}
+            intraday_symbols = {row[0] for row in conn.execute('SELECT DISTINCT symbol FROM intraday_data')}
+            all_symbols = daily_symbols.union(intraday_symbols)
+            
+            # Get date range from both tables
+            date_ranges = []
+            if daily_stats[2]:  # If we have daily data
+                date_ranges.append(daily_stats[2])
+                date_ranges.append(daily_stats[3])
+            
+            intraday_dates = conn.execute('SELECT MIN(datetime), MAX(datetime) FROM intraday_data').fetchone()
+            if intraday_dates[0]:  # If we have intraday data
+                date_ranges.extend(intraday_dates)
+            
+            earliest_date = min(date_ranges) if date_ranges else None
+            latest_date = max(date_ranges) if date_ranges else None
             
         return {
             'daily_data': {
@@ -545,7 +744,20 @@ class MarketDataDatabase:
                 'intervals': intraday_stats[1] or 0,
                 'total_records': intraday_stats[2] or 0
             },
-            'symbols_in_database': symbols,
+            'unified_view': {
+                'total_unique_symbols': len(all_symbols),
+                'daily_only_symbols': len(daily_symbols - intraday_symbols),
+                'intraday_only_symbols': len(intraday_symbols - daily_symbols),
+                'both_tables_symbols': len(daily_symbols.intersection(intraday_symbols)),
+                'earliest_date': earliest_date,
+                'latest_date': latest_date
+            },
+            'symbols_in_database': sorted(list(all_symbols)),
+            'symbols_breakdown': {
+                'daily_only': sorted(list(daily_symbols - intraday_symbols)),
+                'intraday_only': sorted(list(intraday_symbols - daily_symbols)),
+                'both_tables': sorted(list(daily_symbols.intersection(intraday_symbols)))
+            },
             'database_size_mb': os.path.getsize(self.db_path) / (1024 * 1024) if os.path.exists(self.db_path) else 0
         }
 
