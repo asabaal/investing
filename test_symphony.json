@@ -1,0 +1,59 @@
+{
+  "name": "Momentum Quality Strategy",
+  "description": "Buy top 3 momentum stocks when market is bullish, defensive when bearish",
+  "universe": [
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "TSLA",
+    "META",
+    "NVDA",
+    "SPY",
+    "QQQ",
+    "TLT"
+  ],
+  "rebalance_frequency": "monthly",
+  "logic": {
+    "conditions": [
+      {
+        "id": "market_momentum_check",
+        "type": "if_statement",
+        "condition": {
+          "metric": "cumulative_return",
+          "asset_1": "SPY",
+          "operator": "greater_than",
+          "asset_2": {
+            "type": "fixed_value",
+            "value": 0.0
+          },
+          "lookback_days": 60
+        },
+        "if_true": "momentum_allocation",
+        "if_false": "defensive_allocation"
+      }
+    ],
+    "allocations": {
+      "momentum_allocation": {
+        "type": "sort_and_weight",
+        "sort": {
+          "metric": "cumulative_return",
+          "lookback_days": 90,
+          "direction": "top",
+          "count": 3
+        },
+        "weighting": {
+          "method": "inverse_volatility",
+          "lookback_days": 30
+        }
+      },
+      "defensive_allocation": {
+        "type": "fixed_allocation",
+        "weights": {
+          "TLT": 0.7,
+          "SPY": 0.3
+        }
+      }
+    }
+  }
+}

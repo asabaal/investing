@@ -1,10 +1,10 @@
 {
-  "total_return": 0.022410250767541884,
-  "annual_return": 0.22075006468507952,
-  "volatility": 0.1374675713891713,
-  "sharpe_ratio": 1.605833742855143,
-  "max_drawdown": -0.0330555375448965,
-  "win_rate": 0.4642857142857143,
-  "num_trades": 28,
-  "avg_return_per_period": 0.000827792379782921
+  "total_return": 0.01709653160399771,
+  "annual_return": 1.349922479641338,
+  "volatility": 0.1279170548765721,
+  "sharpe_ratio": 10.55310787872568,
+  "max_drawdown": -0.00554612366995164,
+  "win_rate": 0.4,
+  "num_trades": 5,
+  "avg_return_per_period": 0.0034220011629234777
 }

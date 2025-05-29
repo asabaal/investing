@@ -8,6 +8,7 @@ This module provides a factory pattern and core services.
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 import os
+import pandas as pd
 
 @dataclass
 class SymphonyConfig:
@@ -18,6 +19,67 @@ class SymphonyConfig:
     default_benchmark: str = "SPY"
     default_output_dir: str = "./results"
 
+class DatabaseDataManager:
+    """High-level data manager that works with MarketDataDatabase"""
+    
+    def __init__(self, database):
+        self.database = database
+    
+    def prepare_symphony_data(self, symphony_config: dict, start_date: str = None, 
+                            end_date: str = None) -> Dict[str, pd.DataFrame]:
+        """
+        Prepare all data needed for a symphony using database
+        
+        Args:
+            symphony_config: Symphony configuration dictionary
+            start_date: Start date for data (YYYY-MM-DD)
+            end_date: End date for data (YYYY-MM-DD)
+            
+        Returns:
+            Dictionary mapping symbol -> DataFrame with market data
+        """
+        
+        universe = symphony_config.get('universe', [])
+        
+        if not universe:
+            raise ValueError("No universe defined in symphony configuration")
+        
+        print(f"📊 Preparing data for symphony: {symphony_config.get('name', 'Unknown')}")
+        print(f"🎯 Universe: {universe}")
+        print(f"📅 Date range: {start_date} to {end_date}")
+        
+        # Fetch data for all symbols using database (NO rate limiting!)
+        market_data = {}
+        
+        for symbol in universe:
+            try:
+                print(f"📈 Getting {symbol} data from database...")
+                data = self.database.get_data(symbol, start_date, end_date, 'daily')
+                
+                if not data.empty:
+                    market_data[symbol] = data
+                    print(f"✅ {symbol}: {len(data)} records")
+                else:
+                    print(f"⚠️ {symbol}: No data available")
+                    
+            except Exception as e:
+                print(f"❌ {symbol}: Error - {e}")
+                continue
+        
+        # Validate we have sufficient data  
+        min_required_days = 100  # Back to normal now that we have historical data
+        valid_symbols = []
+        
+        for symbol, data in market_data.items():
+            if len(data) >= min_required_days:
+                valid_symbols.append(symbol)
+            else:
+                print(f"⚠️ {symbol} has only {len(data)} days of data (min {min_required_days})")
+        
+        print(f"✅ Valid symbols with sufficient data: {valid_symbols}")
+        
+        return {symbol: data for symbol, data in market_data.items() if symbol in valid_symbols}
+
 class SymphonyComponentFactory:
     """Factory for creating symphony components without circular dependencies"""
     
@@ -26,27 +88,22 @@ class SymphonyComponentFactory:
         self._components = {}
     
     def get_data_pipeline(self):
-        """Get or create data pipeline component"""
+        """Get or create data pipeline component - now using database"""
         if 'data_pipeline' not in self._components:
-            from data_pipeline import MarketDataPipeline, DataConfig
+            from market_data_database import MarketDataDatabase
             
-            data_config = DataConfig(
-                cache_dir=self.config.data_cache_dir,
-                api_key=self.config.api_key,
-                rate_limit_delay=self.config.rate_limit_delay
+            self._components['data_pipeline'] = MarketDataDatabase(
+                api_key=self.config.api_key
             )
-            
-            self._components['data_pipeline'] = MarketDataPipeline(data_config)
         
         return self._components['data_pipeline']
     
     def get_data_manager(self):
         """Get or create data manager component"""
         if 'data_manager' not in self._components:
-            from data_pipeline import SymphonyDataManager
-            
+            # Create a new data manager that works with our database
             pipeline = self.get_data_pipeline()
-            self._components['data_manager'] = SymphonyDataManager(pipeline)
+            self._components['data_manager'] = DatabaseDataManager(pipeline)
         
         return self._components['data_manager']
     
