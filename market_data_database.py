@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, date
 import os
 import time
 import requests
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 import json
 from dataclasses import dataclass
 import logging
@@ -168,9 +168,15 @@ class MarketDataDatabase:
         if interval == 'daily':
             df['date'] = pd.to_datetime(df['date'])
             df.set_index('date', inplace=True)
-            # Rename for consistency
-            df.rename(columns={'adj_close': 'Close'}, inplace=True)
-            df.rename(columns=str.title, inplace=True)
+            # Rename for consistency and remove duplicate Close columns
+            df.rename(columns={
+                'open': 'Open',
+                'high': 'High', 
+                'low': 'Low',
+                'close': 'Unadjusted_Close',  # Keep original close separate
+                'adj_close': 'Close',         # Use adjusted close as main Close
+                'volume': 'Volume'
+            }, inplace=True)
         else:
             df['datetime'] = pd.to_datetime(df['datetime'])
             df.set_index('datetime', inplace=True)
@@ -306,7 +312,11 @@ class MarketDataDatabase:
         last_date = self._get_last_update_date(symbol, interval)
         
         if not last_date:
-            logger.info(f"📊 No existing data for {symbol} ({interval}), will fetch on first request")
+            logger.info(f"📊 No existing data for {symbol} ({interval}), fetching now...")
+            if interval == 'daily':
+                self.update_daily_data(symbol, force_full_update=True)
+            else:
+                self.update_intraday_data(symbol, interval)
             return
         
         # Check if data is stale

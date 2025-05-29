@@ -295,6 +295,8 @@ class SymphonyBacktester:
                 
             except Exception as e:
                 print(f"Error on {date}: {e}")
+                import traceback
+                traceback.print_exc()
                 continue
         
         return pd.DataFrame(backtest_results)
@@ -329,8 +331,8 @@ class SymphonyBacktester:
                 symbol_data = market_data[symbol]
                 if len(symbol_data) >= 2:
                     # Calculate return since last rebalance
-                    current_price = symbol_data['Close'].iloc[-1]
-                    previous_price = symbol_data['Close'].iloc[-2]
+                    current_price = float(symbol_data['Close'].iloc[-1])
+                    previous_price = float(symbol_data['Close'].iloc[-2])
                     symbol_return = (current_price - previous_price) / previous_price
                     
                     # Weight by portfolio allocation
