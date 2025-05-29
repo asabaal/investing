@@ -1,0 +1,30 @@
+# Database files (stored in ~/.market_data/)
+*.db
+
+# Cache directories
+data_cache/
+cache/
+
+# Log files
+logs/
+*.log
+
+# Results directories (keep structure, ignore data)
+results/*.csv
+results/*.json
+backtest_results/*.csv
+backtest_results/*.json
+
+# Temporary files
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment files
+.env
+.venv/
+
+# IDE files
+.vscode/
+.idea/

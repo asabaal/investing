@@ -16,10 +16,14 @@ def main():
     print("🚀 Market Data Dashboard Launcher")
     print("=" * 50)
     
-    # Check if we're in the right directory
-    if not Path("market_data.db").exists():
-        print("❌ market_data.db not found!")
-        print("💡 Make sure you're running this from the investing directory")
+    # Check if database exists in new location
+    from market_data_database import get_default_database_path
+    db_path = Path(get_default_database_path())
+    
+    if not db_path.exists():
+        print("❌ Database not found at expected location!")
+        print(f"💡 Expected: {db_path}")
+        print("💡 Run 'python market_data_database.py --init-symbols SPY QQQ' to initialize")
         return False
     
     # Check dependencies

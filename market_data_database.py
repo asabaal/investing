@@ -20,10 +20,22 @@ from typing import Dict, List, Optional, Tuple, Any
 import json
 from dataclasses import dataclass
 import logging
+from pathlib import Path
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def get_default_database_path() -> str:
+    """
+    Get the default database path outside the repository
+    
+    Returns:
+        Path to the market data database in user data directory
+    """
+    data_dir = Path.home() / '.market_data'
+    data_dir.mkdir(exist_ok=True)  # Create directory if it doesn't exist
+    return str(data_dir / 'market_data.db')
 
 @dataclass
 class DataRequest:
@@ -36,7 +48,9 @@ class DataRequest:
 class MarketDataDatabase:
     """Centralized market data database management"""
     
-    def __init__(self, db_path: str = "./market_data.db", api_key: str = None):
+    def __init__(self, db_path: str = None, api_key: str = None):
+        if db_path is None:
+            db_path = get_default_database_path()
         self.db_path = db_path
         self.api_key = api_key or os.getenv('ALPHA_VANTAGE_API_KEY')
         
