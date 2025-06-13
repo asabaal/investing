@@ -1,0 +1,270 @@
+{
+  "symphonies": {
+    "black_swan_protection": {
+      "name": "Integrated Black Swan Protection",
+      "description": "Protect & Profit strategy with three modes: Crisis, Growth, Defense",
+      "universe": ["SPY", "QQQ", "UVXY", "TLT", "GLD", "HYG", "VXX"],
+      "rebalance_frequency": "daily",
+      "logic": {
+        "conditions": [
+          {
+            "id": "crisis_detection",
+            "type": "if_statement",
+            "condition": {
+              "type": "or",
+              "conditions": [
+                {
+                  "metric": "vix_level",
+                  "asset_1": "VXX",
+                  "operator": "greater_than",
+                  "asset_2": {"type": "fixed_value", "value": 25},
+                  "lookback_days": 1
+                },
+                {
+                  "metric": "credit_spread",
+                  "asset_1": "HYG",
+                  "asset_2": "TLT",
+                  "operator": "greater_than",
+                  "threshold": {"type": "fixed_value", "value": 500},
+                  "lookback_days": 5
+                }
+              ]
+            },
+            "if_true": "crisis_mode",
+            "if_false": "growth_or_defense_check"
+          },
+          {
+            "id": "growth_or_defense_check",
+            "type": "if_statement",
+            "condition": {
+              "type": "and",
+              "conditions": [
+                {
+                  "metric": "moving_average",
+                  "asset_1": "SPY",
+                  "operator": "greater_than",
+                  "asset_2": {"type": "sma", "period": 200},
+                  "lookback_days": 1
+                },
+                {
+                  "metric": "vix_level",
+                  "asset_1": "VXX",
+                  "operator": "less_than",
+                  "asset_2": {"type": "fixed_value", "value": 20},
+                  "lookback_days": 1
+                }
+              ]
+            },
+            "if_true": "growth_mode",
+            "if_false": "defense_mode"
+          }
+        ],
+        "allocations": {
+          "crisis_mode": {
+            "type": "fixed_allocation",
+            "weights": {
+              "UVXY": 0.30,
+              "TLT": 0.40,
+              "GLD": 0.30
+            }
+          },
+          "growth_mode": {
+            "type": "fixed_allocation",
+            "weights": {
+              "SPY": 0.70,
+              "QQQ": 0.25,
+              "UVXY": 0.05
+            }
+          },
+          "defense_mode": {
+            "type": "fixed_allocation",
+            "weights": {
+              "SPY": 0.50,
+              "TLT": 0.30,
+              "GLD": 0.20
+            }
+          }
+        }
+      }
+    },
+    
+    "crisis_alpha_hunter": {
+      "name": "Crisis Alpha Hunter",
+      "description": "Profit from panic with dynamic volatility allocation",
+      "universe": ["UVXY", "VXX", "GLD", "TLT", "UUP", "SPY", "HYG"],
+      "rebalance_frequency": "daily",
+      "logic": {
+        "conditions": [
+          {
+            "id": "volatility_signal",
+            "type": "if_statement",
+            "condition": {
+              "type": "and",
+              "conditions": [
+                {
+                  "metric": "vix_level",
+                  "asset_1": "VXX",
+                  "operator": "greater_than",
+                  "asset_2": {"type": "fixed_value", "value": 25},
+                  "lookback_days": 1
+                }
+              ]
+            },
+            "if_true": "crisis_profit_mode",
+            "if_false": "standard_allocation"
+          }
+        ],
+        "allocations": {
+          "crisis_profit_mode": {
+            "type": "fixed_allocation",
+            "weights": {
+              "UVXY": 0.40,
+              "GLD": 0.30,
+              "TLT": 0.20,
+              "UUP": 0.10
+            }
+          },
+          "standard_allocation": {
+            "type": "fixed_allocation",
+            "weights": {
+              "SPY": 0.60,
+              "TLT": 0.30,
+              "GLD": 0.10
+            }
+          }
+        }
+      }
+    },
+    
+    "all_weather_profit": {
+      "name": "All-Weather Profit Engine",
+      "description": "Dynamic allocation across all market regimes",
+      "universe": ["SPY", "QQQ", "EFA", "TLT", "GLD", "UVXY", "IWM"],
+      "rebalance_frequency": "weekly",
+      "logic": {
+        "conditions": [
+          {
+            "id": "trend_check",
+            "type": "if_statement",
+            "condition": {
+              "metric": "moving_average",
+              "asset_1": "SPY",
+              "operator": "greater_than",
+              "asset_2": {"type": "sma", "period": 200},
+              "lookback_days": 1
+            },
+            "if_true": "bull_allocation",
+            "if_false": "bear_allocation"
+          }
+        ],
+        "allocations": {
+          "bull_allocation": {
+            "type": "fixed_allocation",
+            "weights": {
+              "SPY": 0.60,
+              "QQQ": 0.20,
+              "EFA": 0.15,
+              "UVXY": 0.05
+            }
+          },
+          "bear_allocation": {
+            "type": "fixed_allocation",
+            "weights": {
+              "UVXY": 0.30,
+              "GLD": 0.30,
+              "TLT": 0.25,
+              "SPY": 0.15
+            }
+          }
+        }
+      }
+    },
+    
+    "momentum_profit": {
+      "name": "Momentum Profit Strategy",
+      "description": "Ride trends in growth assets with volatility protection",
+      "universe": ["QQQ", "SPY", "IWM", "EFA", "VXX"],
+      "rebalance_frequency": "weekly",
+      "logic": {
+        "conditions": [
+          {
+            "id": "trend_check",
+            "type": "if_statement",
+            "condition": {
+              "metric": "moving_average",
+              "asset_1": "QQQ",
+              "operator": "greater_than",
+              "asset_2": {"type": "sma", "period": 200},
+              "lookback_days": 1
+            },
+            "if_true": "momentum_long",
+            "if_false": "defensive_momentum"
+          }
+        ],
+        "allocations": {
+          "momentum_long": {
+            "type": "fixed_allocation",
+            "weights": {
+              "QQQ": 0.40,
+              "SPY": 0.30,
+              "IWM": 0.25,
+              "VXX": 0.05
+            }
+          },
+          "defensive_momentum": {
+            "type": "fixed_allocation",
+            "weights": {
+              "SPY": 0.50,
+              "TLT": 0.30,
+              "VXX": 0.20
+            }
+          }
+        }
+      }
+    },
+    
+    "sector_rotation": {
+      "name": "Adaptive Sector Rotation",
+      "description": "Rotate through sectors based on economic regime",
+      "universe": ["XLK", "XLF", "XLE", "XLV", "XLY", "XLP", "XLI", "XLU", "SPY"],
+      "rebalance_frequency": "monthly",
+      "logic": {
+        "conditions": [
+          {
+            "id": "economic_regime",
+            "type": "if_statement",
+            "condition": {
+              "metric": "moving_average",
+              "asset_1": "SPY",
+              "operator": "greater_than",
+              "asset_2": {"type": "sma", "period": 200},
+              "lookback_days": 1
+            },
+            "if_true": "growth_sectors",
+            "if_false": "defensive_sectors"
+          }
+        ],
+        "allocations": {
+          "growth_sectors": {
+            "type": "fixed_allocation",
+            "weights": {
+              "XLK": 0.30,
+              "XLY": 0.25,
+              "XLF": 0.20,
+              "XLI": 0.25
+            }
+          },
+          "defensive_sectors": {
+            "type": "fixed_allocation",
+            "weights": {
+              "XLP": 0.30,
+              "XLV": 0.30,
+              "XLU": 0.20,
+              "SPY": 0.20
+            }
+          }
+        }
+      }
+    }
+  }
+}

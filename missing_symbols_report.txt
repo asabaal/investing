@@ -1,0 +1,48 @@
+================================================================================
+BLACK SWAN STRATEGY DATA COVERAGE REPORT
+Generated: 2025-06-13 08:46:15
+================================================================================
+
+Strategy: Integrated Black Swan Protection
+Total Symbols: 7
+Readiness: 0.0%
+----------------------------------------
+⚠️  Insufficient Data (7): SPY (22 days), QQQ (22 days), UVXY (21 days), TLT (21 days), GLD (21 days), HYG (21 days), VXX (21 days)
+
+================================================================================
+
+Strategy: Crisis Alpha Hunter
+Total Symbols: 7
+Readiness: 0.0%
+----------------------------------------
+❌ Missing Data (1): UUP
+⚠️  Insufficient Data (6): UVXY (21 days), VXX (21 days), GLD (21 days), TLT (21 days), SPY (22 days), HYG (21 days)
+
+================================================================================
+
+Strategy: All-Weather Profit Engine
+Total Symbols: 8
+Readiness: 0.0%
+----------------------------------------
+❌ Missing Data (2): EFA, DBC
+⚠️  Insufficient Data (6): SPY (22 days), QQQ (22 days), TLT (21 days), GLD (21 days), UVXY (21 days), IWM (21 days)
+
+================================================================================
+
+Strategy: Momentum Profit Strategy
+Total Symbols: 8
+Readiness: 0.0%
+----------------------------------------
+❌ Missing Data (2): ARKK, EFA
+⚠️  Insufficient Data (6): QQQ (22 days), XLK (21 days), XLY (21 days), SPY (22 days), IWM (21 days), VXX (21 days)
+
+================================================================================
+
+Strategy: Adaptive Sector Rotation
+Total Symbols: 11
+Readiness: 0.0%
+----------------------------------------
+⚠️  Insufficient Data (11): XLK (21 days), XLF (21 days), XLE (21 days), XLV (21 days), XLY (21 days), XLP (21 days), XLI (21 days), XLU (21 days), XLRE (21 days), XLB (21 days), SPY (22 days)
+
+================================================================================
+

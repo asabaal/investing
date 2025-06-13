@@ -178,27 +178,36 @@ class MarketDataDatabase:
     
     def _get_daily_data_unified(self, symbol: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
         """
-        Get daily data with smart fallback strategy:
-        1. Try to derive from intraday data (more comprehensive)
-        2. Fallback to daily_data table
+        Get daily data with prioritized strategy:
+        1. Try daily_data table first (faster and more reliable)
+        2. Fallback to deriving from intraday data only if daily table is empty
         3. Update if needed
         """
         
-        # First, check if we have intraday data for this symbol
+        # First, check if we have daily data for this symbol
         with sqlite3.connect(self.db_path) as conn:
-            intraday_check = conn.execute(
-                'SELECT COUNT(*) FROM intraday_data WHERE symbol = ? LIMIT 1',
+            daily_check = conn.execute(
+                'SELECT COUNT(*) FROM daily_data WHERE symbol = ? LIMIT 1',
                 [symbol]
             ).fetchone()[0]
             
-            if intraday_check > 0:
-                # We have intraday data - derive daily from it
-                logger.info(f"📈 Deriving daily data from intraday for {symbol}")
-                return self._derive_daily_from_intraday(symbol, start_date, end_date)
-            else:
-                # No intraday data - use daily table or update
+            if daily_check > 0:
+                # We have daily data - use it directly
                 logger.info(f"📊 Using daily table for {symbol}")
                 return self._get_daily_data_direct(symbol, start_date, end_date)
+            else:
+                # No daily data - check if we can derive from intraday
+                intraday_check = conn.execute(
+                    'SELECT COUNT(*) FROM intraday_data WHERE symbol = ? LIMIT 1',
+                    [symbol]
+                ).fetchone()[0]
+                
+                if intraday_check > 0:
+                    logger.info(f"📈 Deriving daily data from intraday for {symbol}")
+                    return self._derive_daily_from_intraday(symbol, start_date, end_date)
+                else:
+                    logger.warning(f"⚠️ No data found for {symbol}")
+                    return pd.DataFrame()
     
     def _derive_daily_from_intraday(self, symbol: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
         """Derive daily OHLCV data from intraday data"""
@@ -464,26 +473,29 @@ class MarketDataDatabase:
             logger.error(f"❌ Failed to update intraday {symbol}: {e}")
             return False
     
-    def bulk_update_symbols(self, symbols: List[str], interval: str = 'daily') -> Dict[str, bool]:
+    def bulk_update_symbols(self, symbols: List[str], interval: str = 'daily', force_full_update: bool = False) -> Dict[str, bool]:
         """
         Update multiple symbols with proper rate limiting
         
         Args:
             symbols: List of symbols to update
             interval: Data interval to update
+            force_full_update: Whether to fetch all historical data
             
         Returns:
             Dictionary of symbol -> success status
         """
         
         logger.info(f"🔄 Bulk updating {len(symbols)} symbols ({interval})")
+        if force_full_update:
+            logger.info(f"📅 Force full update enabled - fetching all historical data")
         
         results = {}
         
         for i, symbol in enumerate(symbols):
             try:
                 if interval == 'daily':
-                    success = self.update_daily_data(symbol)
+                    success = self.update_daily_data(symbol, force_full_update=force_full_update)
                 else:
                     success = self.update_intraday_data(symbol, interval)
                 
@@ -813,11 +825,82 @@ def daily_update_script():
     return results
 
 
+def historical_update_script():
+    """Script to fetch full historical data for trading strategies"""
+    
+    # Load configuration
+    config_file = 'data_update_config.json'
+    if os.path.exists(config_file):
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+        symbols = config.get('symbols', ['SPY', 'QQQ', 'IWM'])
+    else:
+        # Default symbols
+        symbols = ['SPY', 'QQQ', 'IWM', 'TLT', 'VTI', 'AAPL', 'MSFT', 'GOOGL']
+        
+        # Create config file
+        with open(config_file, 'w') as f:
+            json.dump({'symbols': symbols}, f, indent=2)
+        
+        logger.info(f"📄 Created config file: {config_file}")
+    
+    # Initialize database
+    db = MarketDataDatabase()
+    
+    logger.info("=" * 80)
+    logger.info("📈 HISTORICAL DATA UPDATE FOR TRADING STRATEGIES")
+    logger.info("=" * 80)
+    logger.info(f"📊 Updating {len(symbols)} symbols with full historical data")
+    logger.info(f"⏱️ Estimated time: ~{len(symbols) * 12 / 60:.1f} minutes (API rate limiting)")
+    logger.info("📅 Fetching 2+ years of historical data per symbol")
+    logger.info("=" * 80)
+    
+    # Update all symbols with full historical data
+    results = db.bulk_update_symbols(symbols, 'daily', force_full_update=True)
+    
+    successful = sum(1 for success in results.values() if success)
+    logger.info(f"✅ Historical update completed: {successful}/{len(symbols)} successful")
+    
+    # Check trading readiness
+    ready_count = 0
+    logger.info("\n📊 TRADING STRATEGY READINESS:")
+    logger.info("-" * 60)
+    
+    for symbol in symbols:
+        try:
+            data = db.get_data(symbol)
+            if not data.empty:
+                days = len(data)
+                status = "READY" if days >= 252 else f"SHORT ({days} days)"
+                if days >= 252:
+                    ready_count += 1
+                logger.info(f"{symbol:8} {days:4d} days   {status}")
+            else:
+                logger.info(f"{symbol:8}    0 days   NO DATA")
+        except:
+            logger.info(f"{symbol:8}    ? days   ERROR")
+    
+    readiness_pct = (ready_count / len(symbols)) * 100
+    logger.info(f"\n🎯 Overall Readiness: {ready_count}/{len(symbols)} symbols ({readiness_pct:.1f}%)")
+    
+    if readiness_pct >= 80:
+        logger.info("🚀 DEPLOYMENT STATUS: READY for trading strategies!")
+    else:
+        logger.info("⚠️ DEPLOYMENT STATUS: Need more data before deploying strategies")
+    
+    # Print database stats
+    stats = db.get_database_stats()
+    logger.info(f"\n📊 Database stats: {stats}")
+    
+    return results
+
+
 if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(description="Market Data Database Management")
     parser.add_argument('--daily-update', action='store_true', help='Run daily update')
+    parser.add_argument('--historical-update', action='store_true', help='Run full historical update (2+ years)')
     parser.add_argument('--stats', action='store_true', help='Show database statistics')
     parser.add_argument('--init-symbols', nargs='+', help='Initialize database with symbols')
     
@@ -825,6 +908,8 @@ if __name__ == "__main__":
     
     if args.daily_update:
         daily_update_script()
+    elif args.historical_update:
+        historical_update_script()
     elif args.stats:
         db = MarketDataDatabase()
         stats = db.get_database_stats()
