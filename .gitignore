@@ -28,3 +28,5 @@ __pycache__/
 # IDE files
 .vscode/
 .idea/
+market_data.db
+*.db
