@@ -1,6 +1,6 @@
 """
-Fixed business logic components for the Trend Detection Algorithm
-Added better edge case handling and single candle support
+Final fixed business logic components for the Trend Detection Algorithm
+Improved swing detection, pattern recognition, and analysis result handling
 """
 
 from abc import ABC, abstractmethod
@@ -29,30 +29,33 @@ class SwingDetectionStrategy(Protocol):
 class BasicSwingDetectionStrategy:
     """
     Responsibility: Detect swing points using basic high/low comparison.
+    Ensures proper alternation of swing types.
     """
     
     def __init__(self, lookback_period: int = 1):
         self.lookback_period = lookback_period
     
     def detect_swings(self, candles: List[Candle]) -> List[SwingPoint]:
-        """Detect swing points using basic comparison method"""
-        swings = []
+        """Detect swing points using basic comparison method with alternation enforcement"""
         if len(candles) < 3:
-            return swings
+            return []
         
-        # Check interior candles for swing points
+        candidate_swings = []
+        
+        # Find all potential swing points
         for i in range(self.lookback_period, len(candles) - self.lookback_period):
             swing = self._check_swing_at_index(candles, i)
             if swing:
-                swings.append(swing)
+                candidate_swings.append(swing)
         
         # Check potential swing at last candle
         if len(candles) >= 2:
             last_swing = self._check_last_candle_swing(candles)
             if last_swing:
-                swings.append(last_swing)
+                candidate_swings.append(last_swing)
         
-        return swings
+        # Enforce alternation pattern
+        return self._enforce_alternation(candidate_swings)
     
     def _check_swing_at_index(self, candles: List[Candle], index: int) -> Optional[SwingPoint]:
         """Check if candle at index forms a swing point"""
@@ -127,6 +130,30 @@ class BasicSwingDetectionStrategy:
             )
         
         return None
+    
+    def _enforce_alternation(self, candidate_swings: List[SwingPoint]) -> List[SwingPoint]:
+        """Enforce alternating HIGH-LOW pattern by filtering out consecutive same types"""
+        if not candidate_swings:
+            return []
+        
+        filtered_swings = [candidate_swings[0]]  # Always keep first swing
+        
+        for swing in candidate_swings[1:]:
+            last_swing = filtered_swings[-1]
+            
+            # Only add if it's different type from last swing
+            if swing.swing_type != last_swing.swing_type:
+                filtered_swings.append(swing)
+            else:
+                # Keep the more extreme swing of the same type
+                if swing.swing_type == SwingType.HIGH:
+                    if swing.price > last_swing.price:
+                        filtered_swings[-1] = swing  # Replace with higher high
+                elif swing.swing_type == SwingType.LOW:
+                    if swing.price < last_swing.price:
+                        filtered_swings[-1] = swing  # Replace with lower low
+        
+        return filtered_swings
 
 
 class SwingDetector:
@@ -145,6 +172,7 @@ class SwingDetector:
 class PatternMatcher:
     """
     Responsibility: Identify trend patterns from swing points.
+    Prioritizes up/down trends over sideways patterns.
     """
     
     def __init__(self, config: TrendAnalysisConfig):
@@ -161,8 +189,8 @@ class PatternMatcher:
                 pattern_swings[1].swing_type == SwingType.HIGH and
                 pattern_swings[2].swing_type == SwingType.LOW):
                 
-                # Check for higher low
-                if pattern_swings[2].price > pattern_swings[0].price:
+                # Check for higher low (more strict requirement)
+                if pattern_swings[2].price > pattern_swings[0].price * 1.005:  # At least 0.5% higher
                     pattern = TrendPattern(
                         formation_swings=tuple(pattern_swings),
                         pattern_type=TrendDirection.UP,
@@ -184,8 +212,8 @@ class PatternMatcher:
                 pattern_swings[1].swing_type == SwingType.LOW and
                 pattern_swings[2].swing_type == SwingType.HIGH):
                 
-                # Check for lower high
-                if pattern_swings[2].price < pattern_swings[0].price:
+                # Check for lower high (more strict requirement)
+                if pattern_swings[2].price < pattern_swings[0].price * 0.995:  # At least 0.5% lower
                     pattern = TrendPattern(
                         formation_swings=tuple(pattern_swings),
                         pattern_type=TrendDirection.DOWN,
@@ -198,10 +226,10 @@ class PatternMatcher:
     
     def find_sideways_patterns(self, candles: List[Candle], swings: List[SwingPoint],
                               start_idx: int, end_idx: int) -> List[TrendPattern]:
-        """Find sideways/consolidation patterns"""
+        """Find sideways/consolidation patterns (less aggressive detection)"""
         patterns = []
         
-        if end_idx - start_idx < 3:
+        if end_idx - start_idx < 5:  # Require more data for sideways
             return patterns
         
         # Analyze price range in the period
@@ -213,21 +241,22 @@ class PatternMatcher:
         range_low = min(c.low for c in period_candles)
         range_size = range_high - range_low
         
-        # Check if range is narrow enough for sideways
+        # Check if range is narrow enough for sideways (more strict)
         avg_price = (range_high + range_low) / 2
         range_pct = range_size / avg_price if avg_price > 0 else 0
         
-        if range_pct <= self.config.sideways_range_threshold:
+        # More strict threshold for sideways detection
+        if range_pct <= self.config.sideways_range_threshold * 0.7:  # 30% stricter
             # Check for low momentum (small body-to-wick ratios)
-            # Use last 3 candles or all available candles if fewer than 3
             momentum_candles = period_candles[-3:] if len(period_candles) >= 3 else period_candles
             avg_momentum = np.mean([c.body_to_wick_ratio for c in momentum_candles])
             
-            if avg_momentum < self.config.moveout_threshold * 0.8:
+            # More strict momentum requirement
+            if avg_momentum < self.config.moveout_threshold * 0.6:  # Stricter than before
                 # Find representative swings in the period
                 period_swings = [s for s in swings if start_idx <= s.candle_index <= end_idx]
                 
-                if len(period_swings) >= 2:
+                if len(period_swings) >= 3:  # Require more swings
                     pattern = TrendPattern(
                         formation_swings=tuple(period_swings[:4]),  # Take first few swings
                         pattern_type=TrendDirection.SIDEWAYS,
@@ -536,7 +565,7 @@ class TrendManager:
         return genesis_point
     
     def resolve_temporal_conflicts(self, candle_index: int) -> None:
-        """Resolve overlapping active trends"""
+        """Resolve overlapping active trends with more lenient criteria"""
         if len(self.active_trends) <= 1:
             return
         
@@ -552,7 +581,7 @@ class TrendManager:
             self._resolve_conflict_groups(conflicts, candle_index)
     
     def _trends_overlap(self, trend1: Trend, trend2: Trend, current_candle_index: int) -> bool:
-        """Check if two trends overlap temporally"""
+        """Check if two trends overlap temporally with more lenient criteria"""
         end1 = trend1.end_index if trend1.end_index else current_candle_index
         end2 = trend2.end_index if trend2.end_index else current_candle_index
         
@@ -567,7 +596,9 @@ class TrendManager:
         min_duration = min(end1 - trend1.start_index, end2 - trend2.start_index)
         
         overlap_ratio = overlap_duration / min_duration if min_duration > 0 else 0
-        return overlap_ratio > self.config.max_trend_overlap
+        
+        # More lenient overlap threshold
+        return overlap_ratio > self.config.max_trend_overlap * 1.5  # 50% more lenient
     
     def _resolve_conflict_groups(self, conflicts: List[Tuple[Trend, Trend]], candle_index: int) -> None:
         """Resolve conflict groups by keeping most dominant trends"""
@@ -637,9 +668,13 @@ class TrendAnalysisEngine:
         if not candles or analysis_start >= len(candles):
             raise ValueError("Invalid analysis parameters")
         
+        # Get analysis window candles
+        analysis_candles = candles[analysis_start:analysis_end + 1]
+        
         # Handle single candle case
         if len(candles) == 1:
             return TrendAnalysisResult(
+                candles=tuple(analysis_candles),
                 swings=tuple(),
                 detected_patterns=tuple(),
                 trends=tuple(),
@@ -658,7 +693,7 @@ class TrendAnalysisEngine:
         analysis_swings = [s for s in all_swings 
                           if analysis_start <= s.candle_index <= analysis_end]
         
-        # Step 2: Process each candle in the analysis window
+        # Step 2: Process each candle in the analysis window (prioritize up/down patterns)
         detected_patterns = []
         for candle_index in range(analysis_start, analysis_end + 1):
             current_candle = candles[candle_index]
@@ -667,7 +702,7 @@ class TrendAnalysisEngine:
             # Check trend terminations
             self._process_trend_terminations(current_candle, candle_index)
             
-            # Detect new patterns
+            # Detect new patterns (prioritize up/down over sideways)
             new_patterns = self._detect_new_patterns(candles, current_swings, candle_index)
             detected_patterns.extend(new_patterns)
             
@@ -715,6 +750,7 @@ class TrendAnalysisEngine:
         current_trend = active_trends[-1] if active_trends else None
         
         return TrendAnalysisResult(
+            candles=tuple(analysis_candles),
             swings=tuple(analysis_swings),
             detected_patterns=tuple(detected_patterns),
             trends=tuple(final_trends),
@@ -737,11 +773,11 @@ class TrendAnalysisEngine:
     
     def _detect_new_patterns(self, candles: List[Candle], swings: List[SwingPoint],
                            candle_index: int) -> List[TrendPattern]:
-        """Detect new trend patterns at current candle"""
+        """Detect new trend patterns at current candle (prioritize up/down trends)"""
         current_candle = candles[candle_index]
         new_patterns = []
         
-        # Find uptrend patterns
+        # FIRST: Find uptrend patterns (higher priority)
         up_patterns = self.pattern_matcher.find_uptrend_patterns(swings)
         for pattern in up_patterns:
             if self.breakout_validator.validate_uptrend_breakout(pattern, current_candle):
@@ -753,7 +789,7 @@ class TrendAnalysisEngine:
                 self.trend_manager.add_trend(trend)
                 new_patterns.append(pattern)
         
-        # Find downtrend patterns
+        # SECOND: Find downtrend patterns (higher priority)
         down_patterns = self.pattern_matcher.find_downtrend_patterns(swings)
         for pattern in down_patterns:
             if self.breakout_validator.validate_downtrend_breakout(pattern, current_candle):
@@ -765,10 +801,10 @@ class TrendAnalysisEngine:
                 self.trend_manager.add_trend(trend)
                 new_patterns.append(pattern)
         
-        # Find sideways patterns
-        if candle_index >= 5:  # Need some history for sideways detection
+        # THIRD: Find sideways patterns only if no up/down trends found (lower priority)
+        if not new_patterns and candle_index >= 8:  # Need more history and no directional trends
             sideways_patterns = self.pattern_matcher.find_sideways_patterns(
-                candles, swings, max(0, candle_index - 10), candle_index
+                candles, swings, max(0, candle_index - 15), candle_index
             )
             for pattern in sideways_patterns:
                 trend = self.trend_factory.create_trend_from_pattern(

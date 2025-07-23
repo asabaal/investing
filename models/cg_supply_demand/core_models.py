@@ -1,6 +1,6 @@
 """
-Core data models for the Supply & Demand Zone Detection Algorithm
-Separated according to Single Responsibility Principle
+Enhanced Candle class with body_to_wick_ratio property
+Add this to your core_models.py file
 """
 
 from dataclasses import dataclass
@@ -25,7 +25,7 @@ class ZoneType(Enum):
 @dataclass(frozen=True)
 class Candle:
     """
-    Immutable candlestick data model.
+    Immutable candlestick data model with trend detection support.
     Responsibility: Hold candlestick data only, no business logic.
     """
     timestamp: datetime
@@ -43,8 +43,25 @@ class Candle:
             raise ValueError("Low price must be <= open, close, and high prices")
         if self.volume is not None and self.volume < 0:
             raise ValueError("Volume cannot be negative")
+    
+    @property
+    def body_to_wick_ratio(self) -> float:
+        """
+        Calculate body-to-wick ratio for trend detection.
+        Returns float('inf') if total wick size is 0.
+        """
+        body_size = abs(self.close - self.open)
+        upper_wick = self.high - max(self.open, self.close)
+        lower_wick = min(self.open, self.close) - self.low
+        total_wick = upper_wick + lower_wick
+        
+        if total_wick == 0:
+            return float('inf')
+        
+        return body_size / total_wick
 
 
+# Rest of the core_models.py file remains the same...
 @dataclass(frozen=True)
 class Zone:
     """
