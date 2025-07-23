@@ -1,6 +1,6 @@
 """
-Final fixed business logic components for the Trend Detection Algorithm
-Improved swing detection, pattern recognition, and analysis result handling
+Fixed business logic components for the Trend Detection Algorithm
+UPDATED: Swing detection, controlling swing management, genesis point logic
 """
 
 from abc import ABC, abstractmethod
@@ -28,137 +28,103 @@ class SwingDetectionStrategy(Protocol):
 
 class BasicSwingDetectionStrategy:
     """
-    Responsibility: Detect swing points using basic high/low comparison.
-    Ensures proper alternation of swing types.
+    CORRECTED: Simplified swing detection that actually works correctly.
+    Responsibility: Detect swing points using reliable local extrema detection.
     """
     
-    def __init__(self, lookback_period: int = 1):
+    def __init__(self, lookback_period: int = 1):  # REVERTED: Back to 1 for reliability
         self.lookback_period = lookback_period
     
     def detect_swings(self, candles: List[Candle]) -> List[SwingPoint]:
-        """Detect swing points using basic comparison method with alternation enforcement"""
+        """CORRECTED: Reliable swing detection with proper alternation"""
         if len(candles) < 3:
             return []
         
-        candidate_swings = []
+        all_extrema = []
         
-        # Find all potential swing points
-        for i in range(self.lookback_period, len(candles) - self.lookback_period):
+        # Step 1: Find ALL local extrema (don't worry about alternation yet)
+        for i in range(1, len(candles) - 1):  # Check interior candles only
             swing = self._check_swing_at_index(candles, i)
             if swing:
-                candidate_swings.append(swing)
+                all_extrema.append(swing)
         
-        # Check potential swing at last candle
-        if len(candles) >= 2:
-            last_swing = self._check_last_candle_swing(candles)
-            if last_swing:
-                candidate_swings.append(last_swing)
-        
-        # Enforce alternation pattern
-        return self._enforce_alternation(candidate_swings)
+        # Step 2: Enforce alternation while preserving important swings
+        return self._enforce_alternation_with_preservation(all_extrema)
     
     def _check_swing_at_index(self, candles: List[Candle], index: int) -> Optional[SwingPoint]:
-        """Check if candle at index forms a swing point"""
+        """
+        MODIFIED: Use close prices for swing detection - much better for trend analysis.
+        This catches candle 12 type scenarios naturally.
+        """
         current = candles[index]
+        prev_candle = candles[index - 1]
+        next_candle = candles[index + 1]
         
-        # Check for swing high
-        is_swing_high = True
-        for offset in range(-self.lookback_period, self.lookback_period + 1):
-            if offset == 0:
-                continue
-            compare_idx = index + offset
-            if 0 <= compare_idx < len(candles):
-                if current.high <= candles[compare_idx].high:
-                    is_swing_high = False
-                    break
-        
-        if is_swing_high:
+        # Swing high: close higher than both neighbors
+        if current.close > prev_candle.close and current.close > next_candle.close:
             return SwingPoint(
                 candle_index=index,
-                price=current.high,
+                price=current.close,  # Use close price
                 swing_type=SwingType.HIGH,
                 timestamp=current.timestamp
             )
         
-        # Check for swing low
-        is_swing_low = True
-        for offset in range(-self.lookback_period, self.lookback_period + 1):
-            if offset == 0:
-                continue
-            compare_idx = index + offset
-            if 0 <= compare_idx < len(candles):
-                if current.low >= candles[compare_idx].low:
-                    is_swing_low = False
-                    break
-        
-        if is_swing_low:
+        # Swing low: close lower than both neighbors  
+        if current.close < prev_candle.close and current.close < next_candle.close:
             return SwingPoint(
                 candle_index=index,
-                price=current.low,
+                price=current.close,  # Use close price
                 swing_type=SwingType.LOW,
                 timestamp=current.timestamp
             )
         
         return None
     
-    def _check_last_candle_swing(self, candles: List[Candle]) -> Optional[SwingPoint]:
-        """Check if last candle could be a swing point"""
-        if len(candles) < 3:
-            return None
-        
-        last_idx = len(candles) - 1
-        current = candles[last_idx]
-        
-        # Simple check: higher than previous two candles
-        if (current.high > candles[last_idx - 1].high and 
-            current.high > candles[last_idx - 2].high):
-            return SwingPoint(
-                candle_index=last_idx,
-                price=current.high,
-                swing_type=SwingType.HIGH,
-                timestamp=current.timestamp
-            )
-        
-        # Simple check: lower than previous two candles
-        if (current.low < candles[last_idx - 1].low and 
-            current.low < candles[last_idx - 2].low):
-            return SwingPoint(
-                candle_index=last_idx,
-                price=current.low,
-                swing_type=SwingType.LOW,
-                timestamp=current.timestamp
-            )
-        
-        return None
-    
-    def _enforce_alternation(self, candidate_swings: List[SwingPoint]) -> List[SwingPoint]:
-        """Enforce alternating HIGH-LOW pattern by filtering out consecutive same types"""
-        if not candidate_swings:
+    def _enforce_alternation_with_preservation(self, extrema: List[SwingPoint]) -> List[SwingPoint]:
+        """
+        CORRECTED: Enforce alternation while preserving significant intermediate swings.
+        This is the key fix - we need to be smarter about which swings to keep.
+        """
+        if not extrema:
             return []
         
-        filtered_swings = [candidate_swings[0]]  # Always keep first swing
+        # Sort by candle index to ensure chronological order
+        extrema.sort(key=lambda s: s.candle_index)
         
-        for swing in candidate_swings[1:]:
-            last_swing = filtered_swings[-1]
+        result = [extrema[0]]  # Always keep first swing
+        
+        for current_swing in extrema[1:]:
+            last_swing = result[-1]
             
-            # Only add if it's different type from last swing
-            if swing.swing_type != last_swing.swing_type:
-                filtered_swings.append(swing)
+            if current_swing.swing_type != last_swing.swing_type:
+                # Different types - this maintains alternation, always add
+                result.append(current_swing)
             else:
-                # Keep the more extreme swing of the same type
-                if swing.swing_type == SwingType.HIGH:
-                    if swing.price > last_swing.price:
-                        filtered_swings[-1] = swing  # Replace with higher high
-                elif swing.swing_type == SwingType.LOW:
-                    if swing.price < last_swing.price:
-                        filtered_swings[-1] = swing  # Replace with lower low
+                # Same type - need to decide whether to keep both or replace
+                if current_swing.swing_type == SwingType.HIGH:
+                    if current_swing.price > last_swing.price * 1.01:  # 1% higher
+                        # Significantly higher high - keep both (important intermediate swing)
+                        result.append(current_swing)
+                    elif current_swing.price > last_swing.price:
+                        # Higher but not significant - replace with the higher one
+                        result[-1] = current_swing
+                    # If lower, ignore it
+                else:  # SwingType.LOW
+                    if current_swing.price < last_swing.price * 0.99:  # 1% lower
+                        # Significantly lower low - keep both (important intermediate swing)
+                        result.append(current_swing)
+                    elif current_swing.price < last_swing.price:
+                        # Lower but not significant - replace with the lower one
+                        result[-1] = current_swing
+                    # If higher, ignore it
         
-        return filtered_swings
+        return result
 
 
 class SwingDetector:
     """
     Responsibility: Orchestrate swing detection using pluggable strategies.
+    NO CHANGES - interface remains the same
     """
     
     def __init__(self, strategy: SwingDetectionStrategy):
@@ -171,62 +137,104 @@ class SwingDetector:
 
 class PatternMatcher:
     """
+    UPDATED: Enhanced pattern matching for better L-H-L detection.
     Responsibility: Identify trend patterns from swing points.
-    Prioritizes up/down trends over sideways patterns.
     """
     
     def __init__(self, config: TrendAnalysisConfig):
         self.config = config
     
     def find_uptrend_patterns(self, swings: List[SwingPoint]) -> List[TrendPattern]:
-        """Find L-H-L uptrend patterns"""
+        """UPDATED: Find L-H-L uptrend patterns with flexible intermediate swings"""
         patterns = []
         
-        for i in range(len(swings) - 2):
-            pattern_swings = swings[i:i+3]
-            
-            if (pattern_swings[0].swing_type == SwingType.LOW and
-                pattern_swings[1].swing_type == SwingType.HIGH and
-                pattern_swings[2].swing_type == SwingType.LOW):
-                
-                # Check for higher low (more strict requirement)
-                if pattern_swings[2].price > pattern_swings[0].price * 1.005:  # At least 0.5% higher
-                    pattern = TrendPattern(
-                        formation_swings=tuple(pattern_swings),
-                        pattern_type=TrendDirection.UP,
-                        start_index=pattern_swings[0].candle_index,
-                        end_index=pattern_swings[2].candle_index
-                    )
-                    patterns.append(pattern)
+        # Look for significant L-H-L patterns, not just consecutive triplets
+        for i in range(len(swings)):
+            if swings[i].swing_type == SwingType.LOW:
+                # Found potential trend start low - look for higher high
+                for j in range(i + 1, min(i + 8, len(swings))):  # Limit search window
+                    if (swings[j].swing_type == SwingType.HIGH and 
+                        swings[j].price > swings[i].price * 1.01):  # Must be significantly higher
+                        
+                        # Found higher high - look for higher low
+                        for k in range(j + 1, min(j + 6, len(swings))):  # Limit search window
+                            if (swings[k].swing_type == SwingType.LOW and 
+                                swings[k].price > swings[i].price * 1.005):  # Must be higher low
+                                
+                                # Found valid L-H-L pattern
+                                pattern = TrendPattern(
+                                    formation_swings=tuple([swings[i], swings[j], swings[k]]),
+                                    pattern_type=TrendDirection.UP,
+                                    start_index=swings[i].candle_index,
+                                    end_index=swings[k].candle_index
+                                )
+                                patterns.append(pattern)
+                                break  # Found pattern for this L-H combination
+                        break  # Move to next low after finding valid high
         
-        return patterns
+        return self._filter_overlapping_patterns(patterns)
     
     def find_downtrend_patterns(self, swings: List[SwingPoint]) -> List[TrendPattern]:
-        """Find H-L-H downtrend patterns"""
+        """UPDATED: Find H-L-H downtrend patterns with flexible intermediate swings"""
         patterns = []
         
-        for i in range(len(swings) - 2):
-            pattern_swings = swings[i:i+3]
-            
-            if (pattern_swings[0].swing_type == SwingType.HIGH and
-                pattern_swings[1].swing_type == SwingType.LOW and
-                pattern_swings[2].swing_type == SwingType.HIGH):
-                
-                # Check for lower high (more strict requirement)
-                if pattern_swings[2].price < pattern_swings[0].price * 0.995:  # At least 0.5% lower
-                    pattern = TrendPattern(
-                        formation_swings=tuple(pattern_swings),
-                        pattern_type=TrendDirection.DOWN,
-                        start_index=pattern_swings[0].candle_index,
-                        end_index=pattern_swings[2].candle_index
-                    )
-                    patterns.append(pattern)
+        # Look for significant H-L-H patterns
+        for i in range(len(swings)):
+            if swings[i].swing_type == SwingType.HIGH:
+                # Found potential trend start high - look for lower low
+                for j in range(i + 1, min(i + 8, len(swings))):  # Limit search window
+                    if (swings[j].swing_type == SwingType.LOW and 
+                        swings[j].price < swings[i].price * 0.99):  # Must be significantly lower
+                        
+                        # Found lower low - look for lower high
+                        for k in range(j + 1, min(j + 6, len(swings))):  # Limit search window
+                            if (swings[k].swing_type == SwingType.HIGH and 
+                                swings[k].price < swings[i].price * 0.995):  # Must be lower high
+                                
+                                # Found valid H-L-H pattern
+                                pattern = TrendPattern(
+                                    formation_swings=tuple([swings[i], swings[j], swings[k]]),
+                                    pattern_type=TrendDirection.DOWN,
+                                    start_index=swings[i].candle_index,
+                                    end_index=swings[k].candle_index
+                                )
+                                patterns.append(pattern)
+                                break  # Found pattern for this H-L combination
+                        break  # Move to next high after finding valid low
         
-        return patterns
+        return self._filter_overlapping_patterns(patterns)
+    
+    def _filter_overlapping_patterns(self, patterns: List[TrendPattern]) -> List[TrendPattern]:
+        """Remove overlapping patterns, keeping the most significant ones"""
+        if len(patterns) <= 1:
+            return patterns
+        
+        # Sort by pattern strength (price range)
+        def pattern_strength(pattern):
+            prices = [s.price for s in pattern.formation_swings]
+            return max(prices) - min(prices)
+        
+        patterns.sort(key=pattern_strength, reverse=True)
+        
+        filtered = []
+        for pattern in patterns:
+            # Check if this pattern overlaps significantly with existing ones
+            overlaps = False
+            for existing in filtered:
+                if (pattern.start_index < existing.end_index and 
+                    pattern.end_index > existing.start_index):
+                    # Overlapping - skip this one
+                    overlaps = True
+                    break
+            
+            if not overlaps:
+                filtered.append(pattern)
+        
+        return filtered
     
     def find_sideways_patterns(self, candles: List[Candle], swings: List[SwingPoint],
                               start_idx: int, end_idx: int) -> List[TrendPattern]:
-        """Find sideways/consolidation patterns (less aggressive detection)"""
+        """Find sideways/consolidation patterns (unchanged for now)"""
         patterns = []
         
         if end_idx - start_idx < 5:  # Require more data for sideways
@@ -271,6 +279,7 @@ class PatternMatcher:
 class TrendBreakoutValidator:
     """
     Responsibility: Validate trend breakouts and confirmations.
+    NO CHANGES - works correctly
     """
     
     def __init__(self, config: TrendAnalysisConfig):
@@ -303,6 +312,7 @@ class TrendBreakoutValidator:
 
 class TrendFactory:
     """
+    UPDATED: Correct genesis point and controlling swing initialization.
     Responsibility: Create Trend objects from patterns and validation results.
     """
     
@@ -313,31 +323,36 @@ class TrendFactory:
     def create_trend_from_pattern(self, pattern: TrendPattern, current_candle_index: int,
                                  breakout_confirmed: bool = False, moveout_confirmed: bool = False,
                                  genesis_point: Optional[SwingPoint] = None) -> Trend:
-        """Create a trend from a validated pattern"""
+        """UPDATED: Create trend with correct genesis point and controlling swing logic"""
         self._trend_counter += 1
         
-        # Determine controlling swing
+        # UPDATED: Determine controlling swing and genesis point correctly
         controlling_swing = None
+        genesis_swing = None
+        
         if pattern.pattern_type == TrendDirection.UP:
-            # Find the lowest swing point among LOWs
+            # For uptrend: controlling swing is the most recent swing LOW
             low_swings = [s for s in pattern.formation_swings if s.swing_type == SwingType.LOW]
             if low_swings:
-                controlling_swing = min(low_swings, key=lambda s: s.price)
+                controlling_swing = max(low_swings, key=lambda s: s.candle_index)  # Most recent low
+            
+            # Genesis point is the original swing low that was broken out from
+            if low_swings:
+                genesis_swing = min(low_swings, key=lambda s: s.price)  # Lowest low in pattern
+                
         elif pattern.pattern_type == TrendDirection.DOWN:
-            # Find the highest swing point among HIGHs
+            # For downtrend: controlling swing is the most recent swing HIGH
             high_swings = [s for s in pattern.formation_swings if s.swing_type == SwingType.HIGH]
             if high_swings:
-                controlling_swing = max(high_swings, key=lambda s: s.price)
+                controlling_swing = max(high_swings, key=lambda s: s.candle_index)  # Most recent high
+            
+            # Genesis point is the original swing high that was broken out from
+            if high_swings:
+                genesis_swing = max(high_swings, key=lambda s: s.price)  # Highest high in pattern
         
         # Calculate initial metrics
         formation_swings = pattern.formation_swings
-        if pattern.pattern_type == TrendDirection.UP:
-            price_range = max(s.price for s in formation_swings) - min(s.price for s in formation_swings)
-        elif pattern.pattern_type == TrendDirection.DOWN:
-            price_range = max(s.price for s in formation_swings) - min(s.price for s in formation_swings)
-        else:  # SIDEWAYS
-            price_range = max(s.price for s in formation_swings) - min(s.price for s in formation_swings)
-        
+        price_range = max(s.price for s in formation_swings) - min(s.price for s in formation_swings)
         duration = pattern.end_index - pattern.start_index + 1
         
         # Handle sideways-specific fields
@@ -361,13 +376,14 @@ class TrendFactory:
             breakout_confirmed=breakout_confirmed,
             range_high=range_high,
             range_low=range_low,
-            genesis_point=genesis_point
+            genesis_point=genesis_swing  # UPDATED: Genesis point at trend start
         )
 
 
 class TrendTerminationDetector:
     """
     Responsibility: Detect when trends should be terminated.
+    NO CHANGES - logic is correct
     """
     
     def __init__(self, config: TrendAnalysisConfig):
@@ -436,6 +452,7 @@ class TrendTerminationDetector:
 class TrendClassifier:
     """
     Responsibility: Classify trend significance and calculate metrics.
+    NO CHANGES - works correctly
     """
     
     def __init__(self, config: TrendAnalysisConfig):
@@ -510,6 +527,7 @@ class TrendClassifier:
 
 class TrendManager:
     """
+    UPDATED: Add controlling swing update functionality.
     Responsibility: Manage active trends and resolve conflicts.
     """
     
@@ -522,6 +540,68 @@ class TrendManager:
     def add_trend(self, trend: Trend) -> None:
         """Add a new active trend"""
         self.active_trends.append(trend)
+    
+    def update_controlling_swings(self, new_swing: SwingPoint) -> None:
+        """
+        UPDATED: Update controlling swings for active trends when new swing is confirmed.
+        This is KEY for proper trend termination logic.
+        """
+        for i, trend in enumerate(self.active_trends):
+            if trend.direction == TrendDirection.UP:
+                # For uptrend, controlling swing is swing LOW
+                if (new_swing.swing_type == SwingType.LOW and 
+                    trend.controlling_swing and
+                    new_swing.price > trend.controlling_swing.price and
+                    new_swing.candle_index > trend.controlling_swing.candle_index):
+                    
+                    # Create updated trend with new controlling swing
+                    updated_trend = Trend(
+                        trend_id=trend.trend_id,
+                        direction=trend.direction,
+                        start_index=trend.start_index,
+                        end_index=trend.end_index,
+                        controlling_swing=new_swing,  # UPDATED controlling swing
+                        formation_pattern=trend.formation_pattern,
+                        significance=trend.significance,
+                        is_active=trend.is_active,
+                        price_range=trend.price_range,
+                        duration=trend.duration,
+                        moveout_confirmed=trend.moveout_confirmed,
+                        breakout_confirmed=trend.breakout_confirmed,
+                        range_high=trend.range_high,
+                        range_low=trend.range_low,
+                        genesis_point=trend.genesis_point,
+                        dominance_score=trend.dominance_score
+                    )
+                    self.active_trends[i] = updated_trend
+            
+            elif trend.direction == TrendDirection.DOWN:
+                # For downtrend, controlling swing is swing HIGH
+                if (new_swing.swing_type == SwingType.HIGH and 
+                    trend.controlling_swing and
+                    new_swing.price < trend.controlling_swing.price and
+                    new_swing.candle_index > trend.controlling_swing.candle_index):
+                    
+                    # Create updated trend with new controlling swing
+                    updated_trend = Trend(
+                        trend_id=trend.trend_id,
+                        direction=trend.direction,
+                        start_index=trend.start_index,
+                        end_index=trend.end_index,
+                        controlling_swing=new_swing,  # UPDATED controlling swing
+                        formation_pattern=trend.formation_pattern,
+                        significance=trend.significance,
+                        is_active=trend.is_active,
+                        price_range=trend.price_range,
+                        duration=trend.duration,
+                        moveout_confirmed=trend.moveout_confirmed,
+                        breakout_confirmed=trend.breakout_confirmed,
+                        range_high=trend.range_high,
+                        range_low=trend.range_low,
+                        genesis_point=trend.genesis_point,
+                        dominance_score=trend.dominance_score
+                    )
+                    self.active_trends[i] = updated_trend
     
     def terminate_trend(self, trend: Trend, candle_index: int, 
                        genesis_swing: Optional[SwingPoint] = None) -> Optional[GenesisPoint]:
@@ -634,14 +714,15 @@ class TrendManager:
 
 class TrendAnalysisEngine:
     """
+    UPDATED: Add controlling swing updates to main analysis loop.
     Responsibility: Orchestrate the complete trend analysis process.
     """
     
     def __init__(self, config: TrendAnalysisConfig | None = None):
         self.config = config or TrendAnalysisConfig()
         
-        # Initialize components
-        self.swing_detector = SwingDetector(BasicSwingDetectionStrategy())
+        # Initialize components with corrected strategies
+        self.swing_detector = SwingDetector(BasicSwingDetectionStrategy(lookback_period=1))  # CORRECTED: Back to 1
         self.pattern_matcher = PatternMatcher(self.config)
         self.breakout_validator = TrendBreakoutValidator(self.config)
         self.trend_factory = TrendFactory(self.config)
@@ -652,15 +733,8 @@ class TrendAnalysisEngine:
     def analyze_trends(self, candles: List[Candle], analysis_start: int = 0,
                       analysis_end: Optional[int] = None) -> TrendAnalysisResult:
         """
+        UPDATED: Add controlling swing updates to main analysis loop.
         Perform complete trend analysis.
-        
-        Args:
-            candles: List of market candles to analyze (using existing Candle from supply/demand)
-            analysis_start: Start index for analysis window
-            analysis_end: End index for analysis window (None = end of data)
-            
-        Returns:
-            Complete trend analysis results
         """
         if analysis_end is None:
             analysis_end = len(candles) - 1
@@ -693,11 +767,16 @@ class TrendAnalysisEngine:
         analysis_swings = [s for s in all_swings 
                           if analysis_start <= s.candle_index <= analysis_end]
         
-        # Step 2: Process each candle in the analysis window (prioritize up/down patterns)
+        # Step 2: Process each candle in the analysis window
         detected_patterns = []
         for candle_index in range(analysis_start, analysis_end + 1):
             current_candle = candles[candle_index]
             current_swings = [s for s in all_swings if s.candle_index <= candle_index]
+            
+            # UPDATED: Check for new swing confirmations and update controlling swings
+            current_swing = next((s for s in all_swings if s.candle_index == candle_index), None)
+            if current_swing:
+                self.trend_manager.update_controlling_swings(current_swing)
             
             # Check trend terminations
             self._process_trend_terminations(current_candle, candle_index)
@@ -709,7 +788,7 @@ class TrendAnalysisEngine:
             # Resolve conflicts
             self.trend_manager.resolve_temporal_conflicts(candle_index)
         
-        # Step 3: Classify all trends
+        # Step 3: Classify all trends (unchanged)
         all_trends = self.trend_manager.get_all_trends()
         for trend in all_trends:
             significance = self.trend_classifier.classify_trend_significance(trend, candles)
