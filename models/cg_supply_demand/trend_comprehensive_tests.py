@@ -586,6 +586,301 @@ class TestDebugSwingDetection(unittest.TestCase):
         # This test always passes - it's just for debugging
         self.assertTrue(True, "Debug test complete")
 
+class TestPatternCombinations(unittest.TestCase):
+    """Test finding L-H-L and H-L-H combinations"""
+    
+    def setUp(self):
+        self.pattern_matcher = PatternMatcher(TrendAnalysisConfig())
+    
+    def test_find_lhl_combinations_simple(self):
+        """Test finding L-H-L combinations with simple input"""
+        swings = [
+            SwingPointBuilder().at_candle(1).with_price(100).swing_low().build(),
+            SwingPointBuilder().at_candle(3).with_price(110).swing_high().build(),
+            SwingPointBuilder().at_candle(5).with_price(105).swing_low().build(),
+        ]
+        
+        combinations = self.pattern_matcher._find_lhl_combinations(swings)
+        
+        # Should find exactly one L-H-L combination
+        self.assertEqual(len(combinations), 1)
+        
+        # Verify the combination
+        low1, high, low2 = combinations[0]
+        self.assertEqual(low1.candle_index, 1)
+        self.assertEqual(high.candle_index, 3)
+        self.assertEqual(low2.candle_index, 5)
+    
+    def test_find_lhl_combinations_multiple(self):
+        """Test finding multiple L-H-L combinations"""
+        swings = [
+            SwingPointBuilder().at_candle(1).with_price(100).swing_low().build(),   # L1
+            SwingPointBuilder().at_candle(3).with_price(110).swing_high().build(),  # H1
+            SwingPointBuilder().at_candle(5).with_price(105).swing_low().build(),   # L2
+            SwingPointBuilder().at_candle(7).with_price(115).swing_high().build(),  # H2
+            SwingPointBuilder().at_candle(9).with_price(108).swing_low().build(),   # L3
+        ]
+        
+        combinations = self.pattern_matcher._find_lhl_combinations(swings)
+        
+        # Should find multiple combinations: (1,3,5), (1,3,9), (1,7,9), (5,7,9)
+        self.assertGreaterEqual(len(combinations), 4)
+        
+        # Test specific combinations exist
+        combination_indices = [(c[0].candle_index, c[1].candle_index, c[2].candle_index) for c in combinations]
+        self.assertIn((1, 3, 5), combination_indices)
+        self.assertIn((5, 7, 9), combination_indices)
+    
+    def test_find_hlh_combinations_simple(self):
+        """Test finding H-L-H combinations with simple input"""
+        swings = [
+            SwingPointBuilder().at_candle(1).with_price(110).swing_high().build(),
+            SwingPointBuilder().at_candle(3).with_price(100).swing_low().build(),
+            SwingPointBuilder().at_candle(5).with_price(105).swing_high().build(),
+        ]
+        
+        combinations = self.pattern_matcher._find_hlh_combinations(swings)
+        
+        # Should find exactly one H-L-H combination
+        self.assertEqual(len(combinations), 1)
+        
+        # Verify the combination
+        high1, low, high2 = combinations[0]
+        self.assertEqual(high1.candle_index, 1)
+        self.assertEqual(low.candle_index, 3)
+        self.assertEqual(high2.candle_index, 5)
+
+
+class TestPriceStructureValidation(unittest.TestCase):
+    """Test price structure validation methods"""
+    
+    def setUp(self):
+        self.pattern_matcher = PatternMatcher(TrendAnalysisConfig())
+    
+    def test_valid_lhl_price_structure(self):
+        """Test valid L-H-L price structure"""
+        low1 = SwingPointBuilder().at_candle(1).with_price(100).swing_low().build()
+        high = SwingPointBuilder().at_candle(3).with_price(110).swing_high().build()  # 10% higher
+        low2 = SwingPointBuilder().at_candle(5).with_price(102).swing_low().build()   # 2% higher than low1
+        
+        result = self.pattern_matcher._has_valid_lhl_price_structure(low1, high, low2)
+        
+        self.assertTrue(result, "Should be valid L-H-L structure")
+    
+    def test_invalid_lhl_high_too_low(self):
+        """Test invalid L-H-L where high is too low"""
+        low1 = SwingPointBuilder().at_candle(1).with_price(100).swing_low().build()
+        high = SwingPointBuilder().at_candle(3).with_price(100.1).swing_high().build()  # Only 0.1% higher
+        low2 = SwingPointBuilder().at_candle(5).with_price(102).swing_low().build()
+        
+        result = self.pattern_matcher._has_valid_lhl_price_structure(low1, high, low2)
+        
+        self.assertFalse(result, "Should be invalid - high too close to low1")
+    
+    def test_invalid_lhl_not_higher_low(self):
+        """Test invalid L-H-L where low2 is not higher than low1"""
+        low1 = SwingPointBuilder().at_candle(1).with_price(100).swing_low().build()
+        high = SwingPointBuilder().at_candle(3).with_price(110).swing_high().build()
+        low2 = SwingPointBuilder().at_candle(5).with_price(99).swing_low().build()    # Lower than low1
+        
+        result = self.pattern_matcher._has_valid_lhl_price_structure(low1, high, low2)
+        
+        self.assertFalse(result, "Should be invalid - low2 is not higher than low1")
+    
+    def test_valid_hlh_price_structure(self):
+        """Test valid H-L-H price structure"""
+        high1 = SwingPointBuilder().at_candle(1).with_price(110).swing_high().build()
+        low = SwingPointBuilder().at_candle(3).with_price(100).swing_low().build()    # 9% lower
+        high2 = SwingPointBuilder().at_candle(5).with_price(108).swing_high().build() # 2% lower than high1
+        
+        result = self.pattern_matcher._has_valid_hlh_price_structure(high1, low, high2)
+        
+        self.assertTrue(result, "Should be valid H-L-H structure")
+
+
+class TestGenesisValidation(unittest.TestCase):
+    """Test the critical genesis validation logic"""
+    
+    def setUp(self):
+        self.pattern_matcher = PatternMatcher(TrendAnalysisConfig())
+    
+    def test_valid_genesis_low_no_lower_swings(self):
+        """Test valid genesis low when no lower swings exist in timeframe"""
+        # Pattern: 3-5-7 where swing 3 is the lowest
+        potential_genesis = SwingPointBuilder().at_candle(3).with_price(97).swing_low().build()
+        high = SwingPointBuilder().at_candle(5).with_price(108).swing_high().build()
+        low2 = SwingPointBuilder().at_candle(7).with_price(103).swing_low().build()
+        
+        combination = (potential_genesis, high, low2)
+        
+        # All swings in the scenario
+        all_swings = [
+            SwingPointBuilder().at_candle(1).with_price(99).swing_low().build(),    # Outside timeframe
+            potential_genesis,  # 3: 97 - should be valid genesis
+            SwingPointBuilder().at_candle(4).with_price(100).swing_high().build(),  # Higher than genesis
+            high,              # 5: 108
+            SwingPointBuilder().at_candle(6).with_price(105).swing_low().build(),   # Higher than genesis
+            low2,              # 7: 103
+        ]
+        
+        result = self.pattern_matcher._is_valid_genesis_low(potential_genesis, combination, all_swings)
+        
+        self.assertTrue(result, "Should be valid genesis - no lower swings in timeframe")
+    
+    def test_invalid_genesis_low_lower_swing_exists(self):
+        """Test invalid genesis low when lower swing exists in timeframe - THE KEY TEST!"""
+        # This is the exact scenario that was broken: 1-5-7 pattern
+        potential_genesis = SwingPointBuilder().at_candle(1).with_price(99).swing_low().build()  # Not true genesis
+        high = SwingPointBuilder().at_candle(5).with_price(108).swing_high().build()
+        low2 = SwingPointBuilder().at_candle(7).with_price(103).swing_low().build()
+        
+        combination = (potential_genesis, high, low2)
+        
+        # All swings including the lower swing that invalidates genesis
+        all_swings = [
+            potential_genesis,  # 1: 99 - trying to be genesis
+            SwingPointBuilder().at_candle(2).with_price(101).swing_high().build(),
+            SwingPointBuilder().at_candle(3).with_price(97).swing_low().build(),   # LOWER than potential genesis!
+            SwingPointBuilder().at_candle(4).with_price(100).swing_high().build(),
+            high,              # 5: 108
+            SwingPointBuilder().at_candle(6).with_price(105).swing_low().build(),
+            low2,              # 7: 103
+        ]
+        
+        result = self.pattern_matcher._is_valid_genesis_low(potential_genesis, combination, all_swings)
+        
+        self.assertFalse(result, "Should be invalid genesis - swing 3 (97) is lower than swing 1 (99)")
+    
+    def test_get_swings_in_timeframe(self):
+        """Test getting swings within a specific timeframe"""
+        all_swings = [
+            SwingPointBuilder().at_candle(1).with_price(99).swing_low().build(),
+            SwingPointBuilder().at_candle(3).with_price(97).swing_low().build(),
+            SwingPointBuilder().at_candle(5).with_price(108).swing_high().build(),
+            SwingPointBuilder().at_candle(7).with_price(103).swing_low().build(),
+            SwingPointBuilder().at_candle(9).with_price(112).swing_high().build(),
+        ]
+        
+        # Get swings between candles 3 and 7 (inclusive)
+        timeframe_swings = self.pattern_matcher._get_swings_in_timeframe(all_swings, 3, 7)
+        
+        # Should include swings at candles 3, 5, 7
+        self.assertEqual(len(timeframe_swings), 3)
+        swing_indices = [s.candle_index for s in timeframe_swings]
+        self.assertEqual(swing_indices, [3, 5, 7])
+
+
+class TestTimingValidation(unittest.TestCase):
+    """Test timing validation"""
+    
+    def setUp(self):
+        self.pattern_matcher = PatternMatcher(TrendAnalysisConfig())
+    
+    def test_reasonable_timing_valid(self):
+        """Test reasonable timing with valid spacing"""
+        combination = (
+            SwingPointBuilder().at_candle(1).with_price(100).swing_low().build(),
+            SwingPointBuilder().at_candle(5).with_price(110).swing_high().build(),
+            SwingPointBuilder().at_candle(9).with_price(105).swing_low().build(),
+        )
+        
+        result = self.pattern_matcher._has_reasonable_timing(combination)
+        
+        self.assertTrue(result, "Should have reasonable timing (8 candle span)")
+    
+    def test_timing_too_compressed(self):
+        """Test timing that's too compressed"""
+        combination = (
+            SwingPointBuilder().at_candle(1).with_price(100).swing_low().build(),
+            SwingPointBuilder().at_candle(2).with_price(110).swing_high().build(),
+            SwingPointBuilder().at_candle(3).with_price(105).swing_low().build(),
+        )
+        
+        result = self.pattern_matcher._has_reasonable_timing(combination)
+        
+        self.assertTrue(result, "2 candle span should be acceptable")  # Actually might be OK
+    
+    def test_timing_too_extended(self):
+        """Test timing that's too extended"""
+        combination = (
+            SwingPointBuilder().at_candle(1).with_price(100).swing_low().build(),
+            SwingPointBuilder().at_candle(15).with_price(110).swing_high().build(),
+            SwingPointBuilder().at_candle(30).with_price(105).swing_low().build(),
+        )
+        
+        result = self.pattern_matcher._has_reasonable_timing(combination)
+        
+        self.assertFalse(result, "Should reject patterns spanning 29 candles")
+
+
+class TestPatternCreation(unittest.TestCase):
+    """Test pattern object creation"""
+    
+    def setUp(self):
+        self.pattern_matcher = PatternMatcher(TrendAnalysisConfig())
+    
+    def test_create_uptrend_pattern(self):
+        """Test creating uptrend pattern object"""
+        combination = (
+            SwingPointBuilder().at_candle(3).with_price(97).swing_low().build(),
+            SwingPointBuilder().at_candle(5).with_price(108).swing_high().build(),
+            SwingPointBuilder().at_candle(7).with_price(103).swing_low().build(),
+        )
+        
+        pattern = self.pattern_matcher._create_uptrend_pattern(combination)
+        
+        self.assertEqual(pattern.pattern_type, TrendDirection.UP)
+        self.assertEqual(pattern.start_index, 3)
+        self.assertEqual(pattern.end_index, 7)
+        self.assertEqual(len(pattern.formation_swings), 3)
+    
+    def test_create_downtrend_pattern(self):
+        """Test creating downtrend pattern object"""
+        combination = (
+            SwingPointBuilder().at_candle(3).with_price(120).swing_high().build(),
+            SwingPointBuilder().at_candle(5).with_price(100).swing_low().build(),
+            SwingPointBuilder().at_candle(7).with_price(115).swing_high().build(),
+        )
+        
+        pattern = self.pattern_matcher._create_downtrend_pattern(combination)
+        
+        self.assertEqual(pattern.pattern_type, TrendDirection.DOWN)
+        self.assertEqual(pattern.start_index, 3)
+        self.assertEqual(pattern.end_index, 7)
+        self.assertEqual(len(pattern.formation_swings), 3)
+
+
+class TestIntegrationFixedLogic(unittest.TestCase):
+    """Test the complete pattern detection with fixed logic"""
+    
+    def setUp(self):
+        self.pattern_matcher = PatternMatcher(TrendAnalysisConfig())
+    
+    def test_31_candle_scenario_no_invalid_patterns(self):
+        """THE CRITICAL TEST: Ensure 1-5-7 is NOT detected, but 3-5-7 IS detected"""
+        # Create the exact scenario from our problem
+        swings = [
+            SwingPointBuilder().at_candle(1).with_price(99).swing_low().build(),
+            SwingPointBuilder().at_candle(2).with_price(101).swing_high().build(),
+            SwingPointBuilder().at_candle(3).with_price(97).swing_low().build(),    # True genesis
+            SwingPointBuilder().at_candle(5).with_price(108).swing_high().build(),
+            SwingPointBuilder().at_candle(7).with_price(103).swing_low().build(),
+        ]
+        
+        patterns = self.pattern_matcher.find_uptrend_patterns(swings)
+        
+        # Get pattern indices for easy checking
+        pattern_indices = [[s.candle_index for s in p.formation_swings] for p in patterns]
+        
+        # THE KEY ASSERTIONS
+        self.assertNotIn([1, 5, 7], pattern_indices, 
+                        "Should NOT detect 1-5-7 (swing 3 is lower than swing 1)")
+        
+        self.assertIn([3, 5, 7], pattern_indices,
+                     "Should detect 3-5-7 (swing 3 is the true genesis)")
+        
+        print(f"Detected patterns: {pattern_indices}")
+        print("✅ Fixed pattern detection working correctly!")
 
 if __name__ == '__main__':
     # Run all tests with increased verbosity

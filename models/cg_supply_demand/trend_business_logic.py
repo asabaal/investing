@@ -136,145 +136,437 @@ class SwingDetector:
 
 
 class PatternMatcher:
-    """
-    UPDATED: Enhanced pattern matching for better L-H-L detection.
-    Responsibility: Identify trend patterns from swing points.
-    """
+    """Clean pattern detection with single responsibility methods"""
     
-    def __init__(self, config: TrendAnalysisConfig):
+    def __init__(self, config):
         self.config = config
     
     def find_uptrend_patterns(self, swings: List[SwingPoint]) -> List[TrendPattern]:
-        """UPDATED: Find L-H-L uptrend patterns with flexible intermediate swings"""
-        patterns = []
+        """
+        SIMPLE ORCHESTRATOR: Find L-H-L uptrend patterns
+        Responsibility: Coordinate the pattern detection process only
+        """
+        print(f"Finding uptrend patterns from {len(swings)} swings")
         
-        # Look for significant L-H-L patterns, not just consecutive triplets
-        for i in range(len(swings)):
-            if swings[i].swing_type == SwingType.LOW:
-                # Found potential trend start low - look for higher high
-                for j in range(i + 1, min(i + 8, len(swings))):  # Limit search window
-                    if (swings[j].swing_type == SwingType.HIGH and 
-                        swings[j].price > swings[i].price * 1.01):  # Must be significantly higher
-                        
-                        # Found higher high - look for higher low
-                        for k in range(j + 1, min(j + 6, len(swings))):  # Limit search window
-                            if (swings[k].swing_type == SwingType.LOW and 
-                                swings[k].price > swings[i].price * 1.005):  # Must be higher low
-                                
-                                # Found valid L-H-L pattern
-                                pattern = TrendPattern(
-                                    formation_swings=tuple([swings[i], swings[j], swings[k]]),
-                                    pattern_type=TrendDirection.UP,
-                                    start_index=swings[i].candle_index,
-                                    end_index=swings[k].candle_index
-                                )
-                                patterns.append(pattern)
-                                break  # Found pattern for this L-H combination
-                        break  # Move to next low after finding valid high
+        # 1. Find all potential L-H-L combinations
+        lhl_combinations = self._find_lhl_combinations(swings)
+        print(f"Found {len(lhl_combinations)} L-H-L combinations")
         
-        return self._filter_overlapping_patterns(patterns)
+        # 2. Validate each combination
+        valid_patterns = []
+        for combination in lhl_combinations:
+            if self._is_valid_lhl_pattern(combination, swings):
+                pattern = self._create_uptrend_pattern(combination)
+                valid_patterns.append(pattern)
+                print(f"✅ Valid pattern: {[s.candle_index for s in combination]}")
+            else:
+                print(f"❌ Invalid pattern: {[s.candle_index for s in combination]}")
+        
+        return valid_patterns
     
     def find_downtrend_patterns(self, swings: List[SwingPoint]) -> List[TrendPattern]:
-        """UPDATED: Find H-L-H downtrend patterns with flexible intermediate swings"""
-        patterns = []
+        """
+        SIMPLE ORCHESTRATOR: Find H-L-H downtrend patterns
+        Responsibility: Coordinate the pattern detection process only
+        """
+        print(f"Finding downtrend patterns from {len(swings)} swings")
         
-        # Look for significant H-L-H patterns
-        for i in range(len(swings)):
-            if swings[i].swing_type == SwingType.HIGH:
-                # Found potential trend start high - look for lower low
-                for j in range(i + 1, min(i + 8, len(swings))):  # Limit search window
-                    if (swings[j].swing_type == SwingType.LOW and 
-                        swings[j].price < swings[i].price * 0.99):  # Must be significantly lower
+        # 1. Find all potential H-L-H combinations
+        hlh_combinations = self._find_hlh_combinations(swings)
+        print(f"Found {len(hlh_combinations)} H-L-H combinations")
+        
+        # 2. Validate each combination
+        valid_patterns = []
+        for combination in hlh_combinations:
+            if self._is_valid_hlh_pattern(combination, swings):
+                pattern = self._create_downtrend_pattern(combination)
+                valid_patterns.append(pattern)
+                print(f"✅ Valid pattern: {[s.candle_index for s in combination]}")
+            else:
+                print(f"❌ Invalid pattern: {[s.candle_index for s in combination]}")
+        
+        return valid_patterns
+    
+    # =================================================================
+    # SINGLE RESPONSIBILITY METHODS - Each easily testable
+    # =================================================================
+    
+    def _find_lhl_combinations(self, swings: List[SwingPoint]) -> List[Tuple[SwingPoint, SwingPoint, SwingPoint]]:
+        """
+        SINGLE RESPONSIBILITY: Find all possible L-H-L combinations
+        Input: List of swings
+        Output: List of (low, high, low) tuples
+        Testable: Easy to verify with known swing input
+        """
+        combinations = []
+        
+        for i, low1 in enumerate(swings):
+            if low1.swing_type != SwingType.LOW:
+                continue
+                
+            for j, high in enumerate(swings[i+1:], i+1):
+                if high.swing_type != SwingType.HIGH:
+                    continue
+                    
+                for k, low2 in enumerate(swings[j+1:], j+1):
+                    if low2.swing_type != SwingType.LOW:
+                        continue
                         
-                        # Found lower low - look for lower high
-                        for k in range(j + 1, min(j + 6, len(swings))):  # Limit search window
-                            if (swings[k].swing_type == SwingType.HIGH and 
-                                swings[k].price < swings[i].price * 0.995):  # Must be lower high
-                                
-                                # Found valid H-L-H pattern
-                                pattern = TrendPattern(
-                                    formation_swings=tuple([swings[i], swings[j], swings[k]]),
-                                    pattern_type=TrendDirection.DOWN,
-                                    start_index=swings[i].candle_index,
-                                    end_index=swings[k].candle_index
-                                )
-                                patterns.append(pattern)
-                                break  # Found pattern for this H-L combination
-                        break  # Move to next high after finding valid low
+                    combinations.append((low1, high, low2))
         
-        return self._filter_overlapping_patterns(patterns)
+        return combinations
     
-    def _filter_overlapping_patterns(self, patterns: List[TrendPattern]) -> List[TrendPattern]:
-        """Remove overlapping patterns, keeping the most significant ones"""
-        if len(patterns) <= 1:
-            return patterns
+    def _find_hlh_combinations(self, swings: List[SwingPoint]) -> List[Tuple[SwingPoint, SwingPoint, SwingPoint]]:
+        """
+        SINGLE RESPONSIBILITY: Find all possible H-L-H combinations
+        Input: List of swings
+        Output: List of (high, low, high) tuples
+        Testable: Easy to verify with known swing input
+        """
+        combinations = []
         
-        # Sort by pattern strength (price range)
-        def pattern_strength(pattern):
-            prices = [s.price for s in pattern.formation_swings]
-            return max(prices) - min(prices)
+        for i, high1 in enumerate(swings):
+            if high1.swing_type != SwingType.HIGH:
+                continue
+                
+            for j, low in enumerate(swings[i+1:], i+1):
+                if low.swing_type != SwingType.LOW:
+                    continue
+                    
+                for k, high2 in enumerate(swings[j+1:], j+1):
+                    if high2.swing_type != SwingType.HIGH:
+                        continue
+                        
+                    combinations.append((high1, low, high2))
         
-        patterns.sort(key=pattern_strength, reverse=True)
-        
-        filtered = []
-        for pattern in patterns:
-            # Check if this pattern overlaps significantly with existing ones
-            overlaps = False
-            for existing in filtered:
-                if (pattern.start_index < existing.end_index and 
-                    pattern.end_index > existing.start_index):
-                    # Overlapping - skip this one
-                    overlaps = True
-                    break
-            
-            if not overlaps:
-                filtered.append(pattern)
-        
-        return filtered
+        return combinations
     
+    def _is_valid_lhl_pattern(self, combination: Tuple[SwingPoint, SwingPoint, SwingPoint], 
+                             all_swings: List[SwingPoint]) -> bool:
+        """
+        SINGLE RESPONSIBILITY: Validate if L-H-L combination is a valid pattern
+        Input: (low, high, low) tuple and all swings
+        Output: True if valid pattern
+        Testable: Easy to test with specific swing combinations
+        """
+        low1, high, low2 = combination
+        
+        # Check 1: Price relationships
+        if not self._has_valid_lhl_price_structure(low1, high, low2):
+            return False
+        
+        # Check 2: Genesis validation (the key fix!)
+        if not self._is_valid_genesis_low(low1, combination, all_swings):
+            return False
+        
+        # Check 3: Reasonable time spacing
+        if not self._has_reasonable_timing(combination):
+            return False
+        
+        return True
+    
+    def _is_valid_hlh_pattern(self, combination: Tuple[SwingPoint, SwingPoint, SwingPoint], 
+                             all_swings: List[SwingPoint]) -> bool:
+        """
+        SINGLE RESPONSIBILITY: Validate if H-L-H combination is a valid pattern
+        Input: (high, low, high) tuple and all swings
+        Output: True if valid pattern
+        Testable: Easy to test with specific swing combinations
+        """
+        high1, low, high2 = combination
+        
+        # Check 1: Price relationships
+        if not self._has_valid_hlh_price_structure(high1, low, high2):
+            return False
+        
+        # Check 2: Genesis validation (the key fix!)
+        if not self._is_valid_genesis_high(high1, combination, all_swings):
+            return False
+        
+        # Check 3: Reasonable time spacing
+        if not self._has_reasonable_timing(combination):
+            return False
+        
+        return True
+    
+    def _has_valid_lhl_price_structure(self, low1: SwingPoint, high: SwingPoint, low2: SwingPoint) -> bool:
+        """
+        SINGLE RESPONSIBILITY: Check if L-H-L has valid price relationships
+        Input: Three swing points
+        Output: True if prices form valid L-H-L structure
+        Testable: Trivial to test with different price combinations
+        """
+        # High must be significantly higher than both lows
+        if high.price <= low1.price * 1.005:  # 0.5% minimum
+            return False
+        if high.price <= low2.price * 1.005:
+            return False
+        
+        # Low2 must be higher than low1 (higher low)
+        if low2.price <= low1.price * 1.002:  # 0.2% minimum higher
+            return False
+        
+        return True
+    
+    def _has_valid_hlh_price_structure(self, high1: SwingPoint, low: SwingPoint, high2: SwingPoint) -> bool:
+        """
+        SINGLE RESPONSIBILITY: Check if H-L-H has valid price relationships
+        Input: Three swing points
+        Output: True if prices form valid H-L-H structure
+        Testable: Trivial to test with different price combinations
+        """
+        # Low must be significantly lower than both highs
+        if low.price >= high1.price * 0.995:  # 0.5% minimum
+            return False
+        if low.price >= high2.price * 0.995:
+            return False
+        
+        # High2 must be lower than high1 (lower high)
+        if high2.price >= high1.price * 0.998:  # 0.2% minimum lower
+            return False
+        
+        return True
+    
+    def _is_valid_genesis_low(self, potential_genesis: SwingPoint, 
+                             combination: Tuple[SwingPoint, SwingPoint, SwingPoint],
+                             all_swings: List[SwingPoint]) -> bool:
+        """
+        SINGLE RESPONSIBILITY: Validate genesis low (THE KEY FIX!)
+        Input: Potential genesis swing and pattern combination
+        Output: True if this is actually the lowest low in the pattern timeframe
+        Testable: Easy to test with different swing sequences
+        """
+        low1, high, low2 = combination
+        
+        # Find all swings between genesis and pattern end
+        pattern_swings = self._get_swings_in_timeframe(
+            all_swings, 
+            potential_genesis.candle_index, 
+            low2.candle_index
+        )
+        
+        # Check if any low in this timeframe is lower than potential genesis
+        for swing in pattern_swings:
+            if swing.swing_type == SwingType.LOW and swing.price < potential_genesis.price:
+                print(f"    Genesis validation failed: Found lower low at candle {swing.candle_index} ({swing.price}) vs genesis {potential_genesis.candle_index} ({potential_genesis.price})")
+                return False
+        
+        return True
+    
+    def _is_valid_genesis_high(self, potential_genesis: SwingPoint,
+                              combination: Tuple[SwingPoint, SwingPoint, SwingPoint],
+                              all_swings: List[SwingPoint]) -> bool:
+        """
+        SINGLE RESPONSIBILITY: Validate genesis high
+        Input: Potential genesis swing and pattern combination
+        Output: True if this is actually the highest high in the pattern timeframe
+        Testable: Easy to test with different swing sequences
+        """
+        high1, low, high2 = combination
+        
+        # Find all swings between genesis and pattern end
+        pattern_swings = self._get_swings_in_timeframe(
+            all_swings,
+            potential_genesis.candle_index,
+            high2.candle_index
+        )
+        
+        # Check if any high in this timeframe is higher than potential genesis
+        for swing in pattern_swings:
+            if swing.swing_type == SwingType.HIGH and swing.price > potential_genesis.price:
+                print(f"    Genesis validation failed: Found higher high at candle {swing.candle_index} ({swing.price}) vs genesis {potential_genesis.candle_index} ({potential_genesis.price})")
+                return False
+        
+        return True
+    
+    def _get_swings_in_timeframe(self, all_swings: List[SwingPoint], 
+                                start_candle: int, end_candle: int) -> List[SwingPoint]:
+        """
+        SINGLE RESPONSIBILITY: Get swings within a time range
+        Input: All swings and time boundaries
+        Output: Swings within the timeframe
+        Testable: Easy to verify with known swing list and boundaries
+        """
+        return [swing for swing in all_swings 
+                if start_candle <= swing.candle_index <= end_candle]
+    
+    def _has_reasonable_timing(self, combination: Tuple[SwingPoint, SwingPoint, SwingPoint]) -> bool:
+        """
+        SINGLE RESPONSIBILITY: Check if pattern has reasonable time spacing
+        Input: Pattern combination
+        Output: True if timing is reasonable
+        Testable: Easy to test with different time spacings
+        """
+        swing1, swing2, swing3 = combination
+        
+        # Pattern shouldn't be too compressed or too extended
+        total_span = swing3.candle_index - swing1.candle_index
+        
+        if total_span < 2:  # Too compressed
+            return False
+        if total_span > 20:  # Too extended
+            return False
+        
+        return True
+    
+    def _create_uptrend_pattern(self, combination: Tuple[SwingPoint, SwingPoint, SwingPoint]) -> TrendPattern:
+        """
+        SINGLE RESPONSIBILITY: Create TrendPattern object from L-H-L combination
+        Input: Valid L-H-L combination
+        Output: TrendPattern object
+        Testable: Easy to verify pattern properties
+        """
+        low1, high, low2 = combination
+        
+        return TrendPattern(
+            formation_swings=tuple(combination),
+            pattern_type=TrendDirection.UP,
+            start_index=low1.candle_index,
+            end_index=low2.candle_index
+        )
+    
+    def _create_downtrend_pattern(self, combination: Tuple[SwingPoint, SwingPoint, SwingPoint]) -> TrendPattern:
+        """
+        SINGLE RESPONSIBILITY: Create TrendPattern object from H-L-H combination
+        Input: Valid H-L-H combination
+        Output: TrendPattern object
+        Testable: Easy to verify pattern properties
+        """
+        high1, low, high2 = combination
+        
+        return TrendPattern(
+            formation_swings=tuple(combination),
+            pattern_type=TrendDirection.DOWN,
+            start_index=high1.candle_index,
+            end_index=high2.candle_index
+        )
+
     def find_sideways_patterns(self, candles: List[Candle], swings: List[SwingPoint],
-                              start_idx: int, end_idx: int) -> List[TrendPattern]:
-        """Find sideways/consolidation patterns (unchanged for now)"""
+                            start_idx: int, end_idx: int) -> List[TrendPattern]:
+        """
+        CLEAN SIDEWAYS DETECTION: Find sideways/consolidation patterns
+        Responsibility: Detect low-momentum, range-bound patterns
+        """
+        print(f"Finding sideways patterns from candles {start_idx}-{end_idx}")
+        
         patterns = []
         
-        if end_idx - start_idx < 5:  # Require more data for sideways
+        if end_idx - start_idx < 5:  # Need minimum data
+            print("  Not enough data for sideways pattern")
             return patterns
         
-        # Analyze price range in the period
+        # Get candles in the period
         period_candles = candles[start_idx:end_idx + 1]
         if not period_candles:
+            print("  No candles in period")
             return patterns
         
+        # Check if this period qualifies as sideways
+        if self._is_sideways_period(period_candles, swings, start_idx, end_idx):
+            pattern = self._create_sideways_pattern(swings, start_idx, end_idx)
+            if pattern:
+                patterns.append(pattern)
+                print(f"  ✅ Found sideways pattern: candles {start_idx}-{end_idx}")
+        else:
+            print(f"  ❌ Period {start_idx}-{end_idx} does not qualify as sideways")
+        
+        return patterns
+
+    def _is_sideways_period(self, period_candles: List[Candle], swings: List[SwingPoint],
+                        start_idx: int, end_idx: int) -> bool:
+        """
+        SINGLE RESPONSIBILITY: Check if period qualifies as sideways
+        Input: Period candles and swing points
+        Output: True if period is sideways/consolidation
+        Testable: Easy to test with different market conditions
+        """
+        # Check 1: Narrow price range
+        if not self._has_narrow_price_range(period_candles):
+            print("    Failed: Price range too wide")
+            return False
+        
+        # Check 2: Low momentum (small body-to-wick ratios)
+        if not self._has_low_momentum(period_candles):
+            print("    Failed: Momentum too high")
+            return False
+        
+        # Check 3: Sufficient swing activity
+        period_swings = self._get_swings_in_period(swings, start_idx, end_idx)
+        if len(period_swings) < 3:
+            print("    Failed: Not enough swings in period")
+            return False
+        
+        print("    ✅ Period qualifies as sideways")
+        return True
+
+    def _has_narrow_price_range(self, period_candles: List[Candle]) -> bool:
+        """
+        SINGLE RESPONSIBILITY: Check if price range is narrow enough for sideways
+        Input: Candles in the period
+        Output: True if range is narrow
+        Testable: Easy to test with different price ranges
+        """
         range_high = max(c.high for c in period_candles)
         range_low = min(c.low for c in period_candles)
         range_size = range_high - range_low
         
-        # Check if range is narrow enough for sideways (more strict)
         avg_price = (range_high + range_low) / 2
         range_pct = range_size / avg_price if avg_price > 0 else 0
         
         # More strict threshold for sideways detection
-        if range_pct <= self.config.sideways_range_threshold * 0.7:  # 30% stricter
-            # Check for low momentum (small body-to-wick ratios)
-            momentum_candles = period_candles[-3:] if len(period_candles) >= 3 else period_candles
-            avg_momentum = np.mean([c.body_to_wick_ratio for c in momentum_candles])
-            
-            # More strict momentum requirement
-            if avg_momentum < self.config.moveout_threshold * 0.6:  # Stricter than before
-                # Find representative swings in the period
-                period_swings = [s for s in swings if start_idx <= s.candle_index <= end_idx]
-                
-                if len(period_swings) >= 3:  # Require more swings
-                    pattern = TrendPattern(
-                        formation_swings=tuple(period_swings[:4]),  # Take first few swings
-                        pattern_type=TrendDirection.SIDEWAYS,
-                        start_index=start_idx,
-                        end_index=end_idx
-                    )
-                    patterns.append(pattern)
+        threshold = self.config.sideways_range_threshold * 0.7  # 30% stricter
         
-        return patterns
+        print(f"    Range check: {range_pct:.3f} <= {threshold:.3f}")
+        return range_pct <= threshold
 
+    def _has_low_momentum(self, period_candles: List[Candle]) -> bool:
+        """
+        SINGLE RESPONSIBILITY: Check if momentum is low enough for sideways
+        Input: Candles in the period  
+        Output: True if momentum is low
+        Testable: Easy to test with different momentum levels
+        """
+        # Check momentum of recent candles
+        momentum_candles = period_candles[-3:] if len(period_candles) >= 3 else period_candles
+        avg_momentum = sum(c.body_to_wick_ratio for c in momentum_candles) / len(momentum_candles)
+        
+        # More strict momentum requirement
+        threshold = self.config.moveout_threshold * 0.6  # Stricter than before
+        
+        print(f"    Momentum check: {avg_momentum:.3f} < {threshold:.3f}")
+        return avg_momentum < threshold
+
+    def _get_swings_in_period(self, swings: List[SwingPoint], start_idx: int, end_idx: int) -> List[SwingPoint]:
+        """
+        SINGLE RESPONSIBILITY: Get swings within a specific period
+        Input: All swings and period boundaries
+        Output: Swings within the period
+        Testable: Easy to verify with known swing list
+        """
+        return [swing for swing in swings 
+                if start_idx <= swing.candle_index <= end_idx]
+
+    def _create_sideways_pattern(self, swings: List[SwingPoint], start_idx: int, end_idx: int) -> Optional[TrendPattern]:
+        """
+        SINGLE RESPONSIBILITY: Create sideways pattern from period
+        Input: Swings and period boundaries
+        Output: TrendPattern object for sideways trend
+        Testable: Easy to verify pattern properties
+        """
+        period_swings = self._get_swings_in_period(swings, start_idx, end_idx)
+        
+        if len(period_swings) < 3:
+            return None
+        
+        # Take first few swings as formation swings
+        formation_swings = period_swings[:4] if len(period_swings) >= 4 else period_swings
+        
+        return TrendPattern(
+            formation_swings=tuple(formation_swings),
+            pattern_type=TrendDirection.SIDEWAYS,
+            start_index=start_idx,
+            end_index=end_idx
+        )        
 
 class TrendBreakoutValidator:
     """
