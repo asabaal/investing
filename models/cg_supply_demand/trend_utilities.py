@@ -19,8 +19,13 @@ from utilities import Candle
 
 class TrendScenarioBuilder:
     """
-    Builder for creating realistic trend scenarios.
-    Useful for backtesting, simulation, and testing specific market conditions.
+    IMPROVED IMPLEMENTATION of TrendScenarioBuilder
+    
+    Creates realistic candle sequences with proper:
+    - Candle continuity (open = previous close)  
+    - Realistic OHLC relationships
+    - Strong enough moves to be detectable
+    - Clear swing structures for L-H-L and H-L-H patterns
     """
     
     def __init__(self):
@@ -49,57 +54,319 @@ class TrendScenarioBuilder:
         self._candle_interval_minutes = minutes
         return self
     
-    def add_uptrend_sequence(self, candle_count: int = 8, strength: float = 0.7) -> 'TrendScenarioBuilder':
+    def add_strong_uptrend_sequence(self, candle_count: int = 10, strength: float = 0.8) -> 'TrendScenarioBuilder':
         """
-        Add uptrend sequence that will form L-H-L pattern.
+        Create a STRONG uptrend with clear L-H-L pattern that will be detected.
         
-        Args:
-            candle_count: Number of candles in the sequence
-            strength: Trend strength (0.0 = weak, 1.0 = very strong)
+        Key improvements over old system:
+        1. Proper candle continuity 
+        2. Strong enough moves (5-15% swings)
+        3. Clear geometric L-H-L structure
+        4. Realistic OHLC relationships
         """
-        sequence_candles = self._generate_uptrend_candles(candle_count, strength)
-        self._candles.extend(sequence_candles)
+        print(f"Building strong uptrend: {candle_count} candles, strength {strength}")
+        
+        # Phase 1: Create the initial LOW (genesis point)
+        initial_low_candles = self._create_swing_low_sequence(
+            target_price=self._current_price * 0.92,  # 8% drop to create strong low
+            candle_count=2,
+            strength=0.8
+        )
+        
+        # Phase 2: Rally to create the HIGH  
+        swing_high_target = self._current_price * 1.12  # 12% above starting price
+        rally_candles = self._create_swing_high_sequence(
+            target_price=swing_high_target,
+            candle_count=3,
+            strength=strength
+        )
+        
+        # Phase 3: Pullback to create HIGHER LOW
+        higher_low_target = self._current_price * 0.96  # 4% drop, but higher than initial low
+        pullback_candles = self._create_swing_low_sequence(
+            target_price=higher_low_target,
+            candle_count=2,
+            strength=0.6
+        )
+        
+        # Phase 4: Breakout above the swing high (this triggers trend detection)
+        breakout_target = swing_high_target * 1.05  # 5% above swing high
+        remaining_candles = candle_count - len(initial_low_candles) - len(rally_candles) - len(pullback_candles)
+        breakout_candles = self._create_strong_move_sequence(
+            target_price=breakout_target,
+            candle_count=max(3, remaining_candles),
+            direction='up',
+            strength=strength
+        )
+        
+        # Combine all phases
+        all_candles = initial_low_candles + rally_candles + pullback_candles + breakout_candles
+        self._candles.extend(all_candles)
+        
+        print(f"Created uptrend phases:")
+        print(f"  - Initial low: {len(initial_low_candles)} candles to {initial_low_candles[-1]['close']:.2f}")
+        print(f"  - Rally high: {len(rally_candles)} candles to {rally_candles[-1]['close']:.2f}")
+        print(f"  - Higher low: {len(pullback_candles)} candles to {pullback_candles[-1]['close']:.2f}")
+        print(f"  - Breakout: {len(breakout_candles)} candles to {breakout_candles[-1]['close']:.2f}")
+        
         return self
     
-    def add_downtrend_sequence(self, candle_count: int = 8, strength: float = 0.7) -> 'TrendScenarioBuilder':
+    def add_strong_downtrend_sequence(self, candle_count: int = 10, strength: float = 0.8) -> 'TrendScenarioBuilder':
         """
-        Add downtrend sequence that will form H-L-H pattern.
+        Create a STRONG downtrend with clear H-L-H pattern that will be detected.
+        """
+        print(f"Building strong downtrend: {candle_count} candles, strength {strength}")
         
-        Args:
-            candle_count: Number of candles in the sequence
-            strength: Trend strength (0.0 = weak, 1.0 = very strong)
-        """
-        sequence_candles = self._generate_downtrend_candles(candle_count, strength)
-        self._candles.extend(sequence_candles)
+        # Phase 1: Create the initial HIGH (genesis point)
+        initial_high_candles = self._create_swing_high_sequence(
+            target_price=self._current_price * 1.08,  # 8% rally to create strong high
+            candle_count=2,
+            strength=0.8
+        )
+        
+        # Phase 2: Decline to create the LOW
+        swing_low_target = self._current_price * 0.88  # 12% below starting price
+        decline_candles = self._create_swing_low_sequence(
+            target_price=swing_low_target,
+            candle_count=3,
+            strength=strength
+        )
+        
+        # Phase 3: Rally to create LOWER HIGH
+        lower_high_target = self._current_price * 1.04  # 4% rally, but lower than initial high
+        rally_candles = self._create_swing_high_sequence(
+            target_price=lower_high_target,
+            candle_count=2,
+            strength=0.6
+        )
+        
+        # Phase 4: Breakdown below the swing low (this triggers trend detection)
+        breakdown_target = swing_low_target * 0.95  # 5% below swing low
+        remaining_candles = candle_count - len(initial_high_candles) - len(decline_candles) - len(rally_candles)
+        breakdown_candles = self._create_strong_move_sequence(
+            target_price=breakdown_target,
+            candle_count=max(3, remaining_candles),
+            direction='down',
+            strength=strength
+        )
+        
+        # Combine all phases
+        all_candles = initial_high_candles + decline_candles + rally_candles + breakdown_candles
+        self._candles.extend(all_candles)
+        
+        print(f"Created downtrend phases:")
+        print(f"  - Initial high: {len(initial_high_candles)} candles to {initial_high_candles[-1]['close']:.2f}")
+        print(f"  - Swing low: {len(decline_candles)} candles to {decline_candles[-1]['close']:.2f}")
+        print(f"  - Lower high: {len(rally_candles)} candles to {rally_candles[-1]['close']:.2f}")
+        print(f"  - Breakdown: {len(breakdown_candles)} candles to {breakdown_candles[-1]['close']:.2f}")
+        
         return self
     
-    def add_sideways_sequence(self, candle_count: int = 10, range_size: float = 3.0) -> 'TrendScenarioBuilder':
+    def add_tight_sideways_sequence(self, candle_count: int = 12, range_percent: float = 3.0) -> 'TrendScenarioBuilder':
         """
-        Add sideways/consolidation sequence.
+        Create a tight sideways range with low momentum candles.
+        """
+        print(f"Building sideways: {candle_count} candles, {range_percent}% range")
         
-        Args:
-            candle_count: Number of candles in the consolidation
-            range_size: Price range of the consolidation
-        """
-        sequence_candles = self._generate_sideways_candles(candle_count, range_size)
-        self._candles.extend(sequence_candles)
+        range_center = self._current_price
+        range_high = range_center * (1 + range_percent / 200)  # Half range above
+        range_low = range_center * (1 - range_percent / 200)   # Half range below
+        
+        print(f"Sideways range: {range_low:.2f} to {range_high:.2f}")
+        
+        sideways_candles = []
+        
+        for i in range(candle_count):
+            # Oscillate within the range with noise
+            cycle_position = (i / max(1, candle_count - 1)) * 2 * np.pi
+            base_position = (np.sin(cycle_position) + 1) / 2  # 0 to 1
+            
+            # Add some randomness
+            noise = (np.random.random() - 0.5) * 0.4
+            target_position = max(0, min(1, base_position + noise))
+            
+            target_price = range_low + (range_high - range_low) * target_position
+            
+            # Create small-bodied candles with larger wicks (typical for consolidation)
+            candle_spec = self._create_realistic_candle(
+                target_close=target_price,
+                body_size_percent=1.0,  # Small 1% bodies
+                wick_size_percent=1.5,  # Larger 1.5% wicks
+                bullish_bias=0.5  # No directional bias
+            )
+            
+            sideways_candles.append(candle_spec)
+        
+        self._candles.extend(sideways_candles)
+        print(f"Created {len(sideways_candles)} sideways candles")
+        
         return self
     
-    def add_noise_sequence(self, candle_count: int = 5, volatility: float = 0.5) -> 'TrendScenarioBuilder':
-        """
-        Add noise/random movement sequence.
+    def _create_swing_low_sequence(self, target_price: float, candle_count: int, strength: float) -> List[Dict]:
+        """Create a sequence of candles that form a swing low"""
+        candles = []
         
-        Args:
-            candle_count: Number of noise candles
-            volatility: How volatile the noise is
+        start_price = self._current_price
+        price_drop = target_price - start_price
+        
+        for i in range(candle_count):
+            progress = (i + 1) / candle_count
+            
+            # Non-linear progression (more drop early, then stabilize)
+            adjusted_progress = progress ** (2 - strength)  # strength affects curvature
+            current_target = start_price + (price_drop * adjusted_progress)
+            
+            # Make the last candle the actual swing low with a spike down
+            if i == candle_count - 1:
+                # Final candle: spike low but close higher (typical swing low behavior)
+                candle_spec = self._create_realistic_candle(
+                    target_close=current_target,
+                    body_size_percent=2.0,
+                    wick_size_percent=3.0,  # Large lower wick for swing low
+                    bullish_bias=0.7  # Close higher in the candle range
+                )
+            else:
+                # Declining candles
+                candle_spec = self._create_realistic_candle(
+                    target_close=current_target,
+                    body_size_percent=2.5,
+                    wick_size_percent=1.5,
+                    bullish_bias=0.2  # Bearish bias
+                )
+            
+            candles.append(candle_spec)
+        
+        return candles
+    
+    def _create_swing_high_sequence(self, target_price: float, candle_count: int, strength: float) -> List[Dict]:
+        """Create a sequence of candles that form a swing high"""
+        candles = []
+        
+        start_price = self._current_price
+        price_gain = target_price - start_price
+        
+        for i in range(candle_count):
+            progress = (i + 1) / candle_count
+            
+            # Non-linear progression
+            adjusted_progress = progress ** (2 - strength)
+            current_target = start_price + (price_gain * adjusted_progress)
+            
+            # Make the last candle the actual swing high with a spike up
+            if i == candle_count - 1:
+                # Final candle: spike high but close lower (typical swing high behavior)
+                candle_spec = self._create_realistic_candle(
+                    target_close=current_target,
+                    body_size_percent=2.0,
+                    wick_size_percent=3.0,  # Large upper wick for swing high
+                    bullish_bias=0.3  # Close lower in the candle range
+                )
+            else:
+                # Rising candles
+                candle_spec = self._create_realistic_candle(
+                    target_close=current_target,
+                    body_size_percent=2.5,
+                    wick_size_percent=1.5,
+                    bullish_bias=0.8  # Bullish bias
+                )
+            
+            candles.append(candle_spec)
+        
+        return candles
+    
+    def _create_strong_move_sequence(self, target_price: float, candle_count: int, 
+                                   direction: str, strength: float) -> List[Dict]:
+        """Create a strong directional move (breakout/breakdown)"""
+        candles = []
+        
+        start_price = self._current_price
+        price_change = target_price - start_price
+        
+        for i in range(candle_count):
+            progress = (i + 1) / candle_count
+            current_target = start_price + (price_change * progress)
+            
+            # Strong moves have larger bodies and smaller wicks
+            bullish_bias = 0.8 if direction == 'up' else 0.2
+            
+            candle_spec = self._create_realistic_candle(
+                target_close=current_target,
+                body_size_percent=3.0 * strength,  # Larger bodies for strong moves
+                wick_size_percent=1.0,  # Smaller wicks
+                bullish_bias=bullish_bias
+            )
+            
+            candles.append(candle_spec)
+        
+        return candles
+    
+    def _create_realistic_candle(self, target_close: float, body_size_percent: float, 
+                               wick_size_percent: float, bullish_bias: float) -> Dict:
         """
-        sequence_candles = self._generate_noise_candles(candle_count, volatility)
-        self._candles.extend(sequence_candles)
-        return self
+        Create a single realistic candle with proper OHLC relationships.
+        
+        Key improvements:
+        1. Open = previous candle's close (proper continuity)
+        2. Realistic OHLC construction 
+        3. Configurable body/wick sizes
+        4. Proper bullish/bearish bias
+        """
+        
+        # CRITICAL FIX: Open equals previous candle's close (except first candle)
+        if self._candles:
+            open_price = self._candles[-1]['close']  # Continuity!
+        else:
+            open_price = self._current_price
+        
+        close_price = target_close
+        
+        # Calculate body and wick sizes as absolute values
+        body_size = abs(close_price - open_price)
+        if body_size < open_price * (body_size_percent / 100):
+            # Ensure minimum body size
+            if close_price > open_price:
+                close_price = open_price + (open_price * body_size_percent / 100)
+            else:
+                close_price = open_price - (open_price * body_size_percent / 100)
+        
+        wick_size = open_price * (wick_size_percent / 100)
+        
+        # Determine high and low based on bullish bias
+        if bullish_bias > 0.5:  # Bullish candle
+            if close_price < open_price:  # Force bullish if bias says so
+                close_price = open_price + abs(close_price - open_price)
+            
+            # High extends above the top
+            high = max(open_price, close_price) + wick_size * (1 - bullish_bias + 0.5)
+            # Low extends below the bottom  
+            low = min(open_price, close_price) - wick_size * bullish_bias
+            
+        else:  # Bearish candle
+            if close_price > open_price:  # Force bearish if bias says so
+                close_price = open_price - abs(close_price - open_price)
+            
+            # High extends above the top
+            high = max(open_price, close_price) + wick_size * (1 - bullish_bias)
+            # Low extends below the bottom
+            low = min(open_price, close_price) - wick_size * (bullish_bias + 0.5)
+        
+        # Ensure OHLC relationships are valid
+        high = max(high, open_price, close_price)
+        low = min(low, open_price, close_price)
+        
+        # Update current price for next candle
+        self._current_price = close_price
+        
+        return {
+            'open': open_price,
+            'high': high,
+            'low': low,
+            'close': close_price,
+            'volume': 1000 + np.random.randint(0, 1000)
+        }
     
     def build(self) -> List[Candle]:
         """Build the complete scenario using existing CandleBuilder"""
-        # Use your existing CandleBuilder from supply/demand refactoring
         from utilities import CandleBuilder
         
         result_candles = []
@@ -112,161 +379,207 @@ class TrendScenarioBuilder:
             
             result_candles.append(candle)
         
+        print(f"Built {len(result_candles)} realistic candles")
         return result_candles
-    
-    def _generate_uptrend_candles(self, count: int, strength: float) -> List[Dict]:
-        """Generate candles that form an uptrend pattern"""
-        candles = []
-        
-        # Phase 1: Initial low (swing low)
-        low_price = self._current_price * 0.97  # 3% below current
-        candles.append(self._create_candle_spec(
-            close=low_price, range_size=2.0, bullish=False
-        ))
-        
-        # Phase 2: Recovery and higher high (swing high)
-        for i in range(3):
-            move_up = (self._current_price * 1.08 - low_price) * (i + 1) / 3
-            target_price = low_price + move_up
-            candles.append(self._create_candle_spec(
-                close=target_price, range_size=2.5, bullish=True
-            ))
-        
-        # Phase 3: Pullback to higher low (swing low)
-        higher_low = self._current_price * 1.02  # Higher than initial low
-        for i in range(2):
-            pullback_price = candles[-1]['close'] - (candles[-1]['close'] - higher_low) * (i + 1) / 2
-            candles.append(self._create_candle_spec(
-                close=pullback_price, range_size=2.0, bullish=False
-            ))
-        
-        # Phase 4: Breakout (confirms uptrend)
-        breakout_target = candles[3]['close'] * 1.03  # Above swing high
-        for i in range(count - 6):
-            progress = (i + 1) / max(1, count - 6)
-            target_price = higher_low + (breakout_target - higher_low) * progress
-            
-            # Add some volatility but maintain upward bias
-            is_bullish = np.random.random() < (0.5 + strength * 0.3)
-            range_size = 2.0 + np.random.random() * 2.0
-            
-            candles.append(self._create_candle_spec(
-                close=target_price, range_size=range_size, bullish=is_bullish
-            ))
-        
-        self._current_price = candles[-1]['close']
-        return candles
-    
-    def _generate_downtrend_candles(self, count: int, strength: float) -> List[Dict]:
-        """Generate candles that form a downtrend pattern"""
-        candles = []
-        
-        # Phase 1: Initial high (swing high)
-        high_price = self._current_price * 1.03  # 3% above current
-        candles.append(self._create_candle_spec(
-            close=high_price, range_size=2.0, bullish=True
-        ))
-        
-        # Phase 2: Decline to lower low (swing low)
-        for i in range(3):
-            move_down = (high_price - self._current_price * 0.92) * (i + 1) / 3
-            target_price = high_price - move_down
-            candles.append(self._create_candle_spec(
-                close=target_price, range_size=2.5, bullish=False
-            ))
-        
-        # Phase 3: Rally to lower high (swing high)
-        lower_high = self._current_price * 0.98  # Lower than initial high
-        for i in range(2):
-            rally_price = candles[-1]['close'] + (lower_high - candles[-1]['close']) * (i + 1) / 2
-            candles.append(self._create_candle_spec(
-                close=rally_price, range_size=2.0, bullish=True
-            ))
-        
-        # Phase 4: Breakdown (confirms downtrend)
-        breakdown_target = candles[3]['close'] * 0.97  # Below swing low
-        for i in range(count - 6):
-            progress = (i + 1) / max(1, count - 6)
-            target_price = lower_high - (lower_high - breakdown_target) * progress
-            
-            # Add some volatility but maintain downward bias
-            is_bullish = np.random.random() < (0.5 - strength * 0.3)
-            range_size = 2.0 + np.random.random() * 2.0
-            
-            candles.append(self._create_candle_spec(
-                close=target_price, range_size=range_size, bullish=is_bullish
-            ))
-        
-        self._current_price = candles[-1]['close']
-        return candles
-    
-    def _generate_sideways_candles(self, count: int, range_size: float) -> List[Dict]:
-        """Generate candles that form sideways consolidation"""
-        candles = []
-        
-        # Define range boundaries
-        range_center = self._current_price
-        range_high = range_center + range_size / 2
-        range_low = range_center - range_size / 2
-        
-        for i in range(count):
-            # Oscillate within the range
-            position_in_cycle = (i / max(1, count - 1)) * 2 * np.pi
-            target_ratio = (np.sin(position_in_cycle) + 1) / 2  # 0 to 1
-            
-            # Add noise
-            noise = (np.random.random() - 0.5) * 0.3
-            target_ratio = max(0, min(1, target_ratio + noise))
-            
-            target_price = range_low + (range_high - range_low) * target_ratio
-            
-            # Create small-bodied candles with larger wicks (typical for consolidation)
-            candles.append(self._create_candle_spec(
-                close=target_price, range_size=1.5, bullish=np.random.random() > 0.5
-            ))
-        
-        self._current_price = candles[-1]['close']
-        return candles
-    
-    def _generate_noise_candles(self, count: int, volatility: float) -> List[Dict]:
-        """Generate random noise candles"""
-        candles = []
-        
-        for i in range(count):
-            # Random walk with specified volatility
-            price_change_pct = (np.random.random() - 0.5) * volatility * 0.02
-            target_price = self._current_price * (1 + price_change_pct)
-            
-            range_size = 1.0 + np.random.random() * 2.0
-            is_bullish = np.random.random() > 0.5
-            
-            candles.append(self._create_candle_spec(
-                close=target_price, range_size=range_size, bullish=is_bullish
-            ))
-            
-            self._current_price = target_price
-        
-        return candles
-    
-    def _create_candle_spec(self, close: float, range_size: float, bullish: bool) -> Dict:
-        """Create OHLC specification for a candle"""
-        if bullish:
-            open_price = close - (range_size * 0.6)  # Body is 60% of range
-            high = close + (range_size * 0.2)        # Upper wick is 20%
-            low = open_price - (range_size * 0.2)    # Lower wick is 20%
-        else:
-            open_price = close + (range_size * 0.6)  # Body is 60% of range
-            high = open_price + (range_size * 0.2)   # Upper wick is 20%
-            low = close - (range_size * 0.2)         # Lower wick is 20%
-        
-        return {
-            'open': open_price,
-            'high': high,
-            'low': low,
-            'close': close,
-            'volume': 1000 + np.random.randint(0, 1000)
-        }
 
+
+class TrendTestDataFactory:
+    """
+    IMPROVED IMPLEMENTATION of TrendTestDataFactory
+    
+    Creates realistic test scenarios that will actually trigger trend detection.
+    """
+    
+    @staticmethod
+    def create_strong_uptrend_scenario() -> List[Candle]:
+        """Create a strong uptrend that WILL be detected"""
+        print("\n=== Creating Strong Uptrend Scenario ===")
+        candles = (TrendScenarioBuilder()
+                  .with_base_price(100)
+                  .add_strong_uptrend_sequence(candle_count=12, strength=0.9)
+                  .build())
+        
+        print(f"Strong uptrend: {candles[0].close:.2f} → {candles[-1].close:.2f} ({((candles[-1].close/candles[0].close-1)*100):+.1f}%)")
+        return candles
+    
+    @staticmethod
+    def create_strong_downtrend_scenario() -> List[Candle]:
+        """Create a strong downtrend that WILL be detected"""
+        print("\n=== Creating Strong Downtrend Scenario ===")
+        candles = (TrendScenarioBuilder()
+                  .with_base_price(100)
+                  .add_strong_downtrend_sequence(candle_count=12, strength=0.9)
+                  .build())
+        
+        print(f"Strong downtrend: {candles[0].close:.2f} → {candles[-1].close:.2f} ({((candles[-1].close/candles[0].close-1)*100):+.1f}%)")
+        return candles
+    
+    @staticmethod
+    def create_tight_sideways_scenario() -> List[Candle]:
+        """Create a tight sideways range that should be detected as consolidation"""
+        print("\n=== Creating Tight Sideways Scenario ===")
+        candles = (TrendScenarioBuilder()
+                  .with_base_price(100)
+                  .add_tight_sideways_sequence(candle_count=15, range_percent=2.5)
+                  .build())
+        
+        high_price = max(c.high for c in candles)
+        low_price = min(c.low for c in candles)
+        range_pct = ((high_price - low_price) / low_price) * 100
+        print(f"Tight sideways: {low_price:.2f} to {high_price:.2f} ({range_pct:.1f}% range)")
+        return candles
+    
+    @staticmethod
+    def create_multi_trend_scenario() -> List[Candle]:
+        """Create scenario with multiple trend phases"""
+        print("\n=== Creating Multi-Trend Scenario ===")
+        builder = TrendScenarioBuilder().with_base_price(100)
+        
+        # Phase 1: Strong uptrend
+        builder.add_strong_uptrend_sequence(10, 0.8)
+        
+        # Phase 2: Sideways consolidation
+        builder.add_tight_sideways_sequence(8, 3.0)
+        
+        # Phase 3: Strong downtrend
+        builder.add_strong_downtrend_sequence(10, 0.8)
+        
+        candles = builder.build()
+        print(f"Multi-trend: {len(candles)} candles with 3 phases")
+        return candles
+    
+    @staticmethod
+    def create_noisy_scenario() -> List[Candle]:
+        """Create noisy market with no clear trends"""
+        print("\n=== Creating Noisy Scenario ===")
+        builder = TrendScenarioBuilder().with_base_price(100)
+        
+        # Multiple small, conflicting moves
+        for _ in range(4):
+            # Small random moves in different directions
+            if np.random.random() > 0.5:
+                builder.add_strong_uptrend_sequence(5, 0.3)  # Weak moves
+            else:
+                builder.add_strong_downtrend_sequence(5, 0.3)
+        
+        candles = builder.build()
+        print(f"Noisy market: {len(candles)} candles with conflicting signals")
+        return candles
+
+
+class MarketConditionGenerator:
+    """
+    IMPROVED IMPLEMENTATION of MarketConditionGenerator
+    
+    Generate realistic market conditions for backtesting.
+    """
+    
+    @staticmethod
+    def create_trending_market(direction: TrendDirection, duration: int = 50,
+                              strength: float = 0.8) -> List[Candle]:
+        """Create a strongly trending market with realistic structure"""
+        builder = TrendScenarioBuilder()
+        
+        remaining_duration = duration
+        while remaining_duration > 0:
+            # Create trend segments with occasional consolidations
+            segment_size = min(np.random.randint(8, 15), remaining_duration)
+            
+            if direction == TrendDirection.UP:
+                builder.add_strong_uptrend_sequence(segment_size, strength)
+            elif direction == TrendDirection.DOWN:
+                builder.add_strong_downtrend_sequence(segment_size, strength)
+            else:  # SIDEWAYS
+                builder.add_tight_sideways_sequence(segment_size, 3.0)
+            
+            remaining_duration -= segment_size
+            
+            # Occasional small consolidation
+            if remaining_duration > 5 and np.random.random() > 0.7:
+                consolidation_size = min(5, remaining_duration)
+                builder.add_tight_sideways_sequence(consolidation_size, 2.0)
+                remaining_duration -= consolidation_size
+        
+        return builder.build()
+    
+    @staticmethod
+    def create_choppy_market(duration: int = 50) -> List[Candle]:
+        """Create a choppy, directionless market"""
+        builder = TrendScenarioBuilder()
+        
+        remaining_duration = duration
+        while remaining_duration > 0:
+            segment_size = min(np.random.randint(5, 10), remaining_duration)
+            
+            # Random direction with weak strength
+            choice = np.random.choice(['up', 'down', 'sideways'])
+            
+            if choice == 'up':
+                builder.add_strong_uptrend_sequence(segment_size, 0.4)
+            elif choice == 'down':
+                builder.add_strong_downtrend_sequence(segment_size, 0.4)
+            else:
+                builder.add_tight_sideways_sequence(segment_size, 4.0)
+            
+            remaining_duration -= segment_size
+        
+        return builder.build()
+
+
+# Validation function to test the new system
+def validate_realistic_data_generation():
+    """
+    Test function to validate the new realistic data generation.
+    Run this to verify the new system works correctly.
+    """
+    print("=" * 60)
+    print("VALIDATING REALISTIC DATA GENERATION SYSTEM")
+    print("=" * 60)
+    
+    # Test each scenario type
+    scenarios = {
+        "Strong Uptrend": TrendTestDataFactory.create_strong_uptrend_scenario(),
+        "Strong Downtrend": TrendTestDataFactory.create_strong_downtrend_scenario(),
+        "Tight Sideways": TrendTestDataFactory.create_tight_sideways_scenario(),
+    }
+    
+    for name, candles in scenarios.items():
+        print(f"\n--- Validating {name} ---")
+        
+        # Check candle continuity
+        continuity_breaks = 0
+        for i in range(1, len(candles)):
+            if abs(candles[i].open - candles[i-1].close) > 0.01:  # Allow tiny rounding errors
+                continuity_breaks += 1
+        
+        print(f"Candle continuity: {continuity_breaks} breaks out of {len(candles)-1} transitions")
+        
+        # Check OHLC validity
+        invalid_ohlc = 0
+        for candle in candles:
+            if not (candle.low <= min(candle.open, candle.close) and
+                   candle.high >= max(candle.open, candle.close)):
+                invalid_ohlc += 1
+        
+        print(f"OHLC validity: {invalid_ohlc} invalid out of {len(candles)} candles")
+        
+        # Check price movement magnitude
+        total_range = max(c.high for c in candles) - min(c.low for c in candles)
+        range_percent = (total_range / candles[0].close) * 100
+        net_change_percent = ((candles[-1].close / candles[0].close) - 1) * 100
+        
+        print(f"Price movement: {range_percent:.1f}% total range, {net_change_percent:+.1f}% net change")
+        
+        # Basic realism check
+        if continuity_breaks == 0 and invalid_ohlc == 0 and range_percent > 5:
+            print(f"✅ {name}: REALISTIC DATA GENERATED")
+        else:
+            print(f"❌ {name}: DATA ISSUES DETECTED")
+    
+    print(f"\n{'='*60}")
+    print("VALIDATION COMPLETE")
+    print("If all scenarios show ✅, the new system is working correctly!")
+    print("=" * 60)
 
 class SwingPointBuilder:
     """
@@ -318,308 +631,6 @@ class SwingPointBuilder:
             swing_type=self._swing_type,
             timestamp=self._timestamp
         )
-
-
-class TrendPatternBuilder:
-    """
-    Builder for creating trend patterns programmatically.
-    Useful for testing pattern recognition logic.
-    """
-    
-    def __init__(self):
-        self.reset()
-    
-    def reset(self) -> 'TrendPatternBuilder':
-        """Reset to default values"""
-        self._formation_swings = []
-        self._pattern_type = TrendDirection.UP
-        self._start_index = 0
-        self._end_index = 2
-        return self
-    
-    def uptrend_pattern(self) -> 'TrendPatternBuilder':
-        """Set as uptrend pattern"""
-        self._pattern_type = TrendDirection.UP
-        return self
-    
-    def downtrend_pattern(self) -> 'TrendPatternBuilder':
-        """Set as downtrend pattern"""
-        self._pattern_type = TrendDirection.DOWN
-        return self
-    
-    def sideways_pattern(self) -> 'TrendPatternBuilder':
-        """Set as sideways pattern"""
-        self._pattern_type = TrendDirection.SIDEWAYS
-        return self
-    
-    def with_swings(self, *swings: SwingPoint) -> 'TrendPatternBuilder':
-        """Set formation swings"""
-        self._formation_swings = list(swings)
-        if swings:
-            self._start_index = min(s.candle_index for s in swings)
-            self._end_index = max(s.candle_index for s in swings)
-        return self
-    
-    def with_indices(self, start: int, end: int) -> 'TrendPatternBuilder':
-        """Set start and end indices"""
-        self._start_index = start
-        self._end_index = end
-        return self
-    
-    def build(self) -> TrendPattern:
-        """Build the trend pattern"""
-        # If no swings are provided, create default swings based on pattern type
-        if not self._formation_swings:
-            self._formation_swings = self._create_default_swings()
-        
-        return TrendPattern(
-            formation_swings=tuple(self._formation_swings),
-            pattern_type=self._pattern_type,
-            start_index=self._start_index,
-            end_index=self._end_index
-        )
-    
-    def _create_default_swings(self) -> List[SwingPoint]:
-        """Create default swings for the pattern if none are provided"""
-        base_time = datetime(2024, 1, 1, 9, 0)
-        
-        if self._pattern_type == TrendDirection.UP:
-            # Default L-H-L uptrend pattern
-            return [
-                SwingPoint(0, 95.0, SwingType.LOW, base_time),
-                SwingPoint(1, 105.0, SwingType.HIGH, base_time + timedelta(minutes=5)),
-                SwingPoint(2, 100.0, SwingType.LOW, base_time + timedelta(minutes=10))
-            ]
-        elif self._pattern_type == TrendDirection.DOWN:
-            # Default H-L-H downtrend pattern
-            return [
-                SwingPoint(0, 105.0, SwingType.HIGH, base_time),
-                SwingPoint(1, 95.0, SwingType.LOW, base_time + timedelta(minutes=5)),
-                SwingPoint(2, 100.0, SwingType.HIGH, base_time + timedelta(minutes=10))
-            ]
-        else:  # SIDEWAYS
-            # Default sideways pattern with alternating highs and lows
-            return [
-                SwingPoint(0, 98.0, SwingType.LOW, base_time),
-                SwingPoint(1, 102.0, SwingType.HIGH, base_time + timedelta(minutes=5)),
-                SwingPoint(2, 98.5, SwingType.LOW, base_time + timedelta(minutes=10))
-            ]
-
-
-class TrendTestDataFactory:
-    """
-    Factory for creating predefined test scenarios and edge cases.
-    Responsibility: Generate known test patterns for algorithm validation.
-    
-    MOVED FROM TEST UTILITIES - useful for production backtesting and simulation.
-    """
-    
-    @staticmethod
-    def create_simple_uptrend_scenario() -> List[Candle]:
-        """Create a simple uptrend scenario for testing L-H-L detection"""
-        return (TrendScenarioBuilder()
-                .with_base_price(100)
-                .add_uptrend_sequence(candle_count=12, strength=0.9)  # Stronger and longer
-                .build())
-    
-    @staticmethod
-    def create_simple_downtrend_scenario() -> List[Candle]:
-        """Create a simple downtrend scenario for testing H-L-H detection"""
-        return (TrendScenarioBuilder()
-                .with_base_price(100)
-                .add_downtrend_sequence(candle_count=12, strength=0.9)  # Stronger and longer
-                .build())
-    
-    @staticmethod
-    def create_simple_sideways_scenario() -> List[Candle]:
-        """Create a simple sideways scenario for testing consolidation detection"""
-        return (TrendScenarioBuilder()
-                .with_base_price(100)
-                .add_sideways_sequence(candle_count=15, range_size=2.0)  # Tighter range
-                .build())
-    
-    @staticmethod
-    def create_multi_trend_scenario() -> List[Candle]:
-        """Create scenario with multiple trend types for integration testing"""
-        return (TrendScenarioBuilder()
-                .with_base_price(100)
-                .add_uptrend_sequence(12, 0.8)
-                .add_noise_sequence(2, 0.2)  # Reduced noise
-                .add_downtrend_sequence(12, 0.8)
-                .add_noise_sequence(2, 0.2)
-                .add_sideways_sequence(8, 1.5)  # Tighter sideways
-                .build())
-    
-    @staticmethod
-    def create_ambiguous_pattern_scenario() -> List[Candle]:
-        """Create scenario with ambiguous patterns that should be rejected"""
-        return (TrendScenarioBuilder()
-                .with_base_price(100)
-                .add_noise_sequence(20, 1.0)  # Pure noise - no clear patterns
-                .build())
-    
-    @staticmethod
-    def create_overlapping_trends_scenario() -> List[Candle]:
-        """Create scenario that tests trend conflict resolution"""
-        builder = TrendScenarioBuilder().with_base_price(100)
-        
-        # Create overlapping trend signals by mixing sequences
-        candles = []
-        
-        # Start with partial uptrend
-        uptrend_candles = builder.add_uptrend_sequence(8, 0.8).build()
-        candles.extend(uptrend_candles[:5])  # Only first part
-        
-        # Insert sideways that overlaps
-        builder.reset().with_base_price(uptrend_candles[4].close)
-        sideways_candles = builder.add_sideways_sequence(6, 1.5).build()
-        candles.extend(sideways_candles)
-        
-        # Continue with conflicting downtrend
-        builder.reset().with_base_price(sideways_candles[-1].close)
-        downtrend_candles = builder.add_downtrend_sequence(8, 0.8).build()
-        candles.extend(downtrend_candles)
-        
-        return candles
-    
-    @staticmethod
-    def create_edge_case_scenarios() -> Dict[str, List[Candle]]:
-        """Create various edge case scenarios for boundary testing"""
-        # Use your existing CandleBuilder
-        from utilities import CandleBuilder
-        
-        # Single candle
-        single_candle = [CandleBuilder().build()]
-        
-        # Two candles
-        two_candles = [
-            CandleBuilder().build(),
-            CandleBuilder().bullish(5).build()
-        ]
-        
-        # Three candles (minimum for swing detection)
-        three_candles = [
-            CandleBuilder().with_ohlc(100, 102, 98, 99).build(),
-            CandleBuilder().with_ohlc(99, 105, 97, 103).build(),  # Swing high
-            CandleBuilder().with_ohlc(103, 104, 100, 101).build()
-        ]
-        
-        # All identical candles (no swings possible)
-        identical_candles = [CandleBuilder().with_ohlc(100, 100, 100, 100).build() for _ in range(10)]
-        
-        # Extreme volatility (large gaps)
-        extreme_volatility = [
-            CandleBuilder().with_ohlc(100, 105, 95, 102).build(),
-            CandleBuilder().with_ohlc(150, 155, 148, 152).build(),  # Big gap up
-            CandleBuilder().with_ohlc(80, 85, 75, 82).build()       # Big gap down  
-        ]
-        
-        return {
-            'empty_list': [],
-            'single_candle': single_candle,
-            'two_candles': two_candles,
-            'three_candles': three_candles,
-            'identical_candles': identical_candles,
-            'extreme_volatility': extreme_volatility
-        }
-    
-    @staticmethod
-    def create_genesis_point_test_scenario() -> List[Candle]:
-        """Create scenario specifically for testing genesis point logic"""
-        return (TrendScenarioBuilder()
-                .with_base_price(100)
-                .add_uptrend_sequence(10, 0.8)      # Creates first trend
-                .add_downtrend_sequence(8, 0.7)     # Should terminate first and create genesis
-                .add_sideways_sequence(6, 2.0)      # Uses genesis point
-                .add_uptrend_sequence(12, 0.9)      # Another trend from new genesis
-                .build())
-    
-    @staticmethod
-    def create_weak_trend_scenario() -> List[Candle]:
-        """Create scenario with weak trends that should be classified as minor/consolidation"""
-        return (TrendScenarioBuilder()
-                .with_base_price(100)
-                .add_uptrend_sequence(4, 0.3)      # Short, weak uptrend
-                .add_downtrend_sequence(3, 0.2)    # Very weak downtrend
-                .add_sideways_sequence(5, 1.0)     # Very tight range
-                .build())
-
-
-class MarketConditionGenerator:
-    """
-    Generate specific market conditions for backtesting and simulation.
-    Useful for testing algorithm behavior under different market regimes.
-    
-    This is a production utility for creating realistic market scenarios.
-    """
-    
-    @staticmethod
-    def create_trending_market(direction: TrendDirection, duration: int = 50,
-                              strength: float = 0.8) -> List[Candle]:
-        """Create a strongly trending market"""
-        builder = TrendScenarioBuilder()
-        
-        if direction == TrendDirection.UP:
-            # Create multiple uptrend sequences
-            segments = max(1, duration // 15)
-            for _ in range(segments):
-                builder.add_uptrend_sequence(15, strength)
-                if np.random.random() > 0.7:  # Occasional pullback
-                    builder.add_noise_sequence(3, 0.3)
-        
-        elif direction == TrendDirection.DOWN:
-            # Create multiple downtrend sequences
-            segments = max(1, duration // 15)
-            for _ in range(segments):
-                builder.add_downtrend_sequence(15, strength)
-                if np.random.random() > 0.7:  # Occasional bounce
-                    builder.add_noise_sequence(3, 0.3)
-        
-        else:  # SIDEWAYS
-            # Create extended consolidation
-            builder.add_sideways_sequence(duration, 5.0)
-        
-        return builder.build()
-    
-    @staticmethod
-    def create_choppy_market(duration: int = 50, volatility: float = 0.8) -> List[Candle]:
-        """Create a choppy, directionless market"""
-        builder = TrendScenarioBuilder()
-        
-        # Alternate between small trends and consolidations
-        remaining = duration
-        while remaining > 0:
-            segment_size = min(np.random.randint(5, 12), remaining)
-            
-            choice = np.random.choice(['up', 'down', 'sideways', 'noise'], p=[0.25, 0.25, 0.3, 0.2])
-            
-            if choice == 'up':
-                builder.add_uptrend_sequence(segment_size, 0.4)  # Weak uptrend
-            elif choice == 'down':
-                builder.add_downtrend_sequence(segment_size, 0.4)  # Weak downtrend
-            elif choice == 'sideways':
-                builder.add_sideways_sequence(segment_size, 2.0)  # Tight range
-            else:
-                builder.add_noise_sequence(segment_size, volatility)
-            
-            remaining -= segment_size
-        
-        return builder.build()
-    
-    @staticmethod
-    def create_multi_timeframe_scenario(duration: int = 100) -> List[Candle]:
-        """Create scenario with trends on multiple timeframes"""
-        builder = TrendScenarioBuilder()
-        
-        # Major uptrend with intermediate corrections
-        builder.add_uptrend_sequence(20, 0.8)      # Strong up move
-        builder.add_sideways_sequence(15, 3.0)     # Consolidation
-        builder.add_downtrend_sequence(10, 0.6)    # Correction
-        builder.add_uptrend_sequence(25, 0.9)      # Continuation up
-        builder.add_sideways_sequence(20, 4.0)     # Distribution
-        builder.add_downtrend_sequence(30, 0.8)    # Major reversal
-        
-        return builder.build()
 
 
 class TrendDataProcessor:
