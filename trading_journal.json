@@ -1,0 +1,45 @@
+{
+  "strategies": [
+    {
+      "name": "USO Covered Strategy",
+      "symbol": "USO",
+      "initial_position": {
+        "symbol": "USO",
+        "entry_price": 76.36,
+        "entry_date": "2025-08-04",
+        "quantity": 1,
+        "trade_type": "market_buy",
+        "limit_price": null,
+        "expiration_date": null,
+        "status": "filled",
+        "fill_date": null,
+        "fill_price": null
+      },
+      "buy_limit": {
+        "symbol": "USO",
+        "entry_price": 75.5,
+        "entry_date": "2025-08-04",
+        "quantity": 1,
+        "trade_type": "limit_buy",
+        "limit_price": 75.5,
+        "expiration_date": "2025-11-02",
+        "status": "pending",
+        "fill_date": null,
+        "fill_price": null
+      },
+      "sell_limit": {
+        "symbol": "USO",
+        "entry_price": 80.0,
+        "entry_date": "2025-08-04",
+        "quantity": 1,
+        "trade_type": "limit_sell",
+        "limit_price": 80.0,
+        "expiration_date": "2025-11-02",
+        "status": "pending",
+        "fill_date": null,
+        "fill_price": null
+      }
+    }
+  ],
+  "last_updated": "2025-08-04T13:42:32.605961"
+}

@@ -1,0 +1,280 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal Report</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .strategy-card {
+            background: linear-gradient(145deg, #2d5aa0 0%, #1e3c72 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 2px solid #4CAF50;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .strategy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 15px;
+        }
+        
+        .strategy-name {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .symbol {
+            font-size: 1.5em;
+            background: #FF6B35;
+            padding: 8px 15px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .metric-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+        
+        .metric-label {
+            font-size: 0.9em;
+            color: #B0BEC5;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .outcomes-section {
+            margin-top: 25px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border: 1px solid #FF6B35;
+        }
+        
+        .outcomes-title {
+            font-size: 1.3em;
+            color: #FF6B35;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .outcome-item {
+            background: rgba(255, 255, 255, 0.05);
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .outcome-scenario {
+            font-weight: bold;
+            color: #4CAF50;
+            font-size: 1.1em;
+        }
+        
+        .outcome-details {
+            color: #E0E0E0;
+            margin-top: 5px;
+        }
+        
+        .positive {
+            color: #4CAF50 !important;
+        }
+        
+        .negative {
+            color: #F44336 !important;
+        }
+        
+        .timestamp {
+            text-align: center;
+            margin-top: 30px;
+            color: #B0BEC5;
+            font-style: italic;
+        }
+        
+        .trade-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .trade-card {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 107, 53, 0.3);
+        }
+        
+        .trade-type {
+            font-weight: bold;
+            color: #FF6B35;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Trading Journal Report</h1>
+        
+        <div class="strategy-card">
+            <div class="strategy-header">
+                <div class="strategy-name">USO Covered Strategy</div>
+                <div class="symbol">USO</div>
+            </div>
+            
+            <div class="trade-details">
+                <div class="trade-card">
+                    <div class="trade-type">Initial Position</div>
+                    <div>Price: $76.36</div>
+                    <div>Quantity: 1</div>
+                    <div>Date: 2025-08-04</div>
+                </div>
+                
+                <div class="trade-card">
+                    <div class="trade-type">Buy Limit Order</div>
+                    <div>Price: $75.50</div>
+                    <div>Quantity: 1</div>
+                    <div>Expires: 2025-11-02</div>
+                </div>
+                
+                <div class="trade-card">
+                    <div class="trade-type">Sell Limit Order</div>
+                    <div>Price: $80.00</div>
+                    <div>Quantity: 1</div>
+                    <div>Expires: 2025-11-02</div>
+                </div>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Risk Cushion</div>
+                    <div class="metric-value negative">$0.86</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Reward (Single)</div>
+                    <div class="metric-value positive">$3.64</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">R/R (Single)</div>
+                    <div class="metric-value">4.23</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">ROI (Single)</div>
+                    <div class="metric-value positive">4.8%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Reward (Both)</div>
+                    <div class="metric-value positive">$4.07</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">R/R (Both)</div>
+                    <div class="metric-value">4.73</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">ROI (Both)</div>
+                    <div class="metric-value positive">2.7%</div>
+                </div>
+            </div>
+            
+            <div class="outcomes-section">
+                <div class="outcomes-title">🎯 Potential Outcomes</div>
+                
+                <div class="outcome-item">
+                    <div class="outcome-scenario">
+                        0 Shares - Both limits fill
+                    </div>
+                    <div class="outcome-details">
+                        Sell at $80.00, buy at $75.50<br>
+                        <strong>P&L: <span class='positive'>$2.78</span></strong>
+                    </div>
+                </div>
+            
+                <div class="outcome-item">
+                    <div class="outcome-scenario">
+                        0 Shares - Only sell limit fills
+                    </div>
+                    <div class="outcome-details">
+                        Sell at $80.00<br>
+                        <strong>P&L: <span class='positive'>$3.64</span></strong>
+                    </div>
+                </div>
+            
+                <div class="outcome-item">
+                    <div class="outcome-scenario">
+                        2 Shares - Only buy limit fills
+                    </div>
+                    <div class="outcome-details">
+                        Buy additional at $75.50, avg cost $75.93<br>
+                        <strong>Avg Cost: $75.93</strong>
+                    </div>
+                </div>
+            
+                <div class="outcome-item">
+                    <div class="outcome-scenario">
+                        1 Shares - No limits fill
+                    </div>
+                    <div class="outcome-details">
+                        Hold original position at $76.36<br>
+                        <strong>Cost Basis: $76.36</strong>
+                    </div>
+                </div>
+            
+            </div>
+        </div>
+            
+        <div class="timestamp">
+            Report generated on 2025-08-04 13:42:32
+        </div>
+    </div>
+</body>
+</html>

@@ -25,16 +25,25 @@ class CandleMetric:
     low_value: float    # L
     sentiment: float    # (C - O) / (H - L)
     upper_wick_ratio: float  # (H - max(O,C)) / (H - L)
+    volume: float = 1.0  # Trading volume (mass of the candle)
     
     @property
     def metric_tensor(self) -> np.ndarray:
         """
         The local metric tensor at this candle.
-        In the simplest case, we use Range^2 as the scale factor.
+        Now includes mass (volume) effects on spacetime curvature.
         
-        g_ij = Range^2 * I_2
+        g_ij = (Range^2 * Volume^α) * I_2
+        where α controls how much volume affects the metric
         """
-        return self.range_value**2 * np.eye(2)
+        # Volume scaling factor (α = 0.5 for moderate mass effects)
+        volume_scale = np.power(self.volume, 0.5)
+        return (self.range_value**2 * volume_scale) * np.eye(2)
+    
+    @property
+    def gravitational_mass(self) -> float:
+        """Return the gravitational mass (volume) of this candle"""
+        return self.volume
     
     @property
     def pattern_coordinates(self) -> np.ndarray:
@@ -224,41 +233,45 @@ class CurvedCandleGeometry:
         In curved spacetime, proper time is related to coordinate time by:
         dτ² = g₀₀ dt²
         
-        For our market spacetime with metric g_ij = Range² × I₂:
+        For our market spacetime with metric g_ij = (Range² × Volume^α) × I₂:
         - The Range acts as a gravitational potential affecting time dilation
-        - Higher volatility (larger Range) → stronger "gravitational field" → more time dilation
-        - Lower volatility (smaller Range) → weaker field → time passes more normally
+        - The Volume acts as mass creating additional gravitational effects
+        - Higher volatility + volume → stronger "gravitational field" → more time dilation
         
         Physical interpretation:
-        - Volatile periods feel "longer" in proper time (more market events per unit coordinate time)
-        - Calm periods feel "shorter" in proper time (less market activity)
+        - High-volume volatile periods feel "longest" in proper time
+        - Low-volume calm periods feel "shortest" in proper time
         """
         if index < 0 or index >= self.n_candles:
             return 1.0  # Default coordinate time
         
         candle = self.candles[index]
         range_val = candle.range_value
+        volume = candle.volume
         
         # Avoid division by zero
         if range_val < 1e-10:
             return 1.0
         
-        # Time dilation factor based on Range (gravitational potential)
+        # Time dilation factor based on Range AND Volume (gravitational potential + mass)
         # Higher Range → stronger field → more time dilation
-        # Use logarithmic scaling since ranges vary over orders of magnitude
+        # Higher Volume → more mass → more gravitational time dilation
         
         # Base time dilation from Range
-        # Minimum dilation factor to ensure proper time is always positive
         min_dilation = 0.1
         max_dilation = 10.0
         
         # Normalize range for time dilation calculation
-        # Use log scaling to handle wide range of values
         normalized_range = np.log1p(range_val)
         
-        # Time dilation: higher volatility → more proper time per coordinate time
-        # This means volatile periods are "stretched" in proper time
-        time_dilation_factor = min_dilation + (max_dilation - min_dilation) * np.tanh(normalized_range)
+        # Volume contribution to time dilation (massive objects slow time more)
+        # Use log scaling for volume too since it can vary over orders of magnitude
+        normalized_volume = np.log1p(volume)
+        volume_factor = 1.0 + 0.3 * np.tanh(normalized_volume * 0.1)  # Moderate volume effect
+        
+        # Combined time dilation: range effect × volume effect
+        base_dilation = min_dilation + (max_dilation - min_dilation) * np.tanh(normalized_range)
+        time_dilation_factor = base_dilation * volume_factor
         
         return time_dilation_factor
     
@@ -505,11 +518,16 @@ def create_candle_metrics_from_ohlc(ohlc_data: pd.DataFrame) -> List[CandleMetri
     Convert OHLC data to CandleMetric objects.
     
     Expected columns: 'open', 'high', 'low', 'close'
+    Optional column: 'volume' (defaults to 1.0 if not present)
     """
     metrics = []
     
+    # Check if volume column exists
+    has_volume = 'volume' in ohlc_data.columns
+    
     for _, row in ohlc_data.iterrows():
         O, H, L, C = row['open'], row['high'], row['low'], row['close']
+        volume = row['volume'] if has_volume else 1.0
         
         range_val = H - L
         if range_val > 0:
@@ -523,7 +541,8 @@ def create_candle_metrics_from_ohlc(ohlc_data: pd.DataFrame) -> List[CandleMetri
             range_value=range_val,
             low_value=L,
             sentiment=sentiment,
-            upper_wick_ratio=upper_wick_ratio
+            upper_wick_ratio=upper_wick_ratio,
+            volume=volume
         )
         metrics.append(metric)
     

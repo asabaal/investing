@@ -40,15 +40,21 @@ def create_real_gradient_test():
         'open':  [100.0, 102.0, 104.0, 106.0, 108.0, 110.0, 112.0, 114.0, 116.0, 118.0],
         'high':  [120.0, 108.0, 107.0, 106.5, 108.1, 115.0, 125.0, 115.0, 130.0, 118.05],
         'low':   [80.0,  98.0,  101.0, 105.8, 107.95, 105.0, 100.0, 113.5, 102.0, 117.98],
-        'close': [110.0, 105.0, 104.5, 105.9, 107.96, 112.0, 105.0, 114.2, 125.0, 117.99]
+        'close': [110.0, 105.0, 104.5, 105.9, 107.96, 112.0, 105.0, 114.2, 125.0, 117.99],
+        
+        # Add volume data (mass) - design for interesting gravitational effects
+        'volume': [50000, 10000, 25000, 5000, 2000, 30000, 80000, 8000, 60000, 3000]
+        # High-volume candles (0, 6, 8) should create strong gravity wells
+        # Low-volume candles (4, 9, 3) should have weak gravitational effects
     }, index=dates)
     
-    print("OHLC data designed for curvature diversity:")
+    print("OHLCV data designed for curvature and mass diversity:")
     for i, (idx, row) in enumerate(ohlc_data.iterrows()):
         range_val = row['high'] - row['low']
         sentiment = (row['close'] - row['open']) / range_val if range_val > 0 else 0
         uwr = (row['high'] - max(row['open'], row['close'])) / range_val if range_val > 0 else 0
-        print(f"  Candle {i}: Range={range_val:.1f}, Sentiment={sentiment:.3f}, UWR={uwr:.3f}")
+        volume = row['volume']
+        print(f"  Candle {i}: Range={range_val:.1f}, Volume={volume:,}, Sentiment={sentiment:.3f}, UWR={uwr:.3f}")
     
     # Compute REAL curvatures, proper times, and proper time intervals using our new intrinsic calculation
     candle_metrics = create_candle_metrics_from_ohlc(ohlc_data)

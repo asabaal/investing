@@ -153,7 +153,7 @@ class MarketDataDatabase:
         return symbol not in self.intraday_unsupported
     
     def get_data(self, symbol: str, start_date: str = None, end_date: str = None, 
-                interval: str = 'daily') -> pd.DataFrame:
+                interval: str = 'daily', skip_update: bool = False) -> pd.DataFrame:
         """
         Unified data retrieval - smart fallback from intraday to daily
         
@@ -162,6 +162,7 @@ class MarketDataDatabase:
             start_date: Start date (YYYY-MM-DD)
             end_date: End date (YYYY-MM-DD) 
             interval: Data interval ('daily', '1min', '5min', '15min', '30min', '60min')
+            skip_update: Skip automatic data updates (for session-based collection)
             
         Returns:
             DataFrame with market data indexed by datetime
@@ -171,12 +172,12 @@ class MarketDataDatabase:
         
         if interval == 'daily':
             # For daily data, first try to get from intraday (preferred) then fallback to daily table
-            return self._get_daily_data_unified(symbol, start_date, end_date)
+            return self._get_daily_data_unified(symbol, start_date, end_date, skip_update)
         else:
             # For intraday data, get directly from intraday table
-            return self._get_intraday_data_direct(symbol, start_date, end_date, interval)
+            return self._get_intraday_data_direct(symbol, start_date, end_date, interval, skip_update)
     
-    def _get_daily_data_unified(self, symbol: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
+    def _get_daily_data_unified(self, symbol: str, start_date: str = None, end_date: str = None, skip_update: bool = False) -> pd.DataFrame:
         """
         Get daily data with prioritized strategy:
         1. Try daily_data table first (faster and more reliable)
@@ -194,7 +195,7 @@ class MarketDataDatabase:
             if daily_check > 0:
                 # We have daily data - use it directly
                 logger.info(f"📊 Using daily table for {symbol}")
-                return self._get_daily_data_direct(symbol, start_date, end_date)
+                return self._get_daily_data_direct(symbol, start_date, end_date, skip_update)
             else:
                 # No daily data - check if we can derive from intraday
                 intraday_check = conn.execute(
@@ -291,11 +292,12 @@ class MarketDataDatabase:
             else:
                 return pd.DataFrame()
     
-    def _get_daily_data_direct(self, symbol: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
+    def _get_daily_data_direct(self, symbol: str, start_date: str = None, end_date: str = None, skip_update: bool = False) -> pd.DataFrame:
         """Get data directly from daily_data table"""
         
-        # Check if we need to update data first
-        self._ensure_data_current(symbol, 'daily')
+        # Check if we need to update data first (unless skip_update is True)
+        if not skip_update:
+            self._ensure_data_current(symbol, 'daily')
         
         with sqlite3.connect(self.db_path) as conn:
             query = '''
@@ -336,11 +338,12 @@ class MarketDataDatabase:
             logger.info(f"✅ Retrieved {len(df)} daily records for {symbol}")
             return df
     
-    def _get_intraday_data_direct(self, symbol: str, start_date: str = None, end_date: str = None, interval: str = '15min') -> pd.DataFrame:
+    def _get_intraday_data_direct(self, symbol: str, start_date: str = None, end_date: str = None, interval: str = '15min', skip_update: bool = False) -> pd.DataFrame:
         """Get data directly from intraday_data table"""
         
-        # Check if we need to update data first
-        self._ensure_data_current(symbol, interval)
+        # Check if we need to update data first (unless skip_update is True)
+        if not skip_update:
+            self._ensure_data_current(symbol, interval)
         
         with sqlite3.connect(self.db_path) as conn:
             query = '''
@@ -360,10 +363,17 @@ class MarketDataDatabase:
             
             query += ' ORDER BY datetime'
             
+            logger.info(f"🔍 Querying intraday data: {query} with params {params}")
             df = pd.read_sql_query(query, conn, params=params)
+            logger.info(f"🔍 Query returned {len(df)} rows")
             
             if df.empty:
-                logger.warning(f"⚠️ No {interval} data found for {symbol} in database")
+                # Debug: Check if data exists at all for this symbol/interval
+                debug_query = 'SELECT COUNT(*) FROM intraday_data WHERE symbol = ? AND interval = ?'
+                debug_count = conn.execute(debug_query, [symbol, interval]).fetchone()[0]
+                logger.warning(f"⚠️ No {interval} data found for {symbol} in database (debug: {debug_count} total records exist)")
+                if debug_count > 0:
+                    logger.warning(f"🔍 Data exists but query filters excluded it. Check date range: {start_date} to {end_date}")
                 return pd.DataFrame()
             
             # Format intraday data
@@ -716,6 +726,18 @@ class MarketDataDatabase:
             
             conn.commit()
     
+    def get_latest_date(self, symbol: str) -> Optional[date]:
+        """Get the latest date available for a symbol (public wrapper)"""
+        return self._get_last_update_date(symbol, 'daily')
+    
+    def get_daily_data(self, symbol: str, start_date: str = None, end_date: str = None) -> pd.DataFrame:
+        """Get daily data for a symbol (public wrapper)"""
+        return self.get_data(symbol, start_date, end_date, interval='daily')
+    
+    def store_daily_data(self, symbol: str, data: pd.DataFrame):
+        """Store daily data for a symbol (public wrapper)"""
+        return self._store_daily_data(symbol, data)
+
     def get_database_stats(self) -> Dict[str, Any]:
         """Get database statistics"""
         

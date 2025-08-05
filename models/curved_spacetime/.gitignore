@@ -1,0 +1,20 @@
+# Phase Space Analysis Output Files (Generated)
+phase_space_analysis/
+phase_space_cache/
+*.pkl
+*_analysis.json
+*_summary.json
+
+# Large HTML visualization files
+*_3d_trajectory.html
+*_density_gradient.html
+*_proper_time_gradient.html
+*_coord_time_gradient.html
+*_animated_evolution.html
+batch_processing_summary.json
+
+# Temporary analysis files
+temp_analysis/
+*.tmp
+# API call logs
+./logs/*.json
