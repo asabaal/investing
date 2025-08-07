@@ -87,6 +87,289 @@ def find_all_trend_formations(df, swing_points):
     
     return formations
 
+def filter_overlapping_trends(formations, terminations, df_length):
+    """
+    Filter overlapping trends to create a mathematical function property.
+    When multiple trends overlap, keep only the shortest duration trend.
+    
+    Args:
+        formations: List of trend formation dicts
+        terminations: List of trend termination dicts  
+        df_length: Length of the dataframe (for active trend calculations)
+        
+    Returns:
+        tuple: (filtered_formations, filtered_terminations)
+    """
+    
+    print(f"🔧 Filtering {len(formations)} formations to eliminate overlaps...")
+    
+    # Create termination lookup for quick access
+    termination_by_formation = {}
+    for term in terminations:
+        formation_key = id(term['formation'])
+        termination_by_formation[formation_key] = term
+    
+    # Calculate duration and end index for each formation
+    formation_ranges = []
+    for formation in formations:
+        formation_key = id(formation)
+        start_idx = formation['breakout']['idx']
+        
+        # Determine end index
+        if formation_key in termination_by_formation:
+            end_idx = termination_by_formation[formation_key]['violation_idx']
+        else:
+            # Active trend goes to end of data
+            end_idx = df_length - 1
+        
+        duration = end_idx - start_idx + 1
+        
+        formation_ranges.append({
+            'formation': formation,
+            'start_idx': start_idx,
+            'end_idx': end_idx,
+            'duration': duration,
+            'formation_key': formation_key
+        })
+    
+    # Sort by start index for processing
+    formation_ranges.sort(key=lambda x: x['start_idx'])
+    
+    # Filter overlapping trends - keep shortest when overlaps occur
+    filtered_ranges = []
+    
+    for current_range in formation_ranges:
+        current_start = current_range['start_idx']
+        current_end = current_range['end_idx']
+        current_duration = current_range['duration']
+        
+        # Check for overlaps with previously accepted ranges
+        should_keep = True
+        ranges_to_remove = []
+        
+        for i, existing_range in enumerate(filtered_ranges):
+            existing_start = existing_range['start_idx']
+            existing_end = existing_range['end_idx']
+            existing_duration = existing_range['duration']
+            
+            # Check for overlap: ranges overlap if they share any candle indices
+            overlap = not (current_end < existing_start or current_start > existing_end)
+            
+            if overlap:
+                # They overlap - keep the shorter duration one
+                if current_duration < existing_duration:
+                    # Current is shorter - remove the existing one
+                    ranges_to_remove.append(i)
+                elif current_duration > existing_duration:
+                    # Existing is shorter - don't add current
+                    should_keep = False
+                    break
+                else:
+                    # Same duration - keep the earlier one (existing)
+                    should_keep = False
+                    break
+        
+        # Remove ranges that were superseded by shorter current range
+        for remove_idx in reversed(ranges_to_remove):
+            filtered_ranges.pop(remove_idx)
+        
+        # Add current range if it should be kept
+        if should_keep:
+            filtered_ranges.append(current_range)
+    
+    # Extract filtered formations and their corresponding terminations
+    filtered_formations = []
+    filtered_terminations = []
+    
+    for range_info in filtered_ranges:
+        formation = range_info['formation']
+        formation_key = range_info['formation_key']
+        
+        filtered_formations.append(formation)
+        
+        # Add termination if it exists
+        if formation_key in termination_by_formation:
+            filtered_terminations.append(termination_by_formation[formation_key])
+    
+    print(f"✅ Filtered to {len(filtered_formations)} non-overlapping formations")
+    print(f"   📉 Removed {len(formations) - len(filtered_formations)} overlapping trends")
+    
+    # Verify function property
+    verify_function_property(filtered_ranges, df_length)
+    
+    return filtered_formations, filtered_terminations
+
+def verify_function_property(filtered_ranges, df_length):
+    """Verify that each candle index has at most one trend state"""
+    
+    print(f"🔍 Verifying mathematical function property...")
+    
+    # Create a mapping of candle_index -> trend_count
+    candle_trend_count = [0] * df_length
+    
+    for range_info in filtered_ranges:
+        start_idx = range_info['start_idx']
+        end_idx = range_info['end_idx']
+        
+        for candle_idx in range(start_idx, min(end_idx + 1, df_length)):
+            candle_trend_count[candle_idx] += 1
+    
+    # Check for violations
+    violations = []
+    for i, count in enumerate(candle_trend_count):
+        if count > 1:
+            violations.append((i, count))
+    
+    if violations:
+        print(f"❌ Function property VIOLATED at {len(violations)} candle indices:")
+        for idx, count in violations[:10]:  # Show first 10 violations
+            print(f"   Candle {idx}: {count} overlapping trends")
+        if len(violations) > 10:
+            print(f"   ... and {len(violations) - 10} more violations")
+    else:
+        print(f"✅ Function property VERIFIED: Each candle has at most one trend state")
+        
+    # Statistics
+    active_candles = sum(1 for count in candle_trend_count if count > 0)
+    coverage_pct = (active_candles / df_length) * 100
+    
+    print(f"📊 Coverage: {active_candles}/{df_length} candles ({coverage_pct:.1f}%) have trend states")
+
+def add_trend_lines(fig, df, formations, terminations):
+    """Add trend lines connecting swing points to current candles"""
+    
+    print(f"🎨 Adding trend lines for {len(formations)} formations...")
+    
+    # Create a dict to quickly find terminations by formation
+    termination_by_formation = {}
+    for term in terminations:
+        # Use the formation object's id or unique identifier
+        formation_key = id(term['formation'])
+        termination_by_formation[formation_key] = term
+    
+    for i, formation in enumerate(formations):
+        formation_key = id(formation)
+        termination = termination_by_formation.get(formation_key)
+        
+        # Determine line color and name
+        if formation['type'] == 'UPTREND':
+            line_color = '#00ff00'  # Green for uptrends
+            trend_name = f'Uptrend {i+1}'
+        else:
+            line_color = '#ff0000'  # Red for downtrends  
+            trend_name = f'Downtrend {i+1}'
+        
+        # Get swing point coordinates
+        if formation['type'] == 'UPTREND':
+            # For uptrends: SL1 -> SH1 -> SL2 -> Breakout -> Current/Termination
+            sl1_idx = formation['sl1']['idx']
+            sh1_idx = formation['sh1']['idx']
+            sl2_idx = formation['sl2']['idx']
+            
+            # Key swing points
+            swing1_date = df.iloc[sl1_idx]['datetime']
+            swing1_price = formation['sl1']['price']
+            swing2_date = df.iloc[sh1_idx]['datetime'] 
+            swing2_price = formation['sh1']['price']
+            swing3_date = df.iloc[sl2_idx]['datetime']
+            swing3_price = formation['sl2']['price']
+        else:
+            # For downtrends: SH1 -> SL1 -> SH2 -> Breakout -> Current/Termination
+            sh1_idx = formation['sh1']['idx']
+            sl1_idx = formation['sl1']['idx']
+            sh2_idx = formation['sh2']['idx']
+            
+            # Key swing points
+            swing1_date = df.iloc[sh1_idx]['datetime']
+            swing1_price = formation['sh1']['price']
+            swing2_date = df.iloc[sl1_idx]['datetime']
+            swing2_price = formation['sl1']['price']
+            swing3_date = df.iloc[sh2_idx]['datetime']
+            swing3_price = formation['sh2']['price']
+        
+        # Breakout point
+        breakout_idx = formation['breakout']['idx']
+        breakout_date = df.iloc[breakout_idx]['datetime']
+        breakout_price = formation['breakout']['price']
+        
+        # End point (termination or last candle)
+        if termination:
+            end_idx = termination['violation_idx']
+            end_date = termination['violation_date']
+            end_price = termination['violation_price']
+            line_dash = 'solid'  # Terminated trends are solid
+        else:
+            # Active trend - goes to last candle
+            end_idx = len(df) - 1
+            end_date = df.iloc[end_idx]['datetime']
+            if formation['type'] == 'UPTREND':
+                end_price = df.iloc[end_idx]['high']  # Use high for active uptrends
+            else:
+                end_price = df.iloc[end_idx]['low']   # Use low for active downtrends
+            line_dash = 'dash'  # Active trends are dashed
+        
+        # Draw the trend line from controlling swing point through breakout to end
+        if formation['type'] == 'UPTREND':
+            # Line from SL1 (controlling swing) through breakout to end
+            start_date = swing1_date
+            start_price = swing1_price
+        else:
+            # Line from SH1 (controlling swing) through breakout to end  
+            start_date = swing1_date
+            start_price = swing1_price
+        
+        # Add the main trend line
+        fig.add_trace(go.Scatter(
+            x=[start_date, end_date],
+            y=[start_price, end_price],
+            mode='lines',
+            line=dict(
+                color=line_color,
+                width=3,
+                dash=line_dash
+            ),
+            name=trend_name,
+            showlegend=True,
+            hovertemplate=f'<b>{trend_name}</b><br>' +
+                         f'Start: {start_price:.2f}<br>' +
+                         f'End: {end_price:.2f}<br>' +
+                         f'Status: {"Terminated" if termination else "Active"}<extra></extra>'
+        ))
+        
+        # Add swing point markers for reference
+        fig.add_trace(go.Scatter(
+            x=[swing1_date, swing2_date, swing3_date],
+            y=[swing1_price, swing2_price, swing3_price],
+            mode='markers',
+            marker=dict(
+                color=line_color,
+                size=6,
+                symbol='circle-open'
+            ),
+            name=f'{trend_name} Swings',
+            showlegend=False,
+            hovertemplate=f'<b>{trend_name} Swing Points</b><br>' +
+                         f'Price: %{{y:.2f}}<extra></extra>'
+        ))
+        
+        # Add breakout origin marker
+        fig.add_trace(go.Scatter(
+            x=[breakout_date],
+            y=[breakout_price],
+            mode='markers',
+            marker=dict(
+                color=line_color,
+                size=10,
+                symbol='diamond',
+                line=dict(color='white', width=2)
+            ),
+            name=f'{trend_name} Origin',
+            showlegend=False,
+            hovertemplate=f'<b>{trend_name} Origin</b><br>' +
+                         f'Breakout: {breakout_price:.2f}<br>' +
+                         f'Date: {breakout_date}<extra></extra>'
+        ))
+
 def find_all_trend_terminations(df, formations):
     """
     Find ALL trend terminations for the given formations
@@ -181,6 +464,24 @@ def create_complete_uso_analysis():
     print(f"   🛑 Terminated uptrends: {len(terminated_uptrends)}")
     print(f"   🛑 Terminated downtrends: {len(terminated_downtrends)}")
     
+    # Apply overlap filtering to create mathematical function property
+    print(f"\n🔧 APPLYING TREND FILTERING FOR MATHEMATICAL FUNCTION PROPERTY:")
+    print("=" * 60)
+    
+    filtered_formations, filtered_terminations = filter_overlapping_trends(formations, terminations, len(df))
+    
+    # Update counts after filtering
+    filtered_uptrends = [f for f in filtered_formations if f['type'] == 'UPTREND']
+    filtered_downtrends = [f for f in filtered_formations if f['type'] == 'DOWNTREND']
+    filtered_terminated_up = [t for t in filtered_terminations if t['formation']['type'] == 'UPTREND']
+    filtered_terminated_down = [t for t in filtered_terminations if t['formation']['type'] == 'DOWNTREND']
+    
+    print(f"\n✅ FILTERED RESULTS:")
+    print(f"   📈 Uptrends: {len(filtered_uptrends)} (was {len(uptrends)})")
+    print(f"   📉 Downtrends: {len(filtered_downtrends)} (was {len(downtrends)})")
+    print(f"   🛑 Terminated uptrends: {len(filtered_terminated_up)} (was {len(terminated_uptrends)})")
+    print(f"   🛑 Terminated downtrends: {len(filtered_terminated_down)} (was {len(terminated_downtrends)})")
+    
     # Show detailed analysis
     print(f"\n📋 DETAILED FORMATION ANALYSIS:")
     for i, formation in enumerate(formations[:10]):  # Show first 10
@@ -223,18 +524,18 @@ def create_complete_uso_analysis():
     if len(terminations) > 10:
         print(f"   ... and {len(terminations) - 10} more terminations")
     
-    # Create comprehensive visualization
-    create_complete_chart(df, formations, terminations)
+    # Create comprehensive visualization with filtered data
+    create_complete_chart(df, filtered_formations, filtered_terminations)
     
-    # Create summary statistics
-    create_trend_statistics(formations, terminations)
+    # Create summary statistics with filtered data  
+    create_trend_statistics(filtered_formations, filtered_terminations)
     
-    return formations, terminations
+    return filtered_formations, filtered_terminations
 
 def create_complete_chart(df, formations, terminations):
-    """Create comprehensive chart showing all formations and terminations with range selector"""
+    """Create comprehensive chart showing all formations and terminations with trend lines"""
     
-    print(f"\n📊 Creating comprehensive USO trend chart with range selector...")
+    print(f"\n📊 Creating comprehensive USO trend chart with trend lines...")
     
     fig = go.Figure()
     
@@ -250,78 +551,13 @@ def create_complete_chart(df, formations, terminations):
         decreasing_line_color='#ff4444'
     ))
     
-    # Add formation markers
-    uptrend_formations = [f for f in formations if f['type'] == 'UPTREND']
-    downtrend_formations = [f for f in formations if f['type'] == 'DOWNTREND']
-    
-    if uptrend_formations:
-        formation_dates = [f['formation_date'] for f in uptrend_formations]
-        formation_prices = [f['breakout']['price'] for f in uptrend_formations]
-        
-        fig.add_trace(go.Scatter(
-            x=formation_dates,
-            y=formation_prices,
-            mode='markers+text',
-            marker=dict(color='#00ff00', size=12, symbol='triangle-up'),
-            text=[f'UP{i+1}' for i in range(len(uptrend_formations))],
-            textposition='top center',
-            name='Uptrend Formations',
-            textfont=dict(size=10, color='white')
-        ))
-    
-    if downtrend_formations:
-        formation_dates = [f['formation_date'] for f in downtrend_formations]
-        formation_prices = [f['breakout']['price'] for f in downtrend_formations]
-        
-        fig.add_trace(go.Scatter(
-            x=formation_dates,
-            y=formation_prices,
-            mode='markers+text',
-            marker=dict(color='#ff0000', size=12, symbol='triangle-down'),
-            text=[f'DN{i+1}' for i in range(len(downtrend_formations))],
-            textposition='bottom center',
-            name='Downtrend Formations',
-            textfont=dict(size=10, color='white')
-        ))
-    
-    # Add termination markers
-    uptrend_terminations = [t for t in terminations if t['formation']['type'] == 'UPTREND']
-    downtrend_terminations = [t for t in terminations if t['formation']['type'] == 'DOWNTREND']
-    
-    if uptrend_terminations:
-        termination_dates = [t['violation_date'] for t in uptrend_terminations]
-        termination_prices = [t['violation_price'] for t in uptrend_terminations]
-        
-        fig.add_trace(go.Scatter(
-            x=termination_dates,
-            y=termination_prices,
-            mode='markers+text',
-            marker=dict(color='#ff6600', size=10, symbol='x'),
-            text=['END' for _ in uptrend_terminations],
-            textposition='bottom center',
-            name='Uptrend Terminations',
-            textfont=dict(size=8, color='#ff6600')
-        ))
-    
-    if downtrend_terminations:
-        termination_dates = [t['violation_date'] for t in downtrend_terminations]
-        termination_prices = [t['violation_price'] for t in downtrend_terminations]
-        
-        fig.add_trace(go.Scatter(
-            x=termination_dates,
-            y=termination_prices,
-            mode='markers+text',
-            marker=dict(color='#ff6600', size=10, symbol='x'),
-            text=['END' for _ in downtrend_terminations],
-            textposition='top center',
-            name='Downtrend Terminations',
-            textfont=dict(size=8, color='#ff6600')
-        ))
+    # Add trend lines instead of markers
+    add_trend_lines(fig, df, formations, terminations)
     
     # Update layout with range selector
     fig.update_layout(
         title=dict(
-            text=f"Complete USO Trend Analysis: {len(formations)} Formations, {len(terminations)} Terminations",
+            text=f"USO Mathematical Function Trends: {len(formations)} Non-Overlapping Trend Lines",
             font=dict(size=18, color='white'),
             x=0.5
         ),
@@ -1043,10 +1279,11 @@ def main():
     """Run complete USO trend analysis"""
     formations, terminations = create_complete_uso_analysis()
     
-    print(f"\n🎯 ANALYSIS COMPLETE!")
-    print(f"📁 Open 'complete_uso_trend_analysis.html' to see all formations and terminations")
-    print(f"📈 {len(formations)} formations found using corrected breakout origin logic")  
-    print(f"🛑 {len(terminations)} terminations found using violation detection")
+    print(f"\n🎯 MATHEMATICAL FUNCTION ANALYSIS COMPLETE!")
+    print(f"📁 Open 'complete_uso_trend_analysis.html' to see filtered non-overlapping trends")
+    print(f"📈 {len(formations)} non-overlapping trend lines (mathematical function property)")  
+    print(f"🛑 {len(terminations)} corresponding terminations")
+    print(f"✅ Each candle index has at most one trend state")
     
     return formations, terminations
 

@@ -22,6 +22,7 @@ def find_all_proper_trends(df, swing_points):
     """
     Find ALL trend formations using the working swing point system
     WITH PROPER VALIDATION - swing points must remain valid until breakout
+    INCLUDES: Uptrends, Downtrends, and Sideways trends
     """
     
     formations = []
@@ -31,9 +32,11 @@ def find_all_proper_trends(df, swing_points):
     
     print(f"🔍 Scanning {len(swing_list)} swing points for trend formations...")
     print(f"   ✅ Adding validation: swing points must remain valid until breakout")
+    print(f"   ✅ Adding sideways trend detection: balanced expansion within 5%")
     
     valid_count = 0
     invalid_count = 0
+    sideways_count = 0
     
     # Look for SL → SH → SL patterns (uptrend formations)
     for i in range(len(swing_list) - 2):
@@ -111,7 +114,21 @@ def find_all_proper_trends(df, swing_points):
                         if invalid_count <= 5:
                             print(f"   ❌ Invalid downtrend SH1=${sh1_price:.2f}→SL1=${sl1_price:.2f}→SH2=${sh2_price:.2f}: {reason}")
     
-    print(f"✅ Validation complete: {valid_count} valid formations, {invalid_count} invalidated")
+    # Look for SIDEWAYS trends (4+ swing points with balanced expansion)
+    sideways_formations = find_sideways_trends(df, swing_list)
+    formations.extend(sideways_formations)
+    sideways_count = len(sideways_formations)
+    
+    # FILTER: Remove sideways trends that overlap with directional trends
+    original_count = len(formations)
+    formations = filter_overlapping_sideways_trends(formations)
+    filtered_count = original_count - len(formations)
+    final_sideways = len([f for f in formations if f['type'] == 'SIDEWAYS'])
+    
+    print(f"✅ Validation complete: {valid_count} uptrends/downtrends, {invalid_count} invalidated, {sideways_count} sideways trends")
+    if filtered_count > 0:
+        print(f"✅ Filtered out {filtered_count} sideways trends that overlapped with directional trends")
+        print(f"   Final: {final_sideways} sideways trends remaining")
     return formations
 
 def validate_uptrend_formation(swing_list, formation_start_idx, breakout_idx):
@@ -188,6 +205,219 @@ def validate_downtrend_formation(swing_list, formation_start_idx, breakout_idx):
     
     return True, "Valid formation"
 
+def find_sideways_trends(df, swing_list):
+    """
+    Find SIDEWAYS trends using CORRECTED logic:
+    - Trend ORIGINATES at 1st swing point (not 4th)
+    - Uses 2 MOST RECENT swing points to define dynamic range
+    - Supports contraction and balanced expansion within 5%
+    - Need minimum 4 swing points for confirmation
+    """
+    
+    formations = []
+    
+    print(f"🔍 Scanning for sideways trends (corrected logic: origin at 1st swing, dynamic range)...")
+    
+    # Look for potential sideways starting points (need at least 4 swings)
+    for start_idx in range(len(swing_list) - 3):
+        sideways_formation = attempt_sideways_formation(df, swing_list, start_idx)
+        if sideways_formation:
+            formations.append(sideways_formation)
+    
+    return formations
+
+def attempt_sideways_formation(df, swing_list, start_idx):
+    """
+    Attempt to form a sideways trend starting at start_idx
+    CORRECTED LOGIC:
+    - Origin at 1st swing point
+    - Dynamic range from 2 most recent swings
+    - Supports contraction and balanced expansion
+    """
+    
+    if start_idx + 3 >= len(swing_list):
+        return None
+    
+    # CORRECTED: Origin at the FIRST swing point
+    origin_swing = swing_list[start_idx]
+    origin_idx, origin_type, origin_price = origin_swing
+    
+    # Start with first 4 swings for initial confirmation
+    initial_swings = swing_list[start_idx:start_idx + 4]
+    
+    # Get initial range from first 4 swings
+    initial_highs = [s[2] for s in initial_swings if s[1] == 'HIGH']
+    initial_lows = [s[2] for s in initial_swings if s[1] == 'LOW']
+    
+    if len(initial_highs) < 2 or len(initial_lows) < 2:
+        return None  # Need at least 2 highs and 2 lows
+    
+    # Continue adding swings while maintaining sideways behavior
+    sideways_swings = initial_swings[:]
+    
+    for next_idx in range(start_idx + 4, len(swing_list)):
+        next_swing = swing_list[next_idx]
+        swing_idx, swing_type, swing_price = next_swing
+        
+        # CORRECTED: Use 2 MOST RECENT swings to define current range
+        recent_swings = sideways_swings[-4:]  # Get last 4 swings to find most recent pair
+        recent_highs = [s[2] for s in recent_swings if s[1] == 'HIGH']
+        recent_lows = [s[2] for s in recent_swings if s[1] == 'LOW']
+        
+        if not recent_highs or not recent_lows:
+            sideways_swings.append(next_swing)
+            continue
+            
+        current_high = max(recent_highs)
+        current_low = min(recent_lows)
+        current_range = current_high - current_low
+        
+        # Check if adding this swing maintains balanced behavior
+        if swing_type == 'HIGH':
+            if swing_price > current_high:
+                # Range expansion upward
+                upward_expansion = swing_price - current_high
+                # Check if we have corresponding downward expansion (within 5% tolerance)
+                initial_range = max(initial_highs) - min(initial_lows)
+                max_allowed_expansion = initial_range * 0.05  # 5% of initial range
+                
+                # If expansion is too large compared to other direction, break sideways
+                recent_low_expansion = min(initial_lows) - current_low if current_low < min(initial_lows) else 0
+                if upward_expansion > recent_low_expansion + max_allowed_expansion:
+                    break  # Imbalanced expansion - end sideways trend
+                
+        else:  # LOW
+            if swing_price < current_low:
+                # Range expansion downward
+                downward_expansion = current_low - swing_price
+                # Check if we have corresponding upward expansion (within 5% tolerance)
+                initial_range = max(initial_highs) - min(initial_lows)
+                max_allowed_expansion = initial_range * 0.05  # 5% of initial range
+                
+                # If expansion is too large compared to other direction, break sideways
+                recent_high_expansion = current_high - max(initial_highs) if current_high > max(initial_highs) else 0
+                if downward_expansion > recent_high_expansion + max_allowed_expansion:
+                    break  # Imbalanced expansion - end sideways trend
+        
+        sideways_swings.append(next_swing)
+    
+    # Only create formation if we have meaningful sideways action (4+ swings minimum)
+    if len(sideways_swings) >= 4:
+        # Get final range from 2 most recent swings
+        final_swings = sideways_swings[-4:]
+        final_highs = [s[2] for s in final_swings if s[1] == 'HIGH']
+        final_lows = [s[2] for s in final_swings if s[1] == 'LOW']
+        
+        final_high = max(final_highs) if final_highs else max(initial_highs)
+        final_low = min(final_lows) if final_lows else min(initial_lows)
+        
+        # Find the actual termination by checking candle-by-candle for violations
+        last_swing_idx = sideways_swings[-1][0]
+        actual_end_idx = last_swing_idx
+        
+        # Scan forward from the last swing to find first violation
+        for candle_idx in range(last_swing_idx + 1, min(len(df), last_swing_idx + 20)):
+            candle = df.iloc[candle_idx]
+            
+            # Check if this candle violates the current range (from most recent 2 swings)
+            if candle['high'] > final_high or candle['low'] < final_low:
+                actual_end_idx = candle_idx - 1  # End at the candle before violation
+                break
+            actual_end_idx = candle_idx  # Keep extending if no violation
+        
+        formation = {
+            'type': 'SIDEWAYS',
+            'start_swing': {'idx': origin_idx, 'price': origin_price},  # CORRECTED: Origin at 1st swing
+            'end_swing': {'idx': actual_end_idx, 'price': df.iloc[actual_end_idx]['close']},
+            'high_level': final_high,  # From most recent swings
+            'low_level': final_low,    # From most recent swings
+            'range_size': final_high - final_low,
+            'swing_count': len(sideways_swings),
+            'formation_date': df.iloc[origin_idx]['datetime'],  # CORRECTED: Use origin date
+            'termination_date': df.iloc[actual_end_idx]['datetime'],
+            'setup_quality': 'VALID',
+            'last_swing_idx': last_swing_idx
+        }
+        return formation
+    
+    return None
+
+def filter_overlapping_sideways_trends(formations):
+    """
+    Filter out sideways trends that overlap with ACTIVE directional trends
+    Allow sideways trends AFTER directional trends have terminated
+    """
+    
+    # We need termination data to do this properly, so for now just return a basic filter
+    # This function will be called AFTER terminations are found
+    return formations
+
+def filter_overlapping_sideways_trends_with_terminations(formations, terminations):
+    """
+    Filter out sideways trends that overlap with ACTIVE directional trends
+    Allow sideways trends AFTER directional trends have terminated
+    """
+    
+    # Create termination lookup
+    termination_by_formation = {}
+    for term in terminations:
+        formation_key = id(term['formation'])
+        termination_by_formation[formation_key] = term
+    
+    # Separate directional and sideways trends
+    directional_trends = [f for f in formations if f['type'] in ['UPTREND', 'DOWNTREND']]
+    sideways_trends = [f for f in formations if f['type'] == 'SIDEWAYS']
+    
+    # Keep all directional trends
+    filtered_formations = directional_trends[:]
+    
+    # Filter sideways trends that don't overlap with ACTIVE directional trends
+    for sideways in sideways_trends:
+        sideways_start = sideways['start_swing']['idx']
+        sideways_end = sideways['end_swing']['idx']
+        
+        # Check if this sideways trend overlaps with any ACTIVE directional trend
+        overlaps = False
+        for directional in directional_trends:
+            if 'breakout' in directional:
+                dir_start = directional['breakout']['idx']
+                
+                # Get actual directional trend end from termination data
+                formation_key = id(directional)
+                termination = termination_by_formation.get(formation_key)
+                if termination:
+                    dir_end = termination['violation_idx']
+                else:
+                    # If no termination, assume trend is still active
+                    dir_end = dir_start + 100  # Large range for active trends
+                
+                # Check for overlap with ACTIVE directional trend
+                if not (sideways_end < dir_start or sideways_start > dir_end):
+                    # But allow sideways if it starts AFTER the directional trend terminates
+                    if termination and sideways_start >= termination['violation_idx']:
+                        continue  # No overlap - sideways starts after termination
+                    overlaps = True
+                    break
+        
+        # Only keep sideways trend if it doesn't overlap with active directional trends
+        if not overlaps:
+            filtered_formations.append(sideways)
+    
+    return filtered_formations
+
+def calculate_trend_duration(formation, origin_idx, df_length):
+    """
+    Calculate trend duration properly for different trend types
+    """
+    if formation['type'] == 'SIDEWAYS':
+        # For sideways trends, use the start and end swings
+        start_idx = formation['start_swing']['idx']
+        end_idx = formation['end_swing']['idx']
+        return end_idx - start_idx
+    else:
+        # For directional trends without termination, use remaining data
+        return df_length - origin_idx
+
 def find_all_proper_terminations(df, formations, swing_points):
     """
     Find ALL trend terminations with DYNAMIC CONTROLLING SWING UPDATES
@@ -212,16 +442,19 @@ def find_trend_termination_with_updates(df, formation, all_swing_points):
     - ANY candle can violate and terminate the trend
     """
     
-    # Initial controlling swing should be SL2 for uptrends, SH2 for downtrends
+    # Initial controlling swing should be SL2 for uptrends, SH2 for downtrends, N/A for sideways
     if formation['type'] == 'UPTREND':
         original_controlling_price = formation['sl2']['price']  # SL2 is the setup swing for uptrends
         current_controlling_idx = formation['sl2']['idx']
-    else:
+    elif formation['type'] == 'DOWNTREND':
         original_controlling_price = formation['sh2']['price']  # SH2 is the setup swing for downtrends  
         current_controlling_idx = formation['sh2']['idx']
+    else:  # SIDEWAYS
+        # Sideways trends have their own termination logic - they end when range is violated
+        return find_sideways_termination(df, formation)
     
     current_controlling_price = original_controlling_price
-    formation_idx = formation['breakout']['idx']
+    formation_idx = formation['breakout']['idx']  # Directional trends always have breakout
     
     # Track updates for debugging
     updates_count = 0
@@ -287,6 +520,65 @@ def find_trend_termination_with_updates(df, formation, all_swing_points):
     # No violation found - trend remains active
     return None
 
+def find_sideways_termination(df, formation):
+    """
+    Find termination for sideways trends using the range violation logic
+    """
+    
+    # For sideways trends, termination is already built into the formation
+    # The end_swing represents where the trend terminated
+    start_idx = formation['start_swing']['idx']
+    end_idx = formation['end_swing']['idx']
+    
+    # Check if this sideways trend actually terminated (has violation)
+    if end_idx < len(df) - 1:
+        # Find the actual violation candle (first candle that broke the range)
+        violation_idx = None
+        violation_price = None
+        
+        for candle_idx in range(end_idx, min(len(df), end_idx + 10)):
+            candle = df.iloc[candle_idx]
+            
+            # Check if this candle violates the sideways range
+            if candle['high'] > formation['high_level'] or candle['low'] < formation['low_level']:
+                violation_idx = candle_idx
+                if candle['high'] > formation['high_level']:
+                    violation_price = candle['high']
+                else:
+                    violation_price = candle['low']
+                break
+        
+        if violation_idx is not None:
+            termination = {
+                'formation': formation,
+                'violation_idx': violation_idx,
+                'violation_price': violation_price,
+                'violation_date': df.iloc[violation_idx]['datetime'],
+                'trend_duration': end_idx - start_idx,
+                'violation_size': abs(violation_price - (formation['high_level'] + formation['low_level']) / 2),
+                'range_high': formation['high_level'],
+                'range_low': formation['low_level']
+            }
+            return termination
+    
+    # No violation found - sideways trend is still active or data ended
+    return None
+
+def get_controlling_swing_for_trend(formation):
+    """
+    Get appropriate controlling swing data for different trend types
+    """
+    if formation['type'] == 'SIDEWAYS':
+        # For sideways trends, use the range center as "controlling" level
+        center_price = (formation['high_level'] + formation['low_level']) / 2
+        return {'idx': formation['start_swing']['idx'], 'price': center_price}
+    elif formation['type'] == 'UPTREND':
+        # For uptrends, use SL2 as controlling swing
+        return formation.get('sl2', {'idx': 0, 'price': 0})
+    else:  # DOWNTREND
+        # For downtrends, use SH2 as controlling swing  
+        return formation.get('sh2', {'idx': 0, 'price': 0})
+
 def create_proper_trend_explorer(df, formations, terminations, all_swing_points):
     """
     Create a proper trend explorer showing each trend with all details
@@ -308,7 +600,10 @@ def create_proper_trend_explorer(df, formations, terminations, all_swing_points)
         termination = termination_by_formation.get(formation_key)
         
         # Determine time window around the trend - show MORE context
-        breakout_idx = formation['breakout']['idx']
+        if formation['type'] == 'SIDEWAYS':
+            origin_idx = formation['start_swing']['idx']  # Sideways trends have origins, not breakouts
+        else:
+            origin_idx = formation['breakout']['idx']  # Directional trends have breakouts
         
         # Get swing point indices
         if formation['type'] == 'UPTREND':
@@ -317,17 +612,28 @@ def create_proper_trend_explorer(df, formations, terminations, all_swing_points)
                 formation['sh1']['idx'], 
                 formation['sl2']['idx']
             ]
-        else:
+        elif formation['type'] == 'DOWNTREND':
             swing_indices = [
                 formation['sh1']['idx'],
                 formation['sl1']['idx'],
                 formation['sh2']['idx']
             ]
+        else:  # SIDEWAYS
+            swing_indices = [
+                formation['start_swing']['idx'],
+                formation['end_swing']['idx']
+            ]
         
         # Window should show: context before first swing + formation + context after
         first_swing_idx = min(swing_indices)
         
-        if termination:
+        if formation['type'] == 'SIDEWAYS':
+            # For sideways trends, use start and end swings with context
+            start_idx = formation['start_swing']['idx']
+            end_idx = formation['end_swing']['idx']
+            window_start = max(0, start_idx - 20)
+            window_end = min(len(df) - 1, end_idx + 20)
+        elif termination:
             end_idx = termination['violation_idx']
             # Show context: 20 candles before first swing, formation, 10 candles after termination
             window_start = max(0, first_swing_idx - 20)
@@ -384,7 +690,7 @@ def create_proper_trend_explorer(df, formations, terminations, all_swing_points)
                             'role': 'Trend High'
                         })
                         sh_count += 1
-        else:
+        elif formation['type'] == 'DOWNTREND':
             # Add formation swings  
             swing_points = [
                 {'idx': formation['sh1']['idx'], 'price': formation['sh1']['price'], 'type': 'SH1', 'role': 'First High'},
@@ -428,6 +734,37 @@ def create_proper_trend_explorer(df, formations, terminations, all_swing_points)
                             'role': 'Trend Low'
                         })
                         sl_count += 1
+        else:  # SIDEWAYS
+            # For sideways trends, show all swing points in the range
+            swing_points = []
+            start_idx = formation['start_swing']['idx']
+            end_idx = formation['end_swing']['idx']
+            
+            # Find all swings in the sideways range
+            range_swings = [sp for sp in all_swing_points if 
+                          sp['index'] >= start_idx and sp['index'] <= end_idx]
+            range_swings.sort(key=lambda x: x['index'])
+            
+            sh_count = 1
+            sl_count = 1
+            
+            for swing in range_swings:
+                if swing['type'] == 'HIGH':
+                    swing_points.append({
+                        'idx': swing['index'], 
+                        'price': swing['price'], 
+                        'type': f'SH{sh_count}', 
+                        'role': f'Range High #{sh_count}'
+                    })
+                    sh_count += 1
+                else:  # LOW
+                    swing_points.append({
+                        'idx': swing['index'], 
+                        'price': swing['price'], 
+                        'type': f'SL{sl_count}', 
+                        'role': f'Range Low #{sl_count}'
+                    })
+                    sl_count += 1
         
         trend_info = {
             'id': i + 1,
@@ -436,15 +773,15 @@ def create_proper_trend_explorer(df, formations, terminations, all_swing_points)
             'termination': termination,
             'window_start': window_start,
             'window_end': window_end,
-            'breakout_idx': breakout_idx,
+            'origin_idx': origin_idx,  # Use origin_idx for both directional and sideways
             'swing_points': swing_points,
-            'controlling_swing': formation['controlling_swing'],
-            'duration': termination['trend_duration'] if termination else (len(df) - breakout_idx),
+            'controlling_swing': get_controlling_swing_for_trend(formation),
+            'duration': termination['trend_duration'] if termination else calculate_trend_duration(formation, origin_idx, len(df)),
             'formation_date': formation['formation_date'].strftime('%Y-%m-%d') if hasattr(formation['formation_date'], 'strftime') else str(formation['formation_date']),
             'status': 'Terminated' if termination else 'Active',
             # Add controlling swing update info
-            'original_controlling': formation['controlling_swing']['price'] if termination else formation['controlling_swing']['price'],
-            'final_controlling': termination.get('final_controlling_price') if termination else formation['controlling_swing']['price'],
+            'original_controlling': get_controlling_swing_for_trend(formation).get('price', 0),
+            'final_controlling': termination.get('final_controlling_price') if termination else get_controlling_swing_for_trend(formation).get('price', 0),
             'controlling_updates': termination.get('controlling_updates', 0) if termination else 0
         }
         
@@ -607,6 +944,14 @@ def create_proper_explorer_html(df, trend_data):
     
     <div class="control-panel">
         <div class="trend-selector">
+            <label>Filter by Trend Type:</label>
+            <select id="typeFilter" onchange="filterTrendsByType()">
+                <option value="ALL">All Trends</option>
+                <option value="UPTREND">Uptrends Only</option>
+                <option value="DOWNTREND">Downtrends Only</option>
+                <option value="SIDEWAYS">Sideways Only</option>
+            </select>
+            
             <label>Select Trend:</label>
             <select id="trendSelect" onchange="loadTrend()">
                 {chr(10).join([f'<option value="{i}">{trend["type"]} #{trend["id"]} ({trend["formation_date"]}) - {trend["status"]}</option>' for i, trend in enumerate(trend_data)])}
@@ -634,8 +979,47 @@ def create_proper_explorer_html(df, trend_data):
     <script>
         // Data from Python
         const dfData = {json.dumps(df_json)};
-        const trendData = {json.dumps(trend_data, default=str)};
+        const allTrendData = {json.dumps(trend_data, default=str)};
+        let filteredTrendData = [...allTrendData];
         let currentTrendIndex = 0;
+        
+        function filterTrendsByType() {{
+            const typeFilter = document.getElementById('typeFilter');
+            const selectedType = typeFilter.value;
+            
+            if (selectedType === 'ALL') {{
+                filteredTrendData = [...allTrendData];
+            }} else {{
+                filteredTrendData = allTrendData.filter(trend => trend.type === selectedType);
+            }}
+            
+            // Update the trend selector dropdown
+            updateTrendSelector();
+            
+            // Reset to first trend in filtered list
+            currentTrendIndex = 0;
+            if (filteredTrendData.length > 0) {{
+                displayTrend(currentTrendIndex);
+            }}
+        }}
+        
+        function updateTrendSelector() {{
+            const trendSelect = document.getElementById('trendSelect');
+            trendSelect.innerHTML = '';
+            
+            filteredTrendData.forEach((trend, index) => {{
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${{trend.type}} #${{trend.id}} (${{trend.formation_date}}) - ${{trend.status}}`;
+                trendSelect.appendChild(option);
+            }});
+            
+            // Update counter
+            const counter = document.getElementById('trendCounter');
+            counter.textContent = filteredTrendData.length > 0 ? 
+                `Trend 1 of ${{filteredTrendData.length}}` : 
+                'No trends found';
+        }}
         
         function loadTrend() {{
             const select = document.getElementById('trendSelect');
@@ -644,8 +1028,15 @@ def create_proper_explorer_html(df, trend_data):
         }}
         
         function displayTrend(index) {{
-            const trend = trendData[index];
+            if (index >= filteredTrendData.length) return;
+            const trend = filteredTrendData[index];
+            
+            console.log('displayTrend called for:', trend.type, 'trend #' + trend.id);
+            console.log('Window:', trend.window_start, '-', trend.window_end);
+            console.log('Formation:', trend.formation);
+            
             const windowData = dfData.slice(trend.window_start, trend.window_end + 1);
+            console.log('WindowData length:', windowData.length);
             
             // Update trend info panel
             updateTrendInfo(trend);
@@ -740,25 +1131,131 @@ def create_proper_explorer_html(df, trend_data):
                 }});
             }}
             
-            // Add controlling swing horizontal line
-            const controlPrice = trend.controlling_swing.price;
-            const startDate = windowData[0].datetime;
-            const endDate = windowData[windowData.length - 1].datetime;
             
-            traces.push({{
-                type: 'scatter',
-                mode: 'lines',
-                x: [startDate, endDate],
-                y: [controlPrice, controlPrice],
-                line: {{
-                    color: trend.type === 'UPTREND' ? '#00ff00' : '#ff0000',
-                    width: 2,
-                    dash: trend.status === 'Terminated' ? 'solid' : 'dash'
-                }},
-                name: 'Control Level',
-                showlegend: true,
-                hovertemplate: `<b>Controlling Level</b><br>Price: $${{controlPrice.toFixed(2)}}<br>Status: ${{trend.status}}<extra></extra>`
-            }});
+            // Add controlling swing horizontal line
+            if (trend.controlling_swing && trend.controlling_swing.price !== undefined) {{
+                const controlPrice = trend.controlling_swing.price;
+                
+                // For sideways trends, use actual trend start/end dates
+                let startDate, endDate;
+                if (trend.type === 'SIDEWAYS') {{
+                    const startIdx = Math.max(0, trend.formation.start_swing.idx - trend.window_start);
+                    const endIdx = Math.min(windowData.length - 1, trend.formation.end_swing.idx - trend.window_start);
+                    startDate = windowData[startIdx].datetime;
+                    endDate = windowData[endIdx].datetime;
+                }} else {{
+                    // For directional trends, use full window
+                    startDate = windowData[0].datetime;
+                    endDate = windowData[windowData.length - 1].datetime;
+                }}
+                
+                let lineColor = '#ff0000';  // Default red
+                if (trend.type === 'UPTREND') lineColor = '#00ff00';  // Green for uptrends
+                else if (trend.type === 'SIDEWAYS') lineColor = '#ffaa00';  // Orange for sideways
+                
+                traces.push({{
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: [startDate, endDate],
+                    y: [controlPrice, controlPrice],
+                    line: {{
+                        color: lineColor,
+                        width: 2,
+                        dash: trend.status === 'Terminated' ? 'solid' : 'dash'
+                    }},
+                    name: trend.type === 'SIDEWAYS' ? 'Range Center' : 'Control Level',
+                    showlegend: true,
+                    hovertemplate: `<b>${{trend.type === 'SIDEWAYS' ? 'Range Center' : 'Controlling Level'}}</b><br>Price: $${{controlPrice.toFixed(2)}}<br>Status: ${{trend.status}}<extra></extra>`
+                }});
+            }}
+            
+            // Calculate dynamic Y-axis range based on trend type
+            let minPrice = Infinity;
+            let maxPrice = -Infinity;
+            
+            try {{
+                if (trend.type === 'SIDEWAYS') {{
+                    console.log('Calculating range for SIDEWAYS trend');
+                    console.log('Formation data:', trend.formation);
+                    
+                    // For sideways trends, use ALL candles in the trend duration PLUS violation candle
+                    if (trend.formation && trend.formation.start_swing && trend.formation.end_swing) {{
+                        const sidewaysStartIdx = Math.max(0, trend.formation.start_swing.idx - trend.window_start);
+                        let sidewaysEndIdx = Math.min(windowData.length - 1, trend.formation.end_swing.idx - trend.window_start);
+                        
+                        // IMPORTANT: Include violating candle if it exists
+                        if (trend.termination && trend.termination_idx) {{
+                            const violationIdx = Math.min(windowData.length - 1, trend.termination_idx - trend.window_start);
+                            sidewaysEndIdx = Math.max(sidewaysEndIdx, violationIdx);
+                            console.log('Including violation candle at idx:', trend.termination_idx);
+                        }}
+                        
+                        for (let i = sidewaysStartIdx; i <= sidewaysEndIdx; i++) {{
+                            const candle = windowData[i];
+                            if (candle) {{
+                                minPrice = Math.min(minPrice, candle.low);
+                                maxPrice = Math.max(maxPrice, candle.high);
+                            }}
+                        }}
+                        
+                        console.log('Range from candle', sidewaysStartIdx, 'to', sidewaysEndIdx, ':', minPrice, '-', maxPrice);
+                    }} else {{
+                        // Fallback: use window data if formation data is missing
+                        minPrice = Math.min(...windowData.map(d => d.low));
+                        maxPrice = Math.max(...windowData.map(d => d.high));
+                        console.log('Using window data fallback:', minPrice, '-', maxPrice);
+                    }}
+                }} else {{
+                    // For directional trends, find min/max from ALL candles in the trend duration
+                    if (trend.origin_idx !== undefined && trend.termination && trend.termination_idx) {{
+                        // Use actual trend duration: from origin to termination (INCLUDING violating candle)
+                        const trendStartIdx = Math.max(0, trend.origin_idx - trend.window_start);
+                        const trendEndIdx = Math.min(windowData.length - 1, trend.termination_idx - trend.window_start);
+                        
+                        console.log('Directional trend range from candle', trendStartIdx, 'to', trendEndIdx, '(including violation)');
+                        
+                        for (let i = trendStartIdx; i <= trendEndIdx; i++) {{
+                            const candle = windowData[i];
+                            if (candle) {{
+                                minPrice = Math.min(minPrice, candle.low);
+                                maxPrice = Math.max(maxPrice, candle.high);
+                            }}
+                        }}
+                    }} else {{
+                        // Fallback: use all swing points if trend duration can't be determined
+                        trend.swing_points.forEach(swing => {{
+                            minPrice = Math.min(minPrice, swing.price);
+                            maxPrice = Math.max(maxPrice, swing.price);
+                        }});
+                        
+                        // Also check termination price if exists
+                        if (trend.termination) {{
+                            minPrice = Math.min(minPrice, trend.termination.violation_price);
+                            maxPrice = Math.max(maxPrice, trend.termination.violation_price);
+                        }}
+                    }}
+                }}
+            }} catch (rangeError) {{
+                console.error('Error calculating price range:', rangeError);
+                // Ultimate fallback
+                minPrice = Math.min(...windowData.map(d => d.low));
+                maxPrice = Math.max(...windowData.map(d => d.high));
+            }}
+            
+            console.log('Final price range:', minPrice, '-', maxPrice);
+            
+            // Add 10% padding above and below
+            const range = maxPrice - minPrice;
+            const padding = Math.max(range * 0.1, 0.5); // At least $0.50 padding
+            let yMin = minPrice - padding;
+            let yMax = maxPrice + padding;
+            
+            // Ensure valid range (fallback if something went wrong)
+            if (!isFinite(yMin) || !isFinite(yMax) || yMin >= yMax) {{
+                const allPrices = windowData.flatMap(d => [d.open, d.high, d.low, d.close]);
+                yMin = Math.min(...allPrices) * 0.95;
+                yMax = Math.max(...allPrices) * 1.05;
+            }}
             
             const layout = {{
                 title: {{
@@ -773,7 +1270,8 @@ def create_proper_explorer_html(df, trend_data):
                 }},
                 yaxis: {{
                     title: 'Price ($)',
-                    gridcolor: 'rgba(100,100,100,0.2)'
+                    gridcolor: 'rgba(100,100,100,0.2)',
+                    range: [yMin, yMax]
                 }},
                 template: 'plotly_dark',
                 height: 600,
@@ -788,12 +1286,24 @@ def create_proper_explorer_html(df, trend_data):
                 paper_bgcolor: '#1e1e1e'
             }};
             
-            Plotly.newPlot('chart', traces, layout);
+            console.log('About to render chart for', trend.type, 'trend');
+            console.log('Traces count:', traces.length);
+            console.log('Y-axis range:', layout.yaxis.range);
+            
+            try {{
+                Plotly.newPlot('chart', traces, layout);
+                console.log('Chart rendered successfully');
+            }} catch (error) {{
+                console.error('Error rendering chart:', error);
+                console.error('Trend data:', trend);
+                console.error('Layout:', layout);
+                console.error('Traces:', traces);
+            }}
             
             // Update navigation
             document.getElementById('prevBtn').disabled = index === 0;
-            document.getElementById('nextBtn').disabled = index === trendData.length - 1;
-            document.getElementById('trendCounter').textContent = `Trend ${{index + 1}} of ${{trendData.length}}`;
+            document.getElementById('nextBtn').disabled = index === filteredTrendData.length - 1;
+            document.getElementById('trendCounter').textContent = `Trend ${{index + 1}} of ${{filteredTrendData.length}}`;
             document.getElementById('trendSelect').value = index;
         }}
         
@@ -811,8 +1321,8 @@ def create_proper_explorer_html(df, trend_data):
                 <div class="info-item"><strong>Formation:</strong> ${{trend.formation_date}}</div>
                 <div class="info-item"><strong>Duration:</strong> ${{trend.duration}} candles</div>
                 <div class="info-item"><strong>Status:</strong> ${{trend.status}}</div>
-                <div class="info-item"><strong>Original Control:</strong> $${{trend.original_controlling.toFixed(2)}}</div>
-                <div class="info-item"><strong>Final Control:</strong> $${{trend.final_controlling.toFixed(2)}} (${{trend.controlling_updates}} updates)</div>
+                <div class="info-item"><strong>Original Control:</strong> $${{(trend.original_controlling || 0).toFixed(2)}}</div>
+                <div class="info-item"><strong>Final Control:</strong> $${{(trend.final_controlling || 0).toFixed(2)}} (${{trend.controlling_updates || 0}} updates)</div>
             `;
             
             // Add swing point details
@@ -820,12 +1330,12 @@ def create_proper_explorer_html(df, trend_data):
             trend.swing_points.forEach(sp => {{
                 detailsHTML += `${{sp.type}}: $${{sp.price.toFixed(2)}} (${{sp.role}})<br>`;
             }});
-            detailsHTML += `Breakout: Candle ${{trend.breakout_idx}}</div>`;
+            detailsHTML += `${{trend.type === 'SIDEWAYS' ? 'Origin' : 'Breakout'}}: Candle ${{trend.origin_idx || trend.breakout_idx}}</div>`;
             
             if (trend.termination) {{
                 detailsHTML += `
                     <div class="info-item"><strong>Termination:</strong> ${{trend.termination_date}}</div>
-                    <div class="info-item"><strong>Violation:</strong> $${{trend.violation_price.toFixed(2)}} ($${{trend.violation_size.toFixed(2)}} break)</div>
+                    <div class="info-item"><strong>Violation:</strong> $${{(trend.violation_price || 0).toFixed(2)}} ($${{(trend.violation_size || 0).toFixed(2)}} break)</div>
                 `;
             }}
             
@@ -836,19 +1346,32 @@ def create_proper_explorer_html(df, trend_data):
             if (currentTrendIndex > 0) {{
                 currentTrendIndex--;
                 displayTrend(currentTrendIndex);
+                updateNavigationButtons();
             }}
         }}
         
         function nextTrend() {{
-            if (currentTrendIndex < trendData.length - 1) {{
+            if (currentTrendIndex < filteredTrendData.length - 1) {{
                 currentTrendIndex++;
                 displayTrend(currentTrendIndex);
+                updateNavigationButtons();
             }}
         }}
         
         function jumpToRandom() {{
-            currentTrendIndex = Math.floor(Math.random() * trendData.length);
-            displayTrend(currentTrendIndex);
+            if (filteredTrendData.length > 0) {{
+                currentTrendIndex = Math.floor(Math.random() * filteredTrendData.length);
+                displayTrend(currentTrendIndex);
+                updateNavigationButtons();
+            }}
+        }}
+        
+        function updateNavigationButtons() {{
+            // Update navigation buttons
+            document.getElementById('prevBtn').disabled = currentTrendIndex === 0;
+            document.getElementById('nextBtn').disabled = currentTrendIndex === filteredTrendData.length - 1;
+            document.getElementById('trendCounter').textContent = `Trend ${{currentTrendIndex + 1}} of ${{filteredTrendData.length}}`;
+            document.getElementById('trendSelect').value = currentTrendIndex;
         }}
         
         // Initialize with first trend
@@ -891,6 +1414,13 @@ def main():
     # Find ALL formations (not sequential, just all detected)
     formations = find_all_proper_trends(df, swing_points)
     terminations = find_all_proper_terminations(df, formations, swing_points)
+    
+    # Apply improved filtering AFTER we have termination data
+    original_count = len(formations)
+    formations = filter_overlapping_sideways_trends_with_terminations(formations, terminations)
+    filtered_count = original_count - len(formations)
+    if filtered_count > 0:
+        print(f"🔄 Re-filtered {filtered_count} sideways trends using termination data")
     
     print(f"✅ Found {len(formations)} trend formations")
     print(f"✅ Found {len(terminations)} trend terminations")

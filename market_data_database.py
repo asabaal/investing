@@ -621,7 +621,8 @@ class MarketDataDatabase:
             'symbol': symbol,
             'interval': interval,
             'apikey': self.api_key,
-            'outputsize': 'full'
+            'outputsize': 'full',
+            'entitlement': 'delayed'
         }
         
         logger.info(f"🌐 API call: {symbol} {interval} intraday data")

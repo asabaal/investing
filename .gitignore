@@ -59,3 +59,66 @@ __pycache__/
 Thumbs.db
 market_data.db
 *.db
+
+# API call logs
+./logs/*.json
+
+# Development/temporary files from trend detection work
+checkpoint_*.txt
+check_*.py
+debug_*.py
+test_*.py
+collect_*.py
+force_*.py
+get_*.py
+animated_*.py
+clear_*.py
+simple_*.py
+daily_*.py
+find_*.py
+formation_review_*.py
+robinhood_*.py
+sequential_*.py
+volume_*.py
+
+# Development HTML outputs
+uso_*_chart.html
+uso_*_qa_chart.html
+uso_*_explorer*.html
+uso_*_analysis*.html
+uso_*_formation*.html
+uso_*_supply_demand*.html
+uso_*_swing_points*.html
+uso_*_trading*.html
+uso_*_unified*.html
+uso_*_precision*.html
+uso_*_data_qa*.html
+uso_*_clean_zones*.html
+uso_*_hourly*.html
+uso_*_last*.html
+uso_*_100_candles.html
+*_analytics.html
+*_correlations.html
+*_distributions.html
+formation_review_chart_*.html
+*_trend_examples.html
+*_swing_formations.html
+animated_*.html
+clear_*.html
+daily_*.html
+directional_*.html
+downtrend_*.html
+sequential_*.html
+swing_point_examples.html
+trend_browser.html
+uptrend_*.html
+
+# Development notebooks
+*.ipynb
+database_growth_demo.ipynb
+ford_visual_exploration.ipynb
+interactive_candlestick_explorer*.ipynb
+
+# Development markdown files
+local_database_migration_plan.md
+formation_rules_definition.md
