@@ -47,6 +47,8 @@ __pycache__/
 *.pyo
 *.egg-info/
 .pytest_cache/
+# Ignore pycache modifications but keep files
+__pycache__/*.pyc
 
 # IDE
 .vscode/

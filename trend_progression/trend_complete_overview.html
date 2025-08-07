@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Complete USO Trend Analysis: Formation + Termination</title>
+    <style>
+        body { 
+            background-color: #1e1e1e; 
+            color: white; 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+        }
+        h1 { 
+            text-align: center; 
+            color: #00ff88; 
+            border-bottom: 2px solid #00ff88;
+            padding-bottom: 10px;
+        }
+        h2 { 
+            color: #ffaa00; 
+            border-left: 4px solid #ffaa00;
+            padding-left: 15px;
+        }
+        .section { 
+            margin: 40px 0; 
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+        .nav-buttons { 
+            text-align: center; 
+            margin: 30px 0; 
+            padding: 20px;
+            background: rgba(0,0,0,0.3); 
+            border-radius: 10px;
+        }
+        .formation-button { 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin: 10px; 
+            font-weight: bold;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .formation-button:hover { background: #218838; }
+        
+        .termination-button { 
+            background: #dc3545; 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin: 10px; 
+            font-weight: bold;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .termination-button:hover { background: #c82333; }
+        
+        .stage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stage-card {
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            text-align: center;
+        }
+        .stage-card h3 { margin: 10px 0; font-size: 14px; }
+        .stage-card button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .formation-card button { background: #28a745; color: white; }
+        .termination-card button { background: #dc3545; color: white; }
+        
+        .summary {
+            background: rgba(0,100,0,0.1);
+            border: 2px solid #00ff88;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
+        }
+        .key-points {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        .formation-points {
+            background: rgba(0,128,0,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #28a745;
+        }
+        .termination-points {
+            background: rgba(128,0,0,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Complete USO Trend Analysis: Formation + Termination</h1>
+    
+    <div class="summary">
+        <h2>📊 Complete Trend Lifecycle</h2>
+        <p><strong>This visualization demonstrates the complete lifecycle of a trend:</strong></p>
+        <ul>
+            <li><strong>Formation:</strong> How trends form via 3 swing points + breakout origin</li>
+            <li><strong>Termination:</strong> How trends end via violation of controlling swing</li>
+            <li><strong>Real Data:</strong> Uses actual USO daily data with precise timing</li>
+            <li><strong>Educational:</strong> Shows exact candles where formation/termination occur</li>
+        </ul>
+    </div>
+
+    <div class="nav-buttons">
+        <h2>🚀 Choose Your Analysis</h2>
+        <button class="formation-button" onclick="location.href='progression.html'">
+            📈 TREND FORMATION<br>
+            <small>6 Stages: Genesis → Breakout Origin</small>
+        </button>
+        <button class="termination-button" onclick="location.href='termination_overview.html'">
+            🛑 TREND TERMINATION<br>
+            <small>5 Stages: Active → Violation</small>
+        </button>
+    </div>
+
+    <div class="key-points">
+        <div class="formation-points">
+            <h2>📈 Formation Key Points</h2>
+            <ul>
+                <li><strong>SL1:</strong> Genesis point ($61.75)</li>
+                <li><strong>SH1:</strong> First high ($65.41)</li>
+                <li><strong>SL2:</strong> Higher low ($63.26)</li>
+                <li><strong>Breakout:</strong> Origin at $65.74</li>
+                <li><strong>Rule:</strong> 3 swings + breakout = trend</li>
+                <li><strong>Control:</strong> SL1 protects trend</li>
+            </ul>
+            
+            <div class="stage-grid">
+                <div class="stage-card formation-card">
+                    <h3>Stage 1: Genesis</h3>
+                    <button onclick="location.href='stage1_genesis.html'">View</button>
+                </div>
+                <div class="stage-card formation-card">
+                    <h3>Stage 2: Rally</h3>
+                    <button onclick="location.href='stage2_first_rally.html'">View</button>
+                </div>
+                <div class="stage-card formation-card">
+                    <h3>Stage 3: Setup</h3>
+                    <button onclick="location.href='stage3_setup_complete.html'">View</button>
+                </div>
+                <div class="stage-card formation-card">
+                    <h3>Stage 4: Approach</h3>
+                    <button onclick="location.href='stage4_approaching_breakout.html'">View</button>
+                </div>
+                <div class="stage-card formation-card">
+                    <h3>Stage 5: Origin</h3>
+                    <button onclick="location.href='stage5_breakout_confirmed.html'">View</button>
+                </div>
+                <div class="stage-card formation-card">
+                    <h3>Stage 6: Active</h3>
+                    <button onclick="location.href='stage6_trend_active.html'">View</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="termination-points">
+            <h2>🛑 Termination Key Points</h2>
+            <ul>
+                <li><strong>Control:</strong> $76.25 protects uptrend</li>
+                <li><strong>Peak:</strong> $83.57 before crash</li>
+                <li><strong>Violation:</strong> $71.97 breaks control</li>
+                <li><strong>Damage:</strong> $4.28 violation size</li>
+                <li><strong>Rule:</strong> Control break = termination</li>
+                <li><strong>Result:</strong> Trend no longer active</li>
+            </ul>
+            
+            <div class="stage-grid">
+                <div class="stage-card termination-card">
+                    <h3>Stage 1: Active</h3>
+                    <button onclick="location.href='term_stage1_active.html'">View</button>
+                </div>
+                <div class="stage-card termination-card">
+                    <h3>Stage 2: Peak</h3>
+                    <button onclick="location.href='term_stage2_peak.html'">View</button>
+                </div>
+                <div class="stage-card termination-card">
+                    <h3>Stage 3: Approach</h3>
+                    <button onclick="location.href='term_stage3_approaching.html'">View</button>
+                </div>
+                <div class="stage-card termination-card">
+                    <h3>Stage 4: Violation</h3>
+                    <button onclick="location.href='term_stage4_violation.html'">View</button>
+                </div>
+                <div class="stage-card termination-card">
+                    <h3>Stage 5: Terminated</h3>
+                    <button onclick="location.href='term_stage5_terminated.html'">View</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🔧 Technical Corrections Made</h2>
+        <div style="background: rgba(0,0,100,0.1); padding: 15px; border-radius: 8px; border-left: 4px solid #007bff;">
+            <h3>✅ Breakout Origin Fix</h3>
+            <p><strong>OLD (Wrong):</strong> Marked formation at candle 42 ($69.88) - end of breakout</p>
+            <p><strong>NEW (Correct):</strong> Marked formation at candle 39 ($65.74) - origin of breakout</p>
+            <p><strong>Impact:</strong> 3 candles more accurate, $4.14 price difference</p>
+        </div>
+        
+        <div style="background: rgba(100,0,0,0.1); padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545; margin-top: 15px;">
+            <h3>✅ Termination Logic</h3>
+            <p><strong>Formation:</strong> Trends form at breakout ORIGIN (first break above resistance)</p>
+            <p><strong>Termination:</strong> Trends end at VIOLATION (first break below support)</p>
+            <p><strong>Control:</strong> Same swing that formed trend also protects it until violated</p>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 50px; color: #888; border-top: 1px solid #333; padding-top: 30px;">
+        <p><strong>Complete Trend Analysis:</strong> Formation + Termination using real USO data</p>
+        <p><strong>Educational Value:</strong> Shows exact candles and prices where trends begin and end</p>
+        <p><strong>Technical Accuracy:</strong> Corrected breakout origin detection for proper timing</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,91 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>USO Trend Termination Progression</title>
+        <style>
+            body { background-color: #1e1e1e; color: white; font-family: Arial, sans-serif; margin: 20px; }
+            h1 { text-align: center; color: #ff6666; }
+            h2 { color: #ffaa00; }
+            .stage { margin: 40px 0; text-align: center; position: relative; }
+            .stage iframe { max-width: 100%; height: auto; border: 2px solid #333; }
+            .description { margin: 20px 0; font-size: 16px; }
+            .stage-nav { margin: 10px 0; }
+            .stage-button { 
+                background: #dc3545; color: white; border: none; padding: 10px 20px; 
+                border-radius: 5px; cursor: pointer; margin: 0 5px; font-weight: bold;
+                transition: background 0.3s;
+            }
+            .stage-button:hover { background: #c82333; }
+            .nav-bar {
+                text-align: center; margin: 30px 0; padding: 20px;
+                background: rgba(0,0,0,0.3); border-radius: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>🛑 USO Trend Termination: Step-by-Step Progression</h1>
+        
+        <div class="nav-bar">
+            <h3>Quick Navigation:</h3>
+            <button class="stage-button" onclick="location.href='term_stage1_active.html'">Stage 1: Active</button>
+            <button class="stage-button" onclick="location.href='term_stage2_peak.html'">Stage 2: Peak</button>
+            <button class="stage-button" onclick="location.href='term_stage3_approaching.html'">Stage 3: Approaching</button>
+            <button class="stage-button" onclick="location.href='term_stage4_violation.html'">Stage 4: Violation</button>
+            <button class="stage-button" onclick="location.href='term_stage5_terminated.html'">Stage 5: Terminated</button>
+            <br><br>
+            <button onclick="location.href='progression.html'" style="background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-weight: bold;">📈 View Formation</button>
+        </div>
+        
+        <div class="stage">
+            <h2>Stage 1: Active Uptrend</h2>
+            <iframe src="term_stage1_active.html" width="100%" height="600" frameborder="0"></iframe>
+            <div class="description">Uptrend protected by controlling swing at $76.25</div>
+            <div class="stage-nav">
+                <button class="stage-button" onclick="location.href='term_stage1_active.html'">📊 View Full Stage 1</button>
+            </div>
+        </div>
+        
+        <div class="stage">
+            <h2>Stage 2: Peak Before Crash</h2>
+            <iframe src="term_stage2_peak.html" width="100%" height="600" frameborder="0"></iframe>
+            <div class="description">Peak at $83.57 - last high before the crash</div>
+            <div class="stage-nav">
+                <button class="stage-button" onclick="location.href='term_stage2_peak.html'">📊 View Full Stage 2</button>
+            </div>
+        </div>
+        
+        <div class="stage">
+            <h2>Stage 3: Approaching Violation</h2>
+            <iframe src="term_stage3_approaching.html" width="100%" height="600" frameborder="0"></iframe>
+            <div class="description">Price falling toward the critical $76.25 level</div>
+            <div class="stage-nav">
+                <button class="stage-button" onclick="location.href='term_stage3_approaching.html'">📊 View Full Stage 3</button>
+            </div>
+        </div>
+        
+        <div class="stage">
+            <h2>Stage 4: VIOLATION!</h2>
+            <iframe src="term_stage4_violation.html" width="100%" height="600" frameborder="0"></iframe>
+            <div class="description">🛑 $71.97 breaks below $76.25 - UPTREND TERMINATED!</div>
+            <div class="stage-nav">
+                <button class="stage-button" onclick="location.href='term_stage4_violation.html'">📊 View Full Stage 4</button>
+            </div>
+        </div>
+        
+        <div class="stage">
+            <h2>Stage 5: Terminated</h2>
+            <iframe src="term_stage5_terminated.html" width="100%" height="600" frameborder="0"></iframe>
+            <div class="description">❌ Uptrend no longer active - trend terminated</div>
+            <div class="stage-nav">
+                <button class="stage-button" onclick="location.href='term_stage5_terminated.html'">📊 View Full Stage 5</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 50px; color: #888;">
+            <p><strong>Key Concept:</strong> Trends terminate when controlling swing is violated</p>
+            <p><strong>Termination:</strong> Peak → Crash → Violation of controlling level</p>
+        </div>
+    </body>
+    </html>
+    
