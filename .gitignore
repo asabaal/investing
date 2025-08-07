@@ -124,3 +124,8 @@ interactive_candlestick_explorer*.ipynb
 # Development markdown files
 local_database_migration_plan.md
 formation_rules_definition.md
+
+# Formation examples HTML outputs
+*_formation_clean.html
+*_formation_*.html
+trend_formation_examples.html
