@@ -1393,6 +1393,7 @@ class BacktestReportGenerator:
         {self._generate_trade_setups_section(bidirectional_setup)}
         {self._generate_probability_metrics_section(long_entry_prob, short_entry_prob, any_entry_prob, both_entries_prob)}
         {self._generate_performance_analysis_section(best_long, best_short, total_ev, total_return)}
+        {self._generate_detailed_setup_analysis_section(long_analysis, short_analysis)}
         {self._generate_sensitivity_analysis_section(long_analysis, short_analysis)}
         {self._generate_strategy_assessment_section(bidirectional_setup, total_return, any_entry_prob, total_ev)}
         {self._generate_bidirectional_recommendations(bidirectional_setup, best_long, best_short, total_return)}
@@ -1656,6 +1657,107 @@ class BacktestReportGenerator:
                 </div>
                 {sensitivity_html}
             </div>
+        </div>
+        """
+
+    def _generate_detailed_setup_analysis_section(self, long_analysis, short_analysis) -> str:
+        """Generate detailed setup analysis table with timing metrics"""
+        
+        table_rows = ""
+        all_windows = set(long_analysis.keys()) | set(short_analysis.keys())
+        
+        for window in sorted(all_windows, key=lambda x: int(x.replace('d', ''))):
+            long_data = long_analysis.get(window)
+            short_data = short_analysis.get(window)
+            
+            # Get metrics for long and short sides
+            long_return = long_data.return_rate_total if long_data else 0
+            short_return = short_data.return_rate_total if short_data else 0
+            combined_return = (long_return or 0) + (short_return or 0)
+            
+            # Entry probabilities
+            long_entry_prob = 0
+            short_entry_prob = 0
+            if long_data:
+                long_entry_prob = long_data.get_combined_entry_probability() or (long_data.prob_entry_long or 0)
+            if short_data:
+                short_entry_prob = short_data.get_combined_entry_probability() or (short_data.prob_entry_short or 0)
+            combined_entry_prob = long_entry_prob + short_entry_prob - (long_entry_prob * short_entry_prob)
+            
+            # Win probabilities
+            long_win = (long_data.prob_win_long or 0) if long_data else 0
+            short_win = (short_data.prob_win_short or 0) if short_data else 0
+            combined_win = (long_win + short_win) / 2 if (long_win > 0 or short_win > 0) else 0
+            
+            # Expected timing metrics (convert from days to readable format)
+            expected_entry_time = "N/A"
+            expected_duration = "N/A"
+            
+            if long_data and (long_data.expected_entry_time_long or long_data.expected_entry_time_short):
+                entry_times = [t for t in [long_data.expected_entry_time_long, long_data.expected_entry_time_short] if t is not None]
+                if entry_times:
+                    avg_entry_time = sum(entry_times) / len(entry_times)
+                    expected_entry_time = f"{avg_entry_time:.1f} days"
+                    
+            if long_data and (long_data.expected_trade_duration_long or long_data.expected_trade_duration_short):
+                durations = [d for d in [long_data.expected_trade_duration_long, long_data.expected_trade_duration_short] if d is not None]
+                if durations:
+                    avg_duration = sum(durations) / len(durations)
+                    expected_duration = f"{avg_duration:.1f} days"
+            
+            # Determine best direction
+            best_direction = "Long" if long_return > short_return else "Short" if short_return > 0 else "Neither"
+            
+            # Market regime
+            regime = long_data.market_params.regime if long_data else (short_data.market_params.regime if short_data else "Unknown")
+            regime_display = regime.title() if regime else "Unknown"
+            
+            # Attractive setup
+            attractive = combined_return > 0.05  # 5% threshold
+            attractive_badge = f'<span class="status-badge {"attractive" if attractive else "not-attractive"}">{"Attractive" if attractive else "Not Attractive"}</span>'
+            
+            # Color coding for return rates
+            return_class = "positive" if combined_return > 0 else "negative" if combined_return < 0 else "neutral"
+            
+            table_rows += f"""
+            <tr>
+                <td><strong>{window}</strong></td>
+                <td class="{return_class}"><strong>{combined_return:.4f}</strong></td>
+                <td>{combined_entry_prob:.1%}</td>
+                <td>{combined_win:.1%}</td>
+                <td>{expected_entry_time}</td>
+                <td>{expected_duration}</td>
+                <td><strong>{best_direction}</strong></td>
+                <td>{regime_display}</td>
+                <td>{attractive_badge}</td>
+            </tr>
+            """
+        
+        return f"""
+        <div class="section">
+            <h2>🤖 Detailed Setup Analysis</h2>
+            <p style="margin-bottom: 25px; color: {self.dark_theme['text_secondary']};">
+                Comprehensive analysis across different historical data windows showing timing metrics and model predictions.
+            </p>
+            
+            <table class="analysis-table">
+                <thead>
+                    <tr>
+                        <th>Historical Window</th>
+                        <th>Return Rate/Day</th>
+                        <th>Entry Probability</th>
+                        <th>Win Probability</th>
+                        <th>Expected Entry Time</th>
+                        <th>Expected Trade Duration</th>
+                        <th>Best Direction</th>
+                        <th>Market Regime</th>
+                        <th>Setup Attractiveness</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {table_rows}
+                </tbody>
+            </table>
         </div>
         """
     
