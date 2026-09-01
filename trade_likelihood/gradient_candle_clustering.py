@@ -28,7 +28,6 @@ class GradientState:
     """Represents coordinate-invariant gradient state of candle evolution"""
     body_ratio_gradient: float      # Δ body_ratio
     upper_wick_gradient: float      # Δ upper_wick_ratio  
-    lower_wick_gradient: float      # Δ lower_wick_ratio
     log_range_gradient: float       # Δ log(range)
     log_price_gradient: float       # Δ log(price) = returns
     
@@ -37,7 +36,6 @@ class GradientState:
         return np.array([
             self.body_ratio_gradient,
             self.upper_wick_gradient,
-            self.lower_wick_gradient,
             self.log_range_gradient,
             self.log_price_gradient
         ])
@@ -124,7 +122,6 @@ class GradientCandleAnalyzer:
             gradient_state = GradientState(
                 body_ratio_gradient=body_gradient,
                 upper_wick_gradient=upper_gradient,
-                lower_wick_gradient=lower_gradient,
                 log_range_gradient=log_range_gradient,
                 log_price_gradient=log_price_gradient
             )
@@ -264,10 +261,12 @@ class GradientCandleAnalyzer:
         Interpret what a gradient cluster represents in market terms
         
         Args:
-            centroid: [body_gradient, upper_wick_gradient, lower_wick_gradient, 
+            centroid: [body_gradient, upper_wick_gradient, 
                       log_range_gradient, log_price_gradient]
         """
-        body_grad, upper_grad, lower_grad, range_grad, price_grad = centroid
+        body_grad, upper_grad, range_grad, price_grad = centroid
+        # Lower wick gradient can be derived: -(body_grad + upper_grad)
+        lower_grad = -(body_grad + upper_grad)
         
         # Strong directional moves
         if abs(body_grad) > 0.3:

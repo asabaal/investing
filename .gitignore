@@ -129,3 +129,11 @@ formation_rules_definition.md
 *_formation_clean.html
 *_formation_*.html
 trend_formation_examples.html
+
+# Repository cleanup snapshot — 2026-09-01
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.claude/settings.local.json
+# Legacy generated interactive analysis reports
+*.html

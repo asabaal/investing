@@ -1,0 +1,4 @@
+paper order executed: BUY MSFT
+
+Strategy: always_in:test
+Qty: 50.31 @ ~$99.39

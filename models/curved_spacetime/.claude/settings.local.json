@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(timeout:*)",
+      "Bash(cp:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(sqlite3:*)"
+    ],
+    "deny": []
+  }
+}

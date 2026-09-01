@@ -10,7 +10,7 @@ Same interface as trend visualizer but for supply/demand formations:
 
 import plotly.graph_objects as go
 import plotly.io as pio
-from formation_detector import FormationDetector
+from single_pass_formation_detector import SinglePassFormationDetector
 from uso_supply_demand_visualizer import SupplyDemandVisualizer
 import json
 from datetime import datetime, timedelta
@@ -40,8 +40,8 @@ def create_intuitive_formation_visualizer():
     
     print(f"📊 Dataset: {len(df)} candles")
     
-    # Find all formations
-    detector = FormationDetector(decay_factor=0.7, min_leg_threshold=1.5)
+    # Find all formations using single-pass algorithm
+    detector = SinglePassFormationDetector(decay_factor=0.7, min_leg_threshold=1.5)
     formations = detector.detect_formations(df)
     
     # Filter to valid formations only
@@ -69,8 +69,8 @@ def create_intuitive_formation_visualizer():
             'zone_type': formation['zone_type'],
             'start_idx': formation['start_idx'],
             'end_idx': formation['end_idx'],
-            'leg_in_idx': formation['leg_in']['index'],
-            'leg_out_idx': formation['leg_out']['index'],
+            'leg_in_idx': formation['leg_in']['start_idx'],
+            'leg_out_idx': formation['leg_out']['start_idx'],
             'base_candles': formation['base']['base_candles'],
             'base_range': formation['base']['base_range']['range'],
             'proximal_line': formation['base']['proximal_line'],
@@ -311,15 +311,23 @@ def create_html_interface(df_data, formation_data):
             <div class="formation-legend">
                 <div class="legend-item">
                     <div class="legend-color" style="background: #00ff88;"></div>
-                    <span>RBR/DBR (Demand Zones)</span>
+                    <span>RBR/DBR (Demand Zones - Base Only)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" style="background: #ff4444;"></div>
-                    <span>RBD/DBD (Supply Zones)</span>
+                    <span>RBD/DBD (Supply Zones - Base Only)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00ccff;"></div>
+                    <span>Leg In Movement</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" style="background: #ffaa00;"></div>
-                    <span>Base Segments</span>
+                    <span>Base Center Line</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6600;"></div>
+                    <span>Leg Out Movement</span>
                 </div>
             </div>
             <div id="chart" style="width: 100%; height: 600px;"></div>
@@ -465,27 +473,76 @@ def create_html_interface(df_data, formation_data):
             
             visibleFormations.forEach(formation => {{
                 const color = formationColors[formation.type];
-                const startCandle = dfData[Math.max(formation.start_idx, currentWindowStart)];
-                const endCandle = dfData[Math.min(formation.end_idx, windowEnd - 1)];
                 
-                // Formation zone rectangle
+                // Draw zone ONLY over base candles, not entire formation
+                const baseStart = Math.min(...formation.base_candles);
+                const baseEnd = Math.max(...formation.base_candles);
+                const baseStartCandle = dfData[Math.max(baseStart, currentWindowStart)];
+                const baseEndCandle = dfData[Math.min(baseEnd, windowEnd - 1)];
+                
+                // Formation zone rectangle (only over base segment)
+                const fillColor = color === '#00ff88' ? 'rgba(0, 255, 136, 0.2)' : 'rgba(255, 68, 68, 0.2)';
                 traces.push({{
                     type: 'scatter',
                     mode: 'lines',
-                    x: [startCandle.datetime, endCandle.datetime, endCandle.datetime, startCandle.datetime, startCandle.datetime],
+                    x: [baseStartCandle.datetime, baseEndCandle.datetime, baseEndCandle.datetime, baseStartCandle.datetime, baseStartCandle.datetime],
                     y: [formation.proximal_line, formation.proximal_line, formation.distal_line, formation.distal_line, formation.proximal_line],
-                    fill: 'tonexty',
-                    fillcolor: color.replace(')', ', 0.2)').replace('rgb', 'rgba'),
+                    fill: 'toself',
+                    fillcolor: fillColor,
                     line: {{ color: color, width: 2 }},
-                    name: `${{formation.type}} #${{formation.id}}`,
-                    hovertemplate: `<b>${{formation.type}} Formation #${{formation.id}}</b><br>` +
-                                 `Zone: ${{formation.zone_type}}<br>` +
+                    name: `${{formation.type}} Zone #${{formation.id}}`,
+                    hovertemplate: `<b>${{formation.type}} Zone #${{formation.id}}</b><br>` +
+                                 `Zone Type: ${{formation.zone_type}}<br>` +
                                  `Base Range: $${{formation.base_range.toFixed(4)}}<br>` +
                                  `Proximal: $${{formation.proximal_line.toFixed(2)}}<br>` +
                                  `Distal: $${{formation.distal_line.toFixed(2)}}<br>` +
-                                 `Leg In: $${{formation.leg_in_movement.toFixed(2)}}<br>` +
-                                 `Leg Out: $${{formation.leg_out_movement.toFixed(2)}}<extra></extra>`
+                                 `Covers base candles only<extra></extra>`
                 }});
+                
+                // Leg In line segment (from origin to end of leg in)
+                if (formation.leg_in_idx >= currentWindowStart && formation.leg_in_idx < windowEnd) {{
+                    const legInStart = dfData[formation.leg_in_idx];
+                    const legInEnd = dfData[Math.min(baseStart - 1, dfData.length - 1)];
+                    traces.push({{
+                        type: 'scatter',
+                        mode: 'lines',
+                        x: [legInStart.datetime, legInEnd.datetime],
+                        y: [legInStart.close, legInEnd.close],
+                        line: {{ color: '#00ccff', width: 4 }},
+                        name: `Leg In #${{formation.id}}`,
+                        showlegend: false,
+                        hovertemplate: `<b>Leg In</b><br>Formation #${{formation.id}}<br>Movement: $${{formation.leg_in_movement.toFixed(2)}}<extra></extra>`
+                    }});
+                }}
+                
+                // Horizontal line at center of base range
+                const baseCenterPrice = (formation.proximal_line + formation.distal_line) / 2;
+                traces.push({{
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: [baseStartCandle.datetime, baseEndCandle.datetime],
+                    y: [baseCenterPrice, baseCenterPrice],
+                    line: {{ color: '#ffaa00', width: 3, dash: 'dash' }},
+                    name: `Base Center #${{formation.id}}`,
+                    showlegend: false,
+                    hovertemplate: `<b>Base Center</b><br>Formation #${{formation.id}}<br>Price: $${{baseCenterPrice.toFixed(2)}}<extra></extra>`
+                }});
+                
+                // Leg Out line segment (from start to end of leg out)
+                if (formation.leg_out_idx >= currentWindowStart && formation.leg_out_idx < windowEnd) {{
+                    const legOutStart = dfData[formation.leg_out_idx];
+                    const legOutEnd = dfData[Math.min(formation.end_idx, windowEnd - 1)];
+                    traces.push({{
+                        type: 'scatter',
+                        mode: 'lines',
+                        x: [legOutStart.datetime, legOutEnd.datetime],
+                        y: [legOutStart.close, legOutEnd.close],
+                        line: {{ color: '#ff6600', width: 4 }},
+                        name: `Leg Out #${{formation.id}}`,
+                        showlegend: false,
+                        hovertemplate: `<b>Leg Out</b><br>Formation #${{formation.id}}<br>Movement: $${{formation.leg_out_movement.toFixed(2)}}<extra></extra>`
+                    }});
+                }}
                 
                 // Base segment highlight
                 formation.base_candles.forEach(baseIdx => {{

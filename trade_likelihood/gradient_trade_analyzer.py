@@ -79,9 +79,10 @@ class GradientTradeAnalyzer:
             # Extract gradient components
             body_grad = centroid[0]
             upper_grad = centroid[1]
-            lower_grad = centroid[2]
-            log_range_grad = centroid[3]
-            log_price_grad = centroid[4]
+            # Derive lower grad: -(body + upper) since they sum to 0
+            lower_grad = -(body_grad + upper_grad)
+            log_range_grad = centroid[2]
+            log_price_grad = centroid[3]
             
             # Apply coordinate system changes first
             prev_range = current['high'] - current['low']
@@ -249,7 +250,6 @@ class GradientTradeAnalyzer:
         current_gradient = GradientState(
             body_ratio_gradient=0.0,
             upper_wick_gradient=0.0,
-            lower_wick_gradient=0.0,
             log_range_gradient=0.0,
             log_price_gradient=0.0
         )

@@ -1,0 +1,49 @@
+
+🎯 ANALYZING TRADE: BE
+============================================================
+🎯 PROBABILITY ANALYSIS FOR BE TRADE
+Entry: $38.27
+Target: $40.50 (+5.83%)
+Stop: $37.75 (1.36% risk)
+============================================================
+📊 Analyzing 249 trading days...
+📈 Found 4 potential entry points near $38.27
+⚠️ Too few entry scenarios - expanding search range...
+📈 Expanded search: Found 7 potential entry points
+
+🎲 PROBABILITY RESULTS:
+Total scenarios analyzed: 7
+Profitable outcomes: 1 (14.3%)
+Loss outcomes: 5 (71.4%)
+Timeout (neither hit): 1 (14.3%)
+
+⏱️ Average days to profit: 2.0
+⏱️ Average days to loss: 1.0
+
+🧮 MINIMUM WIN RATE CALCULATION
+========================================
+Potential Gain: +5.83%
+Potential Loss: -1.36%
+Risk/Reward Ratio: 1:4.29
+
+🎯 MINIMUM WIN RATE FOR BREAKEVEN: 18.9%
+
+💰 WIN RATE SCENARIOS:
+For +5% annual profit: Need 88.5% win rate
+For +10% annual profit: Need 158.1% win rate
+For +15% annual profit: Need 227.7% win rate
+For +20% annual profit: Need 297.2% win rate
+For +25% annual profit: Need 366.8% win rate
+
+📊 PROFITABILITY ANALYSIS:
+========================================
+Historical Win Rate: 14.3%
+Required Win Rate: 18.9%
+❌ NOT PROFITABLE. Need +4.6 percentage points higher win rate
+
+⚠️ RISK MANAGEMENT INSIGHTS:
+Risk per trade: 1.36%
+Reward per trade: 5.83%
+Risk:Reward = 1:4.3
+Avg time to profit: 2.0 days
+Avg time to loss: 1.0 days

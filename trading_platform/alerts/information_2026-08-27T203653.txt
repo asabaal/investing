@@ -1,0 +1,4 @@
+paper order executed: BUY AAPL
+
+Strategy: always_in:test
+Qty: 67.72 @ ~$73.83

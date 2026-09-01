@@ -10,7 +10,7 @@ Shows each formation with all details:
 
 import plotly.graph_objects as go
 import plotly.io as pio
-from formation_detector import FormationDetector
+from two_pass_formation_detector import TwoPassFormationDetector
 from uso_supply_demand_visualizer import SupplyDemandVisualizer
 import json
 from datetime import datetime
@@ -40,8 +40,8 @@ def create_proper_formation_explorer():
     
     print(f"📊 Dataset: {len(df)} candles")
     
-    # Find all formations
-    detector = FormationDetector(decay_factor=0.7, min_leg_threshold=1.5)
+    # Find all formations using two-pass algorithm
+    detector = TwoPassFormationDetector(decay_factor=0.7, min_leg_threshold=1.5)
     formations = detector.detect_formations(df)
     
     # Filter to valid formations only
@@ -53,12 +53,96 @@ def create_proper_formation_explorer():
     print(f"   • {len([f for f in valid_formations if f['type'] == 'RBD'])} RBD (Rally-Base-Drop)")
     print(f"   • {len([f for f in valid_formations if f['type'] == 'DBR'])} DBR (Drop-Base-Rally)")
     
-    # Prepare data for JavaScript
+    # Save formation data to file with actual price/date details
+    formation_details = []
+    for i, formation in enumerate(valid_formations):
+        # Get actual dates and prices for each segment
+        leg_in_start_idx = formation['leg_in']['start_idx'] 
+        leg_in_end_idx = formation['leg_in']['end_idx']
+        base_start_idx = min(formation['base']['base_candles'])
+        base_end_idx = max(formation['base']['base_candles'])
+        leg_out_start_idx = formation['leg_out']['start_idx']
+        leg_out_end_idx = formation['leg_out']['end_idx']
+        
+        # Get extended candle data for detailed analysis (5 candles before formation start, 5 after formation end)
+        extended_start = max(0, formation['start_idx'] - 5)
+        extended_end = min(len(df) - 1, formation['end_idx'] + 5)
+        
+        candle_details = []
+        for idx in range(extended_start, extended_end + 1):
+            candle = df.iloc[idx]
+            candle_details.append({
+                'index': idx,
+                'date': candle['datetime'].strftime('%Y-%m-%d'),
+                'open': f"${candle['open']:.2f}",
+                'high': f"${candle['high']:.2f}", 
+                'low': f"${candle['low']:.2f}",
+                'close': f"${candle['close']:.2f}",
+                'open_raw': candle['open'],
+                'high_raw': candle['high'],
+                'low_raw': candle['low'],
+                'close_raw': candle['close']
+            })
+        
+        formation_detail = {
+            'id': i + 1,
+            'type': formation['type'],
+            'zone_type': formation['zone_type'],
+            'leg_in': {
+                'start_date': df.iloc[leg_in_start_idx]['datetime'].strftime('%Y-%m-%d'),
+                'end_date': df.iloc[leg_in_end_idx]['datetime'].strftime('%Y-%m-%d'),
+                'start_price': f"${df.iloc[leg_in_start_idx]['close']:.2f}",
+                'end_price': f"${df.iloc[leg_in_end_idx]['close']:.2f}",
+                'movement': f"${formation['validation_details']['leg_in_movement']:.2f}",
+                'candles': f"{leg_in_start_idx}-{leg_in_end_idx}"
+            },
+            'base': {
+                'start_date': df.iloc[base_start_idx]['datetime'].strftime('%Y-%m-%d'),
+                'end_date': df.iloc[base_end_idx]['datetime'].strftime('%Y-%m-%d'),
+                'high': f"${formation['base']['actual_high']:.2f}",
+                'low': f"${formation['base']['actual_low']:.2f}",
+                'weighted_high': f"${formation['base']['base_range']['high']:.2f}",
+                'weighted_low': f"${formation['base']['base_range']['low']:.2f}",
+                'range': f"${formation['base']['base_range']['range']:.2f}",
+                'visual_range': f"${formation['base']['actual_high'] - formation['base']['actual_low']:.2f}",
+                'candle_count': formation['base']['base_range']['candle_count'],
+                'candles': f"{base_start_idx}-{base_end_idx}",
+                'candle_list': formation['base']['base_candles']
+            },
+            'leg_out': {
+                'start_date': df.iloc[leg_out_start_idx]['datetime'].strftime('%Y-%m-%d'),
+                'end_date': df.iloc[leg_out_end_idx]['datetime'].strftime('%Y-%m-%d'), 
+                'start_price': f"${df.iloc[leg_out_start_idx]['close']:.2f}",
+                'end_price': f"${df.iloc[leg_out_end_idx]['close']:.2f}",
+                'movement': f"${formation['validation_details']['leg_out_movement']:.2f}",
+                'candles': f"{leg_out_start_idx}-{leg_out_end_idx}"
+            },
+            'validation': {
+                'valid': formation['valid'],
+                'leg_in_ratio': f"{formation['validation_details']['leg_in_movement'] / formation['validation_details']['base_range']:.2f}x",
+                'leg_out_ratio': f"{formation['validation_details']['leg_out_movement'] / formation['validation_details']['base_range']:.2f}x"
+            },
+            'candle_details': candle_details
+        }
+        formation_details.append(formation_detail)
+    
+    # Save to JSON file
+    import json
+    with open('formation_details.json', 'w') as f:
+        json.dump(formation_details, f, indent=2)
+    print(f"💾 Saved detailed formation data to: formation_details.json")
+    
+    # Prepare data for JavaScript - SAVE THE RAW CANDLE DATA!
     df_json = df.to_dict('records')
     for i, record in enumerate(df_json):
         record['index'] = i
         if 'datetime' in record:
             record['datetime'] = record['datetime'].isoformat() if hasattr(record['datetime'], 'isoformat') else str(record['datetime'])
+        # Ensure we have all the price data
+        record['open'] = float(record['open']) if 'open' in record else 0.0
+        record['high'] = float(record['high']) if 'high' in record else 0.0  
+        record['low'] = float(record['low']) if 'low' in record else 0.0
+        record['close'] = float(record['close']) if 'close' in record else 0.0
     
     # Prepare formation data for detailed analysis
     formation_data = []
@@ -73,8 +157,9 @@ def create_proper_formation_explorer():
             'start_idx': formation['start_idx'],
             'end_idx': formation['end_idx'],
             'leg_in': {
-                'index': formation['leg_in']['index'],
-                'sentiment': formation['leg_in']['sentiment'],
+                'start_idx': formation['leg_in']['start_idx'],
+                'end_idx': formation['leg_in']['end_idx'],
+                'sentiment': formation['leg_in']['direction'],
                 'movement': formation['validation_details']['leg_in_movement'],
                 'valid': formation['validation_details']['leg_in_valid']
             },
@@ -87,8 +172,9 @@ def create_proper_formation_explorer():
                 'distal_line': formation['base']['distal_line']
             },
             'leg_out': {
-                'index': formation['leg_out']['index'],
-                'sentiment': formation['leg_out']['sentiment'],
+                'start_idx': formation['leg_out']['start_idx'],
+                'end_idx': formation['leg_out']['end_idx'],
+                'sentiment': formation['leg_out']['direction'],
                 'movement': formation['validation_details']['leg_out_movement'],
                 'valid': formation['validation_details']['leg_out_valid']
             },
@@ -459,11 +545,15 @@ def create_formation_browser_html(df_data, formation_data):
         }}
         
         function updateChart(formation) {{
+            console.log('Debug: updateChart called with formation:', formation);
+            
             // Get data window around the formation (20 candles before, 10 after)
             const contextBefore = 20;
             const contextAfter = 10;
             const startIdx = Math.max(0, formation.start_idx - contextBefore);
             const endIdx = Math.min(dfData.length - 1, formation.end_idx + contextAfter);
+            
+            console.log('Debug: Chart window:', startIdx, 'to', endIdx);
             
             const windowData = dfData.slice(startIdx, endIdx + 1);
             
@@ -484,21 +574,78 @@ def create_formation_browser_html(df_data, formation_data):
             
             // Formation zone
             const zoneColor = formation.zone_type === 'SUPPLY' ? '#ff4444' : '#00ff88';
+            
+            // Formation boundaries for reference lines
             const startCandle = dfData[formation.start_idx];
             const endCandle = dfData[formation.end_idx];
             
-            // Add formation zone rectangle
+            // Draw zone ONLY over base candles, not entire formation (with bounds checking)
+            const baseStart = Math.min(...formation.base.candles);
+            const baseEnd = Math.max(...formation.base.candles);
+            const baseStartCandle = dfData[baseStart];
+            const baseEndCandle = dfData[baseEnd];
+            
+            // Ensure base candles exist
+            if (!baseStartCandle || !baseEndCandle) {{
+                console.log('Debug: Base candles not found, skipping zone visualization');
+                return;
+            }}
+            
+            // Add formation zone rectangle (only over base segment)
+            const fillColor = zoneColor === '#00ff88' ? 'rgba(0, 255, 136, 0.2)' : 'rgba(255, 68, 68, 0.2)';
             traces.push({{
                 type: 'scatter',
                 mode: 'lines',
-                x: [startCandle.datetime, endCandle.datetime, endCandle.datetime, startCandle.datetime, startCandle.datetime],
+                x: [baseStartCandle.datetime, baseEndCandle.datetime, baseEndCandle.datetime, baseStartCandle.datetime, baseStartCandle.datetime],
                 y: [formation.base.proximal_line, formation.base.proximal_line, formation.base.distal_line, formation.base.distal_line, formation.base.proximal_line],
-                fill: 'tonexty',
-                fillcolor: zoneColor.replace(')', ', 0.2)').replace('#', 'rgba(').replace('#ff4444', 'rgba(255, 68, 68').replace('#00ff88', 'rgba(0, 255, 136'),
+                fill: 'toself',
+                fillcolor: fillColor,
                 line: {{ color: zoneColor, width: 2 }},
-                name: `${{formation.type}} Zone`,
-                hoverinfo: 'skip'
+                name: `${{formation.type}} Zone (Base Only)`,
+                hovertemplate: `<b>${{formation.type}} Zone</b><br>Covers base candles only<br>Range: $${{formation.base.range.toFixed(4)}}<extra></extra>`
             }});
+            
+            // Leg In line segment (from actual start to actual end) - with bounds checking
+            if (formation.leg_in.start_idx < dfData.length && formation.leg_in.end_idx < dfData.length) {{
+                const legInStartCandle = dfData[formation.leg_in.start_idx];
+                const legInEndCandle = dfData[formation.leg_in.end_idx];
+                traces.push({{
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: [legInStartCandle.datetime, legInEndCandle.datetime],
+                    y: [legInStartCandle.close, legInEndCandle.close],
+                    line: {{ color: '#00ccff', width: 4 }},
+                    name: 'Leg In Movement',
+                    hovertemplate: `<b>Leg In Movement</b><br>Movement: $${{formation.leg_in.movement.toFixed(2)}}<extra></extra>`
+                }});
+            }}
+            
+            // Horizontal line at center of base range  
+            const baseCenterPrice = (formation.base.proximal_line + formation.base.distal_line) / 2;
+            traces.push({{
+                type: 'scatter',
+                mode: 'lines',
+                x: [baseStartCandle.datetime, baseEndCandle.datetime],
+                y: [baseCenterPrice, baseCenterPrice],
+                line: {{ color: '#ffaa00', width: 3, dash: 'dash' }},
+                name: 'Base Center Line',
+                hovertemplate: `<b>Base Center</b><br>Price: $${{baseCenterPrice.toFixed(2)}}<extra></extra>`
+            }});
+            
+            // Leg Out line segment (from actual start to actual end) - with bounds checking
+            if (formation.leg_out.start_idx < dfData.length && formation.leg_out.end_idx < dfData.length) {{
+                const legOutStartCandle = dfData[formation.leg_out.start_idx];
+                const legOutEndCandle = dfData[formation.leg_out.end_idx];
+                traces.push({{
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: [legOutStartCandle.datetime, legOutEndCandle.datetime],
+                    y: [legOutStartCandle.close, legOutEndCandle.close],
+                    line: {{ color: '#ff6600', width: 4 }},
+                    name: 'Leg Out Movement',
+                    hovertemplate: `<b>Leg Out Movement</b><br>Movement: $${{formation.leg_out.movement.toFixed(2)}}<extra></extra>`
+                }});
+            }}
             
             // Proximal line (entry level)
             traces.push({{
@@ -539,35 +686,38 @@ def create_formation_browser_html(df_data, formation_data):
                 }}
             }});
             
-            // Leg markers
-            const legInCandle = dfData[formation.leg_in.index];
-            const legOutCandle = dfData[formation.leg_out.index];
+            // Leg markers - mark the start of each leg (with bounds checking)
+            if (formation.leg_in.start_idx < dfData.length) {{
+                const legInStartCandle = dfData[formation.leg_in.start_idx];
+                traces.push({{
+                    type: 'scatter',
+                    mode: 'markers+text',
+                    x: [legInStartCandle.datetime],
+                    y: [formation.leg_in.sentiment === 'UP' ? legInStartCandle.high : legInStartCandle.low],
+                    marker: {{ color: '#00ccff', size: 12, symbol: 'triangle-up' }},
+                    text: ['LEG IN START'],
+                    textposition: 'top center',
+                    textfont: {{ size: 10, color: 'white', family: 'Arial Black' }},
+                    name: 'Leg In Start',
+                    hovertemplate: `<b>Leg In Start</b><br>Movement: $${{formation.leg_in.movement.toFixed(3)}}<br>Valid: ${{formation.leg_in.valid ? '✅' : '❌'}}<extra></extra>`
+                }});
+            }}
             
-            traces.push({{
-                type: 'scatter',
-                mode: 'markers+text',
-                x: [legInCandle.datetime],
-                y: [formation.leg_in.sentiment === 'LEG_BULLISH' ? legInCandle.high : legInCandle.low],
-                marker: {{ color: '#00ccff', size: 12, symbol: 'triangle-up' }},
-                text: ['LEG IN'],
-                textposition: 'top center',
-                textfont: {{ size: 10, color: 'white', family: 'Arial Black' }},
-                name: 'Leg In',
-                hovertemplate: `<b>Leg In</b><br>Movement: $${{formation.leg_in.movement.toFixed(3)}}<br>Valid: ${{formation.leg_in.valid ? '✅' : '❌'}}<extra></extra>`
-            }});
-            
-            traces.push({{
-                type: 'scatter',
-                mode: 'markers+text',
-                x: [legOutCandle.datetime],
-                y: [formation.leg_out.sentiment === 'LEG_BULLISH' ? legOutCandle.high : legOutCandle.low],
-                marker: {{ color: '#ff6600', size: 12, symbol: 'triangle-down' }},
-                text: ['LEG OUT'],
-                textposition: 'bottom center',
-                textfont: {{ size: 10, color: 'white', family: 'Arial Black' }},
-                name: 'Leg Out',
-                hovertemplate: `<b>Leg Out</b><br>Movement: $${{formation.leg_out.movement.toFixed(3)}}<br>Valid: ${{formation.leg_out.valid ? '✅' : '❌'}}<extra></extra>`
-            }});
+            if (formation.leg_out.start_idx < dfData.length) {{
+                const legOutStartCandle = dfData[formation.leg_out.start_idx];
+                traces.push({{
+                    type: 'scatter',
+                    mode: 'markers+text',
+                    x: [legOutStartCandle.datetime],
+                    y: [formation.leg_out.sentiment === 'UP' ? legOutStartCandle.high : legOutStartCandle.low],
+                    marker: {{ color: '#ff6600', size: 12, symbol: 'triangle-down' }},
+                    text: ['LEG OUT START'],
+                    textposition: 'bottom center',
+                    textfont: {{ size: 10, color: 'white', family: 'Arial Black' }},
+                    name: 'Leg Out Start',
+                    hovertemplate: `<b>Leg Out Start</b><br>Movement: $${{formation.leg_out.movement.toFixed(3)}}<br>Valid: ${{formation.leg_out.valid ? '✅' : '❌'}}<extra></extra>`
+                }});
+            }}
             
             const layout = {{
                 title: {{
@@ -636,8 +786,18 @@ def create_formation_browser_html(df_data, formation_data):
             nextBtn.disabled = currentFormationIndex === filteredFormationData.length - 1;
         }}
         
-        // Initialize
-        loadFormation();
+        // Initialize with debugging
+        console.log('Debug: Starting formation explorer...');
+        console.log('Debug: dfData length:', dfData.length);
+        console.log('Debug: allFormationData length:', allFormationData.length);
+        
+        if (allFormationData.length === 0) {{
+            console.log('Debug: No formations found!');
+            document.getElementById('chart').innerHTML = '<p style="color: red; text-align: center; padding: 50px;">No formations found</p>';
+        }} else {{
+            console.log('Debug: Found formations, loading first one...');
+            loadFormation();
+        }}
     </script>
 </body>
 </html>

@@ -56,7 +56,9 @@ class FormationDetector:
     
     def detect_monotonic_runs(self, df):
         """
-        Detect monotonic runs (consecutive candles moving in same direction)
+        Detect monotonic runs using formation-appropriate logic:
+        - Directional consistency (bullish/bearish candles)
+        - Edge progression (at least one body edge more extreme than previous)
         
         Args:
             df: DataFrame with OHLC data
@@ -65,48 +67,67 @@ class FormationDetector:
             list: List of run dictionaries with start, end, direction
         """
         runs = []
-        current_run = None
+        i = 0
         
-        for i in range(1, len(df)):
-            prev_close = df.iloc[i-1]['close']
-            curr_close = df.iloc[i]['close']
+        while i < len(df) - 1:
+            # Find the start of a run
+            start_idx = i
+            start_price = df.iloc[i]['close']
             
-            if curr_close > prev_close:
-                direction = 'UP'
-            elif curr_close < prev_close:
-                direction = 'DOWN'
-            else:
-                direction = 'FLAT'
+            # Look ahead to find the direction and extent of the run
+            current_direction = None
+            end_idx = start_idx
             
-            if current_run is None:
-                # Start new run
-                current_run = {
-                    'start_idx': i-1,
-                    'end_idx': i,
-                    'direction': direction,
-                    'start_price': prev_close,
-                    'end_price': curr_close
-                }
-            elif current_run['direction'] == direction and direction != 'FLAT':
-                # Continue current run
-                current_run['end_idx'] = i
-                current_run['end_price'] = curr_close
-            else:
-                # End current run and start new one
-                if current_run['direction'] != 'FLAT' and current_run['end_idx'] > current_run['start_idx']:
-                    runs.append(current_run)
+            for j in range(i + 1, len(df)):
+                prev_candle = df.iloc[j-1]
+                curr_candle = df.iloc[j]
                 
-                current_run = {
-                    'start_idx': i-1,
-                    'end_idx': i,
-                    'direction': direction,
-                    'start_price': prev_close,
-                    'end_price': curr_close
+                # Determine current candle direction
+                candle_direction = 'UP' if curr_candle['close'] > curr_candle['open'] else 'DOWN'
+                
+                # Check if this candle can continue the current run
+                can_continue = False
+                
+                if current_direction is None:
+                    # First candle - establish direction
+                    current_direction = candle_direction
+                    end_idx = j
+                    can_continue = True
+                elif current_direction == candle_direction:
+                    # Same direction - check edge progression
+                    if current_direction == 'UP':
+                        # UP run continues if open higher OR close higher
+                        if (curr_candle['open'] > prev_candle['open'] or 
+                            curr_candle['close'] > prev_candle['close']):
+                            can_continue = True
+                    else:  # DOWN run
+                        # DOWN run continues if open lower OR close lower
+                        if (curr_candle['open'] < prev_candle['open'] or 
+                            curr_candle['close'] < prev_candle['close']):
+                            can_continue = True
+                
+                if can_continue:
+                    end_idx = j
+                else:
+                    # Run ends here
+                    break
+            
+            # Add run if it's valid (more than 1 candle and has direction)
+            if current_direction is not None and end_idx > start_idx:
+                run = {
+                    'start_idx': start_idx,
+                    'end_idx': end_idx,
+                    'direction': current_direction,
+                    'start_price': start_price,
+                    'end_price': df.iloc[end_idx]['close']
                 }
-        
-        # Add final run if valid
-        if current_run and current_run['direction'] != 'FLAT' and current_run['end_idx'] > current_run['start_idx']:
-            runs.append(current_run)
+                runs.append(run)
+                
+                # Move to the end of this run for next iteration
+                i = end_idx
+            else:
+                # No valid run found, move to next candle
+                i += 1
         
         return runs
     
@@ -173,146 +194,205 @@ class FormationDetector:
         # Check if ranges overlap
         return not (candle_high < base_low or candle_low > base_high)
     
-    def detect_formations(self, df, min_base_length=1, max_base_length=10):
+    def detect_formations(self, df):
         """
-        Detect formations using a sliding window approach
-        Look for LEG -> BASE -> LEG patterns directly
+        Detect formations using proper LEG -> BASE -> LEG logic:
+        1. Find LEG IN (monotonic run)
+        2. Find BASE (range-based consolidation after leg ends)
+        3. Find LEG OUT (leg that breaks base range)
         
         Args:
             df: DataFrame with OHLC data (columns: datetime, open, high, low, close)
-            min_base_length: Minimum base segment length
-            max_base_length: Maximum base segment length
             
         Returns:
             list: Detected formations with detailed information
         """
-        print("🎯 Starting formation detection with sliding window approach...")
+        print("🎯 Starting formation detection with LEG->BASE->LEG approach...")
         
         formations = []
+        runs = self.detect_monotonic_runs(df)
         
-        # Classify all candles first
-        candle_sentiments = []
-        for i in range(len(df)):
-            row = df.iloc[i]
-            candle_data = {
-                'high': row['high'],
-                'low': row['low'],
-                'open': row['open'],
-                'close': row['close']
-            }
-            sentiment = self.classify_candle_sentiment(candle_data)
-            candle_sentiments.append(sentiment)
+        print(f"   📈 Detected {len(runs)} monotonic runs")
         
-        print(f"   📊 Classified {len(candle_sentiments)} candles")
-        
-        # Look for LEG -> BASE -> LEG patterns
+        # Look for LEG IN -> BASE -> LEG OUT patterns (non-overlapping)
         formations_found = 0
+        run_idx = 0
         
-        for i in range(len(df) - 2):  # Need at least 3 candles
-            # Try different base lengths
-            for base_length in range(min_base_length, min(max_base_length + 1, len(df) - i - 1)):
-                if i + base_length + 1 >= len(df):
-                    continue
-                
-                # Pattern: LEG(i) -> BASE(i+1 to i+base_length) -> LEG(i+base_length+1)
-                leg_in_idx = i
-                base_start_idx = i + 1
-                base_end_idx = i + base_length
-                leg_out_idx = i + base_length + 1
-                
-                leg_in_sentiment = candle_sentiments[leg_in_idx]
-                base_sentiments = candle_sentiments[base_start_idx:base_end_idx + 1]
-                leg_out_sentiment = candle_sentiments[leg_out_idx]
-                
-                # Check if we have a valid LEG -> BASE -> LEG pattern
-                if not (leg_in_sentiment.startswith('LEG') and leg_out_sentiment.startswith('LEG')):
-                    continue
-                
-                # Check if base segment has consolidation characteristics
-                base_candles = list(range(base_start_idx, base_end_idx + 1))
-                base_range = self.calculate_weighted_base_range(base_candles, df)
-                
-                if base_range is None:
-                    continue
-                
-                # CRITICAL: Check if base is properly consolidated and distinct from legs
-                leg_in_candle = df.iloc[leg_in_idx]
-                leg_out_candle = df.iloc[leg_out_idx]
-                
-                leg_in_range = leg_in_candle['high'] - leg_in_candle['low']
-                leg_out_range = leg_out_candle['high'] - leg_out_candle['low']
-                
-                # Base should be significantly smaller than both legs
-                if not (base_range['range'] < leg_in_range * 0.5 and base_range['range'] < leg_out_range * 0.5):
-                    continue
-                
-                # Base should not be completely contained within either leg candle
-                base_high = base_range['high']
-                base_low = base_range['low']
-                
-                # Check if base is contained within leg in candle
-                if base_high <= leg_in_candle['high'] and base_low >= leg_in_candle['low']:
-                    continue
-                    
-                # Check if base is contained within leg out candle  
-                if base_high <= leg_out_candle['high'] and base_low >= leg_out_candle['low']:
-                    continue
-                
-                # Check if any base candles qualify or if there's consolidation
-                has_base_candles = any(sentiment == 'BASE' for sentiment in base_sentiments)
-                has_consolidation = base_range['range'] < min(leg_in_range, leg_out_range) * 0.7
-                
-                if not (has_base_candles or has_consolidation):
-                    continue
-                
-                # Determine formation type
-                formation_type, zone_type = self._classify_formation(leg_in_sentiment, leg_out_sentiment)
-                
-                if formation_type is None:
-                    continue
-                
-                # Validate formation
-                leg_in_movement = self._calculate_leg_movement(df, leg_in_idx)
-                leg_out_movement = self._calculate_leg_movement(df, leg_out_idx)
-                
-                validation = {
-                    'leg_in_movement': leg_in_movement,
-                    'leg_out_movement': leg_out_movement,
-                    'base_range': base_range['range'],
-                    'leg_in_valid': leg_in_movement > base_range['range'] * self.min_leg_threshold,
-                    'leg_out_valid': leg_out_movement > base_range['range'] * self.min_leg_threshold
-                }
-                
-                is_valid = validation['leg_in_valid'] and validation['leg_out_valid']
-                
-                # Create formation
-                formation = {
-                    'type': formation_type,
-                    'zone_type': zone_type,
-                    'start_idx': leg_in_idx,
-                    'end_idx': leg_out_idx,
-                    'leg_in': {'index': leg_in_idx, 'sentiment': leg_in_sentiment},
-                    'base': {
-                        'base_candles': base_candles,
-                        'base_range': base_range,
-                        'proximal_line': base_range['high'] if zone_type == 'DEMAND' else base_range['low'],
-                        'distal_line': base_range['low'] if zone_type == 'DEMAND' else base_range['high']
-                    },
-                    'leg_out': {'index': leg_out_idx, 'sentiment': leg_out_sentiment},
-                    'valid': is_valid,
-                    'validation_details': validation
-                }
-                
-                formations.append(formation)
+        while run_idx < len(runs):
+            leg_in_run = runs[run_idx]
+            
+            # After leg in run ends, look for base formation
+            base_start_idx = leg_in_run['end_idx'] + 1
+            
+            if base_start_idx >= len(df):
+                run_idx += 1
+                continue  # No room for base
+            
+            # Calculate leg in movement range for base validation
+            leg_in_movement = abs(leg_in_run['end_price'] - leg_in_run['start_price'])
+            
+            # Build base segment dynamically
+            base_formation = self._analyze_base_after_leg(df, leg_in_run, base_start_idx, leg_in_movement)
+            
+            if base_formation and base_formation['valid']:
+                formations.append(base_formation)
                 formations_found += 1
+                if formations_found <= 3:
+                    print(f"   ✅ Valid {base_formation['type']} formation: LEG({leg_in_run['start_idx']}-{leg_in_run['end_idx']}) -> BASE({base_formation['base']['start_idx']}-{base_formation['base']['end_idx']}) -> LEG({base_formation['leg_out']['start_idx']}-{base_formation['leg_out']['end_idx']})")
                 
-                # Skip ahead to avoid overlapping formations
-                i += base_length + 1
-                break  # Found formation with this start, move to next position
+                # Skip past this entire formation to avoid overlaps
+                formation_end_idx = base_formation['leg_out']['end_idx']
+                
+                # Find next run that starts after this formation ends
+                next_run_idx = run_idx + 1
+                while next_run_idx < len(runs) and runs[next_run_idx]['start_idx'] <= formation_end_idx:
+                    next_run_idx += 1
+                run_idx = next_run_idx
+                
+            else:
+                if formations_found < 3:
+                    print(f"   ❌ No valid formation after run {run_idx}")
+                run_idx += 1
         
         print(f"   ✅ Detected {len(formations)} formations")
         return formations
     
+    def _analyze_base_after_leg(self, df, leg_in_run, base_start_idx, leg_in_movement):
+        """
+        Analyze base formation after a monotonic leg run using CORRECT logic:
+        1. First candle after leg must have smaller range than leg movement to START base
+        2. Build base using existing weighted range + overlapping validation logic  
+        3. Find leg out that breaks the weighted base range
+        
+        Args:
+            df: DataFrame with OHLC data
+            leg_in_run: The preceding monotonic run (leg in)
+            base_start_idx: Start index for potential base
+            leg_in_movement: Price movement of the leg in run
+            
+        Returns:
+            dict: Formation info if valid, None otherwise
+        """
+        if base_start_idx >= len(df):
+            return None
+        
+        # Check FIRST candle after leg - its range must be smaller than leg movement to START base
+        first_candle = df.iloc[base_start_idx]
+        first_candle_range = first_candle['high'] - first_candle['low']
+        
+        if first_candle_range >= leg_in_movement:
+            return None  # No base - first candle breaks out immediately
+        
+        # Base starts with first candle - now build it using existing weighted logic
+        base_candles = [base_start_idx]
+        current_base_range = self.calculate_weighted_base_range(base_candles, df)
+        
+        if current_base_range is None:
+            return None
+        
+        # Build base segment dynamically using weighted range + overlapping validation
+        for i in range(base_start_idx + 1, min(base_start_idx + 20, len(df))):  # Limit base length
+            candle = df.iloc[i]
+            
+            # Check if candle overlaps with current base range
+            if self.overlaps_with_base_range(candle, current_base_range):
+                base_candles.append(i)
+                # Recalculate weighted base range with new candle
+                current_base_range = self.calculate_weighted_base_range(base_candles, df)
+                if current_base_range is None:
+                    break
+            else:
+                # Break in base - this could be start of leg out
+                break
+        
+        if len(base_candles) < 1:
+            return None  # No valid base
+            
+        base_end_idx = base_candles[-1]
+        leg_out_start_idx = base_end_idx + 1
+        
+        if leg_out_start_idx >= len(df):
+            return None  # No room for leg out
+        
+        # Find next monotonic run that starts at or after leg_out_start_idx
+        leg_out_run = None
+        all_runs = self.detect_monotonic_runs(df)
+        
+        for run in all_runs:
+            if run['start_idx'] >= leg_out_start_idx:
+                # Check if this run actually breaks the base range
+                run_movement = abs(run['end_price'] - run['start_price'])
+                if run_movement > current_base_range['range'] * self.min_leg_threshold:
+                    leg_out_run = run
+                    break
+        
+        if leg_out_run is None:
+            return None  # No valid leg out found
+        
+        # Determine formation type
+        leg_in_direction = leg_in_run['direction']
+        leg_out_direction = leg_out_run['direction']
+        
+        if leg_in_direction == 'UP' and leg_out_direction == 'UP':
+            formation_type = 'RBR'  # Rally-Base-Rally
+            zone_type = 'DEMAND'
+        elif leg_in_direction == 'DOWN' and leg_out_direction == 'DOWN':
+            formation_type = 'DBD'  # Drop-Base-Drop
+            zone_type = 'SUPPLY'
+        elif leg_in_direction == 'UP' and leg_out_direction == 'DOWN':
+            formation_type = 'RBD'  # Rally-Base-Drop
+            zone_type = 'SUPPLY'
+        elif leg_in_direction == 'DOWN' and leg_out_direction == 'UP':
+            formation_type = 'DBR'  # Drop-Base-Rally
+            zone_type = 'DEMAND'
+        else:
+            return None
+        
+        # Validation
+        leg_in_movement_calc = abs(leg_in_run['end_price'] - leg_in_run['start_price'])
+        leg_out_movement = abs(leg_out_run['end_price'] - leg_out_run['start_price'])
+        
+        validation = {
+            'leg_in_movement': leg_in_movement_calc,
+            'leg_out_movement': leg_out_movement,
+            'base_range': current_base_range['range'],
+            'leg_in_valid': leg_in_movement_calc > current_base_range['range'] * self.min_leg_threshold,
+            'leg_out_valid': leg_out_movement > current_base_range['range'] * self.min_leg_threshold
+        }
+        
+        is_valid = validation['leg_in_valid'] and validation['leg_out_valid']
+        
+        return {
+            'type': formation_type,
+            'zone_type': zone_type,
+            'start_idx': leg_in_run['start_idx'],
+            'end_idx': leg_out_run['end_idx'],
+            'leg_in': {
+                'run': leg_in_run,
+                'start_idx': leg_in_run['start_idx'],
+                'end_idx': leg_in_run['end_idx'],
+                'direction': leg_in_run['direction'],
+                'movement': leg_in_movement_calc
+            },
+            'base': {
+                'start_idx': base_start_idx,
+                'end_idx': base_end_idx,
+                'base_candles': base_candles,
+                'base_range': current_base_range,
+                'proximal_line': current_base_range['high'] if zone_type == 'DEMAND' else current_base_range['low'],
+                'distal_line': current_base_range['low'] if zone_type == 'DEMAND' else current_base_range['high']
+            },
+            'leg_out': {
+                'run': leg_out_run,
+                'start_idx': leg_out_run['start_idx'],
+                'end_idx': leg_out_run['end_idx'],
+                'direction': leg_out_run['direction'],
+                'movement': leg_out_movement
+            },
+            'valid': is_valid,
+            'validation_details': validation
+        }
+
     def _calculate_leg_movement(self, df, leg_idx):
         """Calculate the price movement of a single leg candle"""
         if leg_idx >= len(df):
@@ -333,6 +413,111 @@ class FormationDetector:
             return 'DBR', 'DEMAND'  # Drop-Base-Rally
         else:
             return None, None
+    
+    def _analyze_run_based_formation(self, df, run_in, run_out, base_start_idx, base_end_idx):
+        """
+        Analyze formation based on monotonic runs
+        
+        Args:
+            df: DataFrame with OHLC data
+            run_in: Incoming monotonic run
+            run_out: Outgoing monotonic run
+            base_start_idx: Start of base segment
+            base_end_idx: End of base segment
+            
+        Returns:
+            dict: Formation info or None
+        """
+        base_candles = list(range(base_start_idx, base_end_idx + 1))
+        
+        if not base_candles:
+            return None
+            
+        # Calculate base range
+        base_range = self.calculate_weighted_base_range(base_candles, df)
+        if base_range is None:
+            return None
+        
+        # Calculate run movements
+        run_in_movement = abs(run_in['end_price'] - run_in['start_price'])
+        run_out_movement = abs(run_out['end_price'] - run_out['start_price'])
+        
+        # Determine formation type based on run directions
+        if run_in['direction'] == 'UP' and run_out['direction'] == 'UP':
+            formation_type = 'RBR'  # Rally-Base-Rally
+            zone_type = 'DEMAND'
+        elif run_in['direction'] == 'DOWN' and run_out['direction'] == 'DOWN':
+            formation_type = 'DBD'  # Drop-Base-Drop
+            zone_type = 'SUPPLY'
+        elif run_in['direction'] == 'UP' and run_out['direction'] == 'DOWN':
+            formation_type = 'RBD'  # Rally-Base-Drop
+            zone_type = 'SUPPLY'
+        elif run_in['direction'] == 'DOWN' and run_out['direction'] == 'UP':
+            formation_type = 'DBR'  # Drop-Base-Rally
+            zone_type = 'DEMAND'
+        else:
+            return None
+        
+        # Validate formation - run movements must exceed base range
+        validation = {
+            'leg_in_movement': run_in_movement,
+            'leg_out_movement': run_out_movement,
+            'base_range': base_range['range'],
+            'leg_in_valid': run_in_movement > base_range['range'] * self.min_leg_threshold,
+            'leg_out_valid': run_out_movement > base_range['range'] * self.min_leg_threshold
+        }
+        
+        is_valid = validation['leg_in_valid'] and validation['leg_out_valid']
+        
+        # Additional validation: base should be properly consolidated
+        # Check that runs don't overlap excessively with base range
+        base_high = base_range['high']
+        base_low = base_range['low']
+        
+        # Run validation - significant portion of runs should be outside base range
+        run_in_start_price = df.iloc[run_in['start_idx']]['close'] 
+        run_in_end_price = df.iloc[run_in['end_idx']]['close']
+        run_out_start_price = df.iloc[run_out['start_idx']]['close']
+        run_out_end_price = df.iloc[run_out['end_idx']]['close']
+        
+        # For valid formation, runs should clearly move away from and back to base range
+        if formation_type in ['RBR', 'DBR']:  # Demand zones
+            # Base should be between the run extremes
+            if not (min(run_in_start_price, run_in_end_price) <= base_low <= base_high <= max(run_out_start_price, run_out_end_price)):
+                is_valid = False
+        else:  # Supply zones (RBD, DBD)
+            # Base should be between the run extremes  
+            if not (min(run_out_start_price, run_out_end_price) <= base_low <= base_high <= max(run_in_start_price, run_in_end_price)):
+                is_valid = False
+        
+        return {
+            'type': formation_type,
+            'zone_type': zone_type,
+            'start_idx': run_in['start_idx'],
+            'end_idx': run_out['end_idx'],
+            'leg_in': {
+                'run': run_in,
+                'start_idx': run_in['start_idx'],
+                'end_idx': run_in['end_idx'],
+                'direction': run_in['direction'],
+                'movement': run_in_movement
+            },
+            'base': {
+                'base_candles': base_candles,
+                'base_range': base_range,
+                'proximal_line': base_range['high'] if zone_type == 'DEMAND' else base_range['low'],
+                'distal_line': base_range['low'] if zone_type == 'DEMAND' else base_range['high']
+            },
+            'leg_out': {
+                'run': run_out,
+                'start_idx': run_out['start_idx'],
+                'end_idx': run_out['end_idx'],
+                'direction': run_out['direction'],
+                'movement': run_out_movement
+            },
+            'valid': is_valid,
+            'validation_details': validation
+        }
     
     def _analyze_base_segment(self, df, gap_start, gap_end, leg_in, leg_out):
         """
